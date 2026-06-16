@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        .stable{
+            color: green;
+        }
+        .unstable{
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <p id="usr"></p>
+    <p id="role"></p>
+    <p id="alive"></p>
+    <p id="impostor"></p>
+    <p id="tasksCompleted"></p>
+    <p id="id"></p>
+    <hr>
+    <p id="totalTasks"></p>
+    <p id="completedTasks"></p>
+    <hr>
+    <div style="display: flex;">
+        <p style="margin-right: 5px;">reactor: </p>
+        <p id="reactor" class="stable">stable</p>
+    </div>
+    <div style="display: flex;">
+        <p style="margin-right: 5px;">O2: </p>
+        <p id="o2" class="stable">stable</p>
+    </div>
+    <p id="time"></p>
+    
+    <a href="/logout"><button>leave</button></a>
+
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="main.js"></script>
+</body>
+</body>
+</html>
