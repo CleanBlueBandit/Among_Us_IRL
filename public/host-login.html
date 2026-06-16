@@ -7,21 +7,24 @@
 </head>
 <body>
     <input type="text" placeholder="username" id="user">
+    <input type="text" id="pass" placeholder="password">
     <button id="button-id">enter</button>
-    <br>
-    <a href="/host">are you host?</a>
+
 
 
     <script>
         document.querySelector("#button-id").addEventListener('click', f => {
         const usr = document.getElementById("user").value;
-        fetch('http://localhost:6767/enter', {
+        const pass = document.getElementById("pass").value;
+
+        fetch('http://localhost:6767/enter-host', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                username: usr
+                username: usr,
+                password: pass
             })
         })
         .then(f => {window.location.href = '/waiting'})
