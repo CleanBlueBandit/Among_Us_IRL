@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AMOGUS</title>
+</head>
+<body>
+    <input type="text" placeholder="username" id="user">
+    <button id="button-id">enter</button>
+
+
+
+    <script>
+        document.querySelector("#button-id").addEventListener('click', f => {
+        const usr = document.getElementById("user").value;
+        fetch('http://localhost:6767/enter', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: usr
+            })
+        })
+        .then(f => {window.location.href = '/dashboard.html'})
+        .catch(error => {
+            console.error(error);
+        });
+        })
+    </script>
+</body>
+</html>
