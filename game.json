@@ -1,0 +1,38 @@
+{
+  "gameState": {
+    "isGameActive": false,
+    "emergencyMeeting": false,
+    "totalTasks": 30,
+    "completedTasks": 0
+  },
+  "players": {
+    "d16c3b23-8f81-42f3-8750-9cc1e3e9f50b": {
+      "id": "d16c3b23-8f81-42f3-8750-9cc1e3e9f50b",
+      "impostor": true,
+      "username": "admin",
+      "alive": true,
+      "tasksCompleted": 0,
+      "totalTasks": 5
+    },
+    "d959db52-19e6-4308-8136-4c11cee6b513": {
+      "id": "d959db52-19e6-4308-8136-4c11cee6b513",
+      "impostor": true,
+      "username": "george",
+      "alive": true,
+      "tasksCompleted": 0,
+      "totalTasks": 5
+    }
+  },
+  "activeSabotages": {
+    "reactor": {
+      "sabotaged": true,
+      "meltdown": false,
+      "timeLeft": 0
+    },
+    "o2": {
+      "sabotaged": false,
+      "depleted": false,
+      "timeLeft": 30
+    }
+  }
+}
