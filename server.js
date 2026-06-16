@@ -10,6 +10,7 @@ import { Server } from 'socket.io';
 // Constants
 
 const PORT = 6767;
+const host_pass = "amogus";
 
 // Variables
 
@@ -69,7 +70,6 @@ app.post('/enter', async (req, res) => {
 
         const playerData = {
             id: UUID,
-            impostor: true,
             username: username,
             alive: true,
             tasksCompleted: 0,
@@ -86,6 +86,101 @@ app.post('/enter', async (req, res) => {
         console.error("Error managing game entry:", error);
         return res.status(500).json({ error: "Internal Server Error during lobby entry." });
     }
+})
+
+
+app.get("/host", (req, res) => {
+    res.status(200).redirect("/host-login.html")
+})
+
+app.post('/enter-host', async (req, res) => {
+    try {
+        const session = req.cookies.session;
+        const data = await loadGame();
+        const username = req.body.username;
+        const password = req.body.password;
+
+        if(password != host_pass){
+            return res.status(401).json({error:"invalid credentials"})
+        }
+        
+        const UUID = crypto.randomUUID();
+        res.cookie('session', UUID, {
+            httpOnly: true,
+            maxAge: 1000 * 60 * 60 * 12 // 12 hours
+        });
+
+        const playerData = {
+            id: UUID,
+            username: username,
+            alive: true,
+            tasksCompleted: 0,
+            totalTasks: 5,
+        };
+
+        data.players[UUID] = playerData;
+        data.gameState.host = data.players[UUID].username;
+        
+        await saveGame(data); 
+        
+        return res.status(200).json({message:"wellcome, host!"})
+
+    } catch (error) {
+        console.error("Error managing game entry:", error);
+        return res.status(500).json({ error: "Internal Server Error during lobby entry." });
+    }
+})
+
+async function assignPlayerRoles() {
+    const data = await loadGame();
+    const playerIds = Object.keys(data.players);
+    const totalPlayers = playerIds.length;
+
+    let roleDeck = [];
+    
+    const targetImpostors = 2; 
+
+    for (let i = 0; i < totalPlayers; i++) {
+        if (i < targetImpostors) {
+            roleDeck.push("impostor");
+        } else {
+            roleDeck.push("crewmate");
+        }
+    }
+
+
+    for (let i = roleDeck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        
+        const temp = roleDeck[i];
+        roleDeck[i] = roleDeck[j];
+        roleDeck[j] = temp;
+    }
+
+
+    playerIds.forEach((id, index) => {
+        const assignedRole = roleDeck[index];
+        
+        data.players[id].impostor = (assignedRole === "impostor");
+    });
+
+    await saveGame(data);
+    
+    console.log("Roles dealt perfectly and evenly across the lobby!");
+}
+
+app.get('/dashboard', async (req, res) => {
+    const data = await loadGame();
+    const session = req.cookies.session;
+    if(!data.players[session]){
+        return res.status(401).json({error:"401 unauthorised."});
+    }
+    const playerData = data.players[session];
+
+    if(playerData.impostor){
+        return res.redirect("impostor.html");
+    }
+    return res.redirect("crewmate.html")
 })
 
 app.post('/dashboard', async (req, res) => {
@@ -155,20 +250,63 @@ io.on("connection", async (socket) => {
     const cookies = parseSocketCookies(rawCookieHeader);
     const data = await loadGame();
 
-    try{
+    try {
         if (data.players[cookies.session]) {
-            socket.emit("sabotage_data_request", { sData : data.activeSabotages, time : 30})  // change this when countdown logic will be implemented.
-            socket.emit("player_data_request", data.players[cookies.session])
-            socket.emit("game_data_request", data.gameState)
+            socket.emit("player_data_request", data.players[cookies.session]);
+            socket.emit("game_data_request", data.gameState);
+
+            let targetEndTimestamp = 0;
+            
+            if (data.activeSabotages.o2.depleted) {
+                targetEndTimestamp = Date.now() + (data.activeSabotages.o2.timeLeft * 1000);
+            } else if (data.activeSabotages.reactor.meltdown) {
+                targetEndTimestamp = Date.now() + (data.activeSabotages.reactor.timeLeft * 1000);
+            }
+            socket.emit("sabotage_data_request", { 
+                sData: data.activeSabotages, 
+                endTime: targetEndTimestamp 
+            });
         }
-        else{
-            socket.emit("Err", {error:"username not found."})
+        else {
+            socket.emit("Err", { error: "username not found." });
         }
+        
         socket.on('disconnect', () => {
             console.log('Client disconnected.');
         });
     }
-    catch (err){
-        socket.emit("Err", {error:err})
+    catch (err) {
+        socket.emit("Err", { error: err.message });
     }
+});
+
+
+app.get("/waiting", async (req, res) => {
+    const session = req.cookies.session;
+    const data = await loadGame();
+    if(session && data.players[session]){
+        return res.redirect("waiting_lobby.html");
+    }
+    res.status(401).json({error:"401 unauthorised"})
 })
+
+let gameKillTimeout = null;
+
+function startTimestampCountdown(seconds) {
+    if (gameKillTimeout) clearTimeout(gameKillTimeout);
+
+    const msToWait = seconds * 1000;
+    const targetEndTime = Date.now() + msToWait;
+
+    io.emit("sabotage_countdown_start", { 
+        endTime: targetEndTime 
+    });
+
+    gameKillTimeout = setTimeout(async () => {
+        const data = await loadGame();
+        if (data.activeSabotages.o2.depleted) {
+            io.emit("game_over", { winner: "impostors" });
+        }
+    }, msToWait);
+}
+
