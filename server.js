@@ -4,45 +4,76 @@ import cookieParser from 'cookie-parser';
 import crypto from 'crypto';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-
-
-// Constants
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const PORT = 6767;
-const host_pass = "amogus";
-
-// Variables
+const host_pass = process.env.HOST_PASSWORD || "amogus";
 
 var timeLeft = 0
-
-// Middleware
 
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer);
+
+app.use((req, res, next) => {
+    if (req.path.endsWith('.html')) {
+        return res.status(403).json({ error: "Direct access to HTML files is forbidden." });
+    }
+    next();
+});
+
 app.use(express.static('public'));
 app.use(express.json());
 app.use(cookieParser());
 
+let gameLock = Promise.resolve();
 
-
-
-// Start server
+async function withGameLock(fn) {
+    const previous = gameLock;
+    let release;
+    gameLock = new Promise((resolve) => { release = resolve; });
+    await previous;
+    try {
+        return await fn();
+    } finally {
+        release();
+    }
+}
 
 async function loadGame() {
     try {
         const rawData = await fs.readFile('./game.json', 'utf-8');
         const data = JSON.parse(rawData);
-        
+
         if (!data.players) {
             data.players = {};
         }
+        if (!data.gameState) {
+            data.gameState = { host: "", started: false, playerCount: 0, alivePlayers: 0 };
+        }
+        if (!data.activeSabotages) {
+            data.activeSabotages = {
+                o2: { depleted: false, timeLeft: 0 },
+                reactor: { meltdown: false, timeLeft: 0 }
+            };
+        }
         return data;
     } catch (error) {
-        return { players: {} };
+        return {
+            players: {},
+            gameState: { host: "", started: false, playerCount: 0, alivePlayers: 0 },
+            activeSabotages: {
+                o2: { depleted: false, timeLeft: 0 },
+                reactor: { meltdown: false, timeLeft: 0 }
+            }
+        };
     }
 }
+
 async function saveGame(data) {
     await fs.writeFile('./game.json', JSON.stringify(data, null, 2), 'utf-8');
 }
@@ -53,78 +84,97 @@ httpServer.listen(PORT, () => {
 
 app.post('/enter', async (req, res) => {
     try {
-        const session = req.cookies.session;
-        const data = await loadGame();
-        
-        const username = req.body.username ? String(req.body.username) : "Anonymous Crewmate";
+        await withGameLock(async () => {
+            const session = req.cookies.session;
+            const data = await loadGame();
 
-        if (session && typeof session === 'string' && data.players[session]) {
-            return res.status(200).json({message:"username accepted!"})
-        }
+            const username = req.body.username ? String(req.body.username) : "Anonymous Crewmate";
 
-        const UUID = crypto.randomUUID();
-        res.cookie('session', UUID, {
-            httpOnly: true,
-            maxAge: 1000 * 60 * 60 * 12 // 12 hours
+            if (session && typeof session === 'string' && data.players[session]) {
+                return res.status(200).json({message:"username accepted!"})
+            }
+
+            const UUID = crypto.randomUUID();
+            res.cookie('session', UUID, {
+                httpOnly: true,
+                secure: true,
+                sameSite: 'lax',
+                maxAge: 1000 * 60 * 60 * 12
+            });
+
+            const playerData = {
+                id: UUID,
+                username: username,
+                alive: true,
+                tasksCompleted: 0,
+                totalTasks: 5,
+            };
+
+            data.players[UUID] = playerData;
+
+            data.gameState.playerCount = Object.keys(data.players).length;
+            data.gameState.alivePlayers = Object.keys(data.players).length;
+
+            await saveGame(data);
+
+            return res.status(200).json({message:"username created!"})
         });
-
-        const playerData = {
-            id: UUID,
-            username: username,
-            alive: true,
-            tasksCompleted: 0,
-            totalTasks: 5,
-        };
-
-        data.players[UUID] = playerData;
-        
-        await saveGame(data); 
-        
-        return res.status(200).json({message:"username created!"})
-
     } catch (error) {
         console.error("Error managing game entry:", error);
         return res.status(500).json({ error: "Internal Server Error during lobby entry." });
     }
 })
 
-
 app.get("/host", (req, res) => {
-    res.status(200).redirect("/host-login.html")
+    res.status(200).sendFile(path.join(__dirname, 'public', 'host-login.html'));
 })
 
 app.post('/enter-host', async (req, res) => {
     try {
-        const session = req.cookies.session;
-        const data = await loadGame();
-        const username = req.body.username;
-        const password = req.body.password;
+        await withGameLock(async () => {
+            const session = req.cookies.session;
+            const data = await loadGame();
+            const username = req.body.username ? String(req.body.username) : "Host";
+            const password = req.body.password ? String(req.body.password) : "";
 
-        if(password != host_pass){
-            return res.status(401).json({error:"invalid credentials"})
-        }
-        
-        const UUID = crypto.randomUUID();
-        res.cookie('session', UUID, {
-            httpOnly: true,
-            maxAge: 1000 * 60 * 60 * 12 // 12 hours
+            if (data.gameState.host != "") {
+                return res.status(400).json({error:"Host is already in the game!"})
+            }
+
+            const passwordBuffer = Buffer.from(password);
+            const hostPassBuffer = Buffer.from(host_pass);
+            const isValidPassword = passwordBuffer.length === hostPassBuffer.length &&
+                crypto.timingSafeEqual(passwordBuffer, hostPassBuffer);
+
+            if (!isValidPassword) {
+                return res.status(401).json({error:"invalid credentials"})
+            }
+
+            const UUID = crypto.randomUUID();
+            res.cookie('session', UUID, {
+                httpOnly: true,
+                secure: true,
+                sameSite: 'lax',
+                maxAge: 1000 * 60 * 60 * 12
+            });
+
+            const playerData = {
+                id: UUID,
+                username: username,
+                alive: true,
+                tasksCompleted: 0,
+                totalTasks: 5,
+            };
+
+            data.players[UUID] = playerData;
+            data.gameState.host = username;
+            data.gameState.playerCount = Object.keys(data.players).length;
+            data.gameState.alivePlayers = Object.keys(data.players).length;
+
+            await saveGame(data);
+
+            return res.status(200).json({message:"wellcome, host!"})
         });
-
-        const playerData = {
-            id: UUID,
-            username: username,
-            alive: true,
-            tasksCompleted: 0,
-            totalTasks: 5,
-        };
-
-        data.players[UUID] = playerData;
-        data.gameState.host = UUID;
-        
-        await saveGame(data); 
-        
-        return res.status(200).json({message:"wellcome, host!"})
-
     } catch (error) {
         console.error("Error managing game entry:", error);
         return res.status(500).json({ error: "Internal Server Error during lobby entry." });
@@ -137,8 +187,8 @@ async function assignPlayerRoles() {
     const totalPlayers = playerIds.length;
 
     let roleDeck = [];
-    
-    const targetImpostors = 2; 
+
+    const targetImpostors = 2;
 
     for (let i = 0; i < totalPlayers; i++) {
         if (i < targetImpostors) {
@@ -148,24 +198,22 @@ async function assignPlayerRoles() {
         }
     }
 
-
     for (let i = roleDeck.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        
+
         const temp = roleDeck[i];
         roleDeck[i] = roleDeck[j];
         roleDeck[j] = temp;
     }
 
-
     playerIds.forEach((id, index) => {
         const assignedRole = roleDeck[index];
-        
+
         data.players[id].impostor = (assignedRole === "impostor");
     });
 
     await saveGame(data);
-    
+
     console.log("Roles dealt perfectly and evenly across the lobby!");
 }
 
@@ -175,25 +223,42 @@ app.get('/dashboard', async (req, res) => {
     if(!data.players[session]){
         return res.status(401).json({error:"401 unauthorised."});
     }
+
+    if(!data.gameState.started){
+        const dynamicHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head><title>Please wait</title></head>
+            <body>
+                <p>Please be more patient, the game hasnt been started yet.</p>
+                <a href="/waiting"><button>back to the waiting lobby</button></a>
+            </body>
+            </html>
+        `;
+
+        res.set('Content-Type', 'text/html');
+        return res.send(dynamicHtml);
+    }
     const playerData = data.players[session];
 
     if(playerData.impostor){
-        return res.redirect("impostor.html");
+        return res.sendFile(path.join(__dirname, 'public', 'impostor.html'));
     }
-    return res.redirect("crewmate.html")
+    return res.sendFile(path.join(__dirname, 'public', 'crewmate.html'));
 })
-
 
 app.get('/logout', async(req, res) => {
     const session = req.cookies.session;
-    const data = await loadGame();
-    if (data.players && session) {
-        if(data.gameState.host == session){
-            data.gameState.host = ""
+    await withGameLock(async () => {
+        const data = await loadGame();
+        if (data.players && session) {
+            if(data.gameState.host == session){
+                data.gameState.host = ""
+            }
+            delete data.players[session];
+            await saveGame(data);
         }
-        delete data.players[session];
-        await saveGame(data);
-    }
+    });
 
     res.clearCookie('session', {
         httpOnly: true
@@ -205,9 +270,8 @@ app.get('/logout', async(req, res) => {
 let localVisualTimer = null;
 
 app.get("/socket", (req, res) => {
-    res.redirect("/socket.html");
+    res.sendFile(path.join(__dirname, 'public', 'socket.html'));
 })
-
 
 function parseSocketCookies(cookieHeader) {
     const cookies = {};
@@ -233,21 +297,21 @@ io.on("connection", async (socket) => {
             socket.emit("game_data_request", data.gameState);
 
             let targetEndTimestamp = 0;
-            
+
             if (data.activeSabotages.o2.depleted) {
                 targetEndTimestamp = Date.now() + (data.activeSabotages.o2.timeLeft * 1000);
             } else if (data.activeSabotages.reactor.meltdown) {
                 targetEndTimestamp = Date.now() + (data.activeSabotages.reactor.timeLeft * 1000);
             }
-            socket.emit("sabotage_data_request", { 
-                sData: data.activeSabotages, 
-                endTime: targetEndTimestamp 
+            socket.emit("sabotage_data_request", {
+                sData: data.activeSabotages,
+                endTime: targetEndTimestamp
             });
         }
         else {
             socket.emit("Err", { error: "username not found." });
         }
-        
+
         socket.on('disconnect', () => {
             console.log('Client disconnected.');
         });
@@ -257,15 +321,14 @@ io.on("connection", async (socket) => {
     }
 });
 
-
 app.get("/waiting", async (req, res) => {
     const session = req.cookies.session;
     const data = await loadGame();
     if(session && data.players[session]){
         if(session == data.gameState.host){
-            return res.redirect("host_lobby.html")
+            return res.sendFile(path.join(__dirname, 'public', 'host_lobby.html'));
         }
-        return res.redirect("waiting_lobby.html");
+        return res.sendFile(path.join(__dirname, 'public', 'waiting_lobby.html'));
     }
     res.status(401).json({error:"401 unauthorised"})
 })
@@ -273,6 +336,8 @@ app.get("/waiting", async (req, res) => {
 app.get("/start", async (req, res) => {
     const session = req.cookies.session;
     const data = await loadGame();
+
+    res.status(500).json({message:"bear with us user, as this feature has yet to see the light of day."})
 })
 
 let gameKillTimeout = null;
@@ -283,8 +348,8 @@ function startTimestampCountdown(seconds) {
     const msToWait = seconds * 1000;
     const targetEndTime = Date.now() + msToWait;
 
-    io.emit("sabotage_countdown_start", { 
-        endTime: targetEndTime 
+    io.emit("sabotage_countdown_start", {
+        endTime: targetEndTime
     });
 
     gameKillTimeout = setTimeout(async () => {
@@ -295,3 +360,39 @@ function startTimestampCountdown(seconds) {
     }, msToWait);
 }
 
+app.get("/reset", async (req, res) => {
+    const data = ```
+    {
+    "gameState": {
+        "started": false,
+        "impostorsWon": false,
+        "crewmatesWon": false,
+        "emergencyMeeting": false,
+        "totalTasks": 30,
+        "completedTasks": 0,
+        "host": "",
+        "aliveImpostors": 0,
+        "playerCount": 0,
+        "alivePlayers": 0
+    },
+    "players": {
+        
+    },
+    "activeSabotages": {
+        "reactor": {
+        "sabotaged": false,
+        "meltdown": false,
+        "timeLeft": 0
+        },
+        "o2": {
+        "sabotaged": false,
+        "depleted": false,
+        "timeLeft": 0
+        }
+    }
+    }```
+
+    await saveGame(data);
+    res.status(200).json({message:"json file is reset."})
+
+})

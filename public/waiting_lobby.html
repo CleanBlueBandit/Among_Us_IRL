@@ -35,6 +35,7 @@
         });
 
         socket.on("game_data_request", (data) => {
+            document.getElementById("host").innerText = "Host: " + data.host;
             document.getElementById("players").innerText = "players: " + data.playerCount;
             if(data.started){
                 windows.location.href("/dashboard")
