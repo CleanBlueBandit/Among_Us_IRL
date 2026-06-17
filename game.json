@@ -6,14 +6,19 @@
     "emergencyMeeting": false,
     "totalTasks": 30,
     "completedTasks": 0,
-    "host": ""
+    "host": "",
+    "aliveImpostors": 0,
+    "playerCount": 2,
+    "alivePlayers": 2
   },
-  "players": {},
+  "players": {
+    
+  },
   "activeSabotages": {
     "reactor": {
       "sabotaged": false,
       "meltdown": false,
-      "timeLeft": 120
+      "timeLeft": 0
     },
     "o2": {
       "sabotaged": false,
