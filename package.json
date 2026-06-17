@@ -13,6 +13,7 @@
   "type": "module",
   "dependencies": {
     "@prisma/client": "^5.8.0",
+    "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "express": "^5.2.1",
     "socket": "^1.1.119",
@@ -23,6 +24,6 @@
     "prisma": "^5.8.0"
   },
   "overrides": {
-  "ws": "^8.20.1"
-}
+    "ws": "^8.20.1"
+  }
 }

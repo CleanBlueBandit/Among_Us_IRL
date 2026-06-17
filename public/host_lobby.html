@@ -19,8 +19,9 @@
     <p id="id"></p>
     <p id="host"></p>
     <p id="players"></p>
+
     
-    <a href="/start">start game</a>
+    <button onclick="post_start()">start game</button>
     <a href="/logout"><button>leave</button></a>
 
 
@@ -46,6 +47,18 @@
             console.error("Server error\n" + data.error);
         });
 
+        function post_start(){
+            fetch('http://localhost:6767/enter', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(f => {window.location.href = '/dashboard'})
+            .catch(error => {
+                console.error(error);
+            });
+        }
         
     </script>
 </body>

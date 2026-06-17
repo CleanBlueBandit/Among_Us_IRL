@@ -6,12 +6,13 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import bcrypt from 'bcrypt';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = 6767;
-const host_pass = process.env.HOST_PASSWORD || "amogus";
+const host_pass = "$2b$10$xvIai9yC6zGdmBhNq5Dzt.n48g1dP8h1wRM/J9VGZz.YcWZuDo3m2";
 
 var timeLeft = 0
 
@@ -82,6 +83,8 @@ httpServer.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });
 
+
+
 app.post('/enter', async (req, res) => {
     try {
         await withGameLock(async () => {
@@ -141,12 +144,8 @@ app.post('/enter-host', async (req, res) => {
                 return res.status(400).json({error:"Host is already in the game!"})
             }
 
-            const passwordBuffer = Buffer.from(password);
-            const hostPassBuffer = Buffer.from(host_pass);
-            const isValidPassword = passwordBuffer.length === hostPassBuffer.length &&
-                crypto.timingSafeEqual(passwordBuffer, hostPassBuffer);
 
-            if (!isValidPassword) {
+            if (!(await bcrypt.compare(password, host_pass))) {
                 return res.status(401).json({error:"invalid credentials"})
             }
 
@@ -181,14 +180,15 @@ app.post('/enter-host', async (req, res) => {
     }
 })
 
-async function assignPlayerRoles() {
+async function assignPlayerRoles(targetImps) {
     const data = await loadGame();
+    console.log("data loaded!")
     const playerIds = Object.keys(data.players);
     const totalPlayers = playerIds.length;
 
     let roleDeck = [];
 
-    const targetImpostors = 2;
+    const targetImpostors = targetImps;
 
     for (let i = 0; i < totalPlayers; i++) {
         if (i < targetImpostors) {
@@ -204,6 +204,7 @@ async function assignPlayerRoles() {
         const temp = roleDeck[i];
         roleDeck[i] = roleDeck[j];
         roleDeck[j] = temp;
+        console.log("for loop entered!")
     }
 
     playerIds.forEach((id, index) => {
@@ -213,6 +214,7 @@ async function assignPlayerRoles() {
     });
 
     await saveGame(data);
+    console.log("data saved!")
 
     console.log("Roles dealt perfectly and evenly across the lobby!");
 }
@@ -249,13 +251,15 @@ app.get('/dashboard', async (req, res) => {
 
 app.get('/logout', async(req, res) => {
     const session = req.cookies.session;
+
     await withGameLock(async () => {
         const data = await loadGame();
         if (data.players && session) {
-            if(data.gameState.host == session){
+            if(data.gameState.host == data.players[session]){
                 data.gameState.host = ""
             }
             delete data.players[session];
+            data.gameState.playerCount -= 1;
             await saveGame(data);
         }
     });
@@ -325,7 +329,7 @@ app.get("/waiting", async (req, res) => {
     const session = req.cookies.session;
     const data = await loadGame();
     if(session && data.players[session]){
-        if(session == data.gameState.host){
+        if(data.players[session].username == data.gameState.host){
             return res.sendFile(path.join(__dirname, 'public', 'host_lobby.html'));
         }
         return res.sendFile(path.join(__dirname, 'public', 'waiting_lobby.html'));
@@ -333,11 +337,28 @@ app.get("/waiting", async (req, res) => {
     res.status(401).json({error:"401 unauthorised"})
 })
 
-app.get("/start", async (req, res) => {
-    const session = req.cookies.session;
-    const data = await loadGame();
+app.post("/start", async (req, res) => {
+    await withGameLock(async () => {
+        const session = req.cookies.session;
+        const data = await loadGame();
 
-    res.status(500).json({message:"bear with us user, as this feature has yet to see the light of day."})
+        if(data.players[session].username != data.gameState.host){
+            return res.status(401).json({message:"Get outa here you dont have credentials clown."});
+        }
+
+        const targetImps = 2;
+
+        await assignPlayerRoles(targetImps);
+
+        data.gameState.started = true;
+        data.gameState.aliveImpostors = targetImps;
+        data.gameState.playerCount = data.players.length;
+        data.gameState.alivePlayers = data.players.length;
+
+        await saveGame(data);
+        
+        res.status(200).json({message:"May a fine game take place, among us!"})
+    });
 })
 
 let gameKillTimeout = null;
@@ -361,36 +382,35 @@ function startTimestampCountdown(seconds) {
 }
 
 app.get("/reset", async (req, res) => {
-    const data = ```
-    {
-    "gameState": {
-        "started": false,
-        "impostorsWon": false,
-        "crewmatesWon": false,
-        "emergencyMeeting": false,
-        "totalTasks": 30,
-        "completedTasks": 0,
-        "host": "",
-        "aliveImpostors": 0,
-        "playerCount": 0,
-        "alivePlayers": 0
-    },
-    "players": {
-        
-    },
-    "activeSabotages": {
-        "reactor": {
-        "sabotaged": false,
-        "meltdown": false,
-        "timeLeft": 0
+    const data = {
+        gameState: {
+            started: false,
+            impostorsWon: false,
+            crewmatesWon: false,
+            emergencyMeeting: false,
+            totalTasks: 30,
+            completedTasks: 0,
+            host: "",
+            aliveImpostors: 0,
+            playerCount: 0,
+            alivePlayers: 0
         },
-        "o2": {
-        "sabotaged": false,
-        "depleted": false,
-        "timeLeft": 0
+        players: {},
+        activeSabotages: {
+            reactor: {
+                sabotaged: false,
+                meltdown: false,
+                timeLeft: 0
+            },
+            o2: {
+                sabotaged: false,
+                depleted: false,
+                timeLeft: 0
+            }
         }
-    }
-    }```
+    };
+
+    const formattedData = JSON.stringify(data, null, 2);
 
     await saveGame(data);
     res.status(200).json({message:"json file is reset."})

@@ -6,13 +6,26 @@
     "emergencyMeeting": false,
     "totalTasks": 30,
     "completedTasks": 0,
-    "host": "",
+    "host": "test11",
     "aliveImpostors": 0,
     "playerCount": 2,
     "alivePlayers": 2
   },
   "players": {
-    
+    "56703383-f605-428d-9ec5-cade8baeabcb": {
+      "id": "56703383-f605-428d-9ec5-cade8baeabcb",
+      "username": "test10",
+      "alive": true,
+      "tasksCompleted": 0,
+      "totalTasks": 5
+    },
+    "28dae405-04fc-474c-b750-5a843dfcfc8a": {
+      "id": "28dae405-04fc-474c-b750-5a843dfcfc8a",
+      "username": "test11",
+      "alive": true,
+      "tasksCompleted": 0,
+      "totalTasks": 5
+    }
   },
   "activeSabotages": {
     "reactor": {
