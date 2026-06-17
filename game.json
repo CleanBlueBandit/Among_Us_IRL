@@ -1,0 +1,35 @@
+{
+  "gameState": {
+    "started": false,
+    "impostorsWon": false,
+    "crewmatesWon": false,
+    "emergencyMeeting": false,
+    "totalTasks": 30,
+    "completedTasks": 0,
+    "host": "niger",
+    "playerCount" : 0,
+    "alivePlayers" : 0,
+    "aliveImpostors" : 0
+  },
+  "players": {
+    "fd042876-56ba-48a7-8b10-9aeb44af9659": {
+      "id": "fd042876-56ba-48a7-8b10-9aeb44af9659",
+      "username": "niger",
+      "alive": true,
+      "tasksCompleted": 0,
+      "totalTasks": 5
+    }
+  },
+  "activeSabotages": {
+    "reactor": {
+      "sabotaged": false,
+      "meltdown": false,
+      "timeLeft": 120
+    },
+    "o2": {
+      "sabotaged": false,
+      "depleted": false,
+      "timeLeft": 0
+    }
+  }
+}

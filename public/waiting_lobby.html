@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waiting</title>
+    <style>
+        .stable{
+            color: green;
+        }
+        .unstable{
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Waiting for the game to start...</h1>
+    <p id="usr"></p>
+    <p id="id"></p>
+    <p id="host"></p>
+    <p id="players"></p>
+    
+    <a href="/logout"><button>leave</button></a>
+
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io("http://localhost:6767");
+
+        let clientAnimationId = null;
+
+        socket.on("player_data_request", (data) => {
+            document.getElementById("usr").innerText = "username: " + data.username;
+            document.getElementById("id").innerText = "id: " + data.id;
+        });
+
+        socket.on("game_data_request", (data) => {
+            document.getElementById("players").innerText = "players: " + data.playerCount;
+            if(data.started){
+                windows.location.href("/dashboard")
+            }
+        })
+
+        socket.on("Err", (data) => {
+            console.error("Server error\n" + data.error);
+        });
+
+        
+    </script>
+</body>
+</body>
+</html>
