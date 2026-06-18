@@ -19,6 +19,17 @@
     <p id="id"></p>
     <p id="host"></p>
     <p id="players"></p>
+    <hr>
+
+
+    <div style="display: flex;">
+        <button onclick="down()">&lt;</button>
+        <p style="margin: 10px" id="show">0</p>
+        <button onclick="up()">&gt;</button>
+    </div>
+    <button style="margin-top: 10px;" onclick="create()">Create dummy players</button>
+    <p id="server_response"></p>
+    <hr>
 
     
     <button onclick="post_start()">start game</button>
@@ -48,13 +59,46 @@
         });
 
         function post_start(){
-            fetch('http://localhost:6767/enter', {
+            fetch('http://localhost:6767/start', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 }
             })
-            .then(f => {window.location.href = '/dashboard'})
+            .then(f => {window.location.href = "/dashboard"})
+            .catch(error => {
+                console.error(error);
+            });
+        }
+
+        let amount = 0;
+
+        function down(){
+            if(amount > 0){
+                amount -= 1;
+                document.getElementById("show").innerText = amount;
+            }
+        }
+        function up(){
+            if(amount < 20){
+                amount += 1;
+                document.getElementById("show").innerText = amount;
+            }
+        }
+        function create(){
+            fetch('http://localhost:6767/addDummyPlayers', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    amnt: amount,
+                })
+            })
+            .then(response => response.json()) 
+            .then((data) => {
+                document.getElementById("server_response").innerText = data.message;
+            })
             .catch(error => {
                 console.error(error);
             });

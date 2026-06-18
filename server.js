@@ -180,44 +180,18 @@ app.post('/enter-host', async (req, res) => {
     }
 })
 
-async function assignPlayerRoles(targetImps) {
+app.get("/end", async (req, res) => {
     const data = await loadGame();
-    console.log("data loaded!")
-    const playerIds = Object.keys(data.players);
-    const totalPlayers = playerIds.length;
-
-    let roleDeck = [];
-
-    const targetImpostors = targetImps;
-
-    for (let i = 0; i < totalPlayers; i++) {
-        if (i < targetImpostors) {
-            roleDeck.push("impostor");
-        } else {
-            roleDeck.push("crewmate");
-        }
+    const session = req.cookies.session;
+    if(data.players[session].username != data.gameState.host){
+        return res.sendStatus(401);
     }
 
-    for (let i = roleDeck.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-
-        const temp = roleDeck[i];
-        roleDeck[i] = roleDeck[j];
-        roleDeck[j] = temp;
-        console.log("for loop entered!")
-    }
-
-    playerIds.forEach((id, index) => {
-        const assignedRole = roleDeck[index];
-
-        data.players[id].impostor = (assignedRole === "impostor");
-    });
+    data.gameState.started = false;
 
     await saveGame(data);
-    console.log("data saved!")
-
-    console.log("Roles dealt perfectly and evenly across the lobby!");
-}
+    res.sendStatus(200);
+})
 
 app.get('/dashboard', async (req, res) => {
     const data = await loadGame();
@@ -255,8 +229,9 @@ app.get('/logout', async(req, res) => {
     await withGameLock(async () => {
         const data = await loadGame();
         if (data.players && session) {
-            if(data.gameState.host == data.players[session]){
-                data.gameState.host = ""
+            if(data.gameState.host == data.players[session].username){
+                data.gameState.host = "";
+                data.gameState.started = false;
             }
             delete data.players[session];
             data.gameState.playerCount -= 1;
@@ -272,6 +247,47 @@ app.get('/logout', async(req, res) => {
 })
 
 let localVisualTimer = null;
+
+app.post("/addDummyPlayers", async (req, res) => {
+    const data = await loadGame();
+    
+    let amnt = parseInt(req.body.amnt);
+
+    if (isNaN(amnt)) {
+        return res.status(400).json({ message: "Invalid amount provided." });
+    }
+    
+    if (data.players[req.cookies.session]?.username !== data.gameState.host) {
+        return res.status(401).json({ message: "401 Unauthorized", hint: "No host - no admin controls." });
+    }
+
+    const currentCount = Object.keys(data.players).length;
+    const maxSlots = 20;
+    const availableSlots = maxSlots - currentCount;
+
+    const toAdd = Math.min(amnt, availableSlots);
+
+    if (toAdd <= 0) {
+        return res.status(200).json({ message: "No more slots available." });
+    }
+
+    for (let i = 1; i <= toAdd; i++) {
+        const id = crypto.randomUUID();
+        let dmnKey = `dummy_${Date.now()}_${i}`; 
+        
+        data.players[dmnKey] = {
+            id: id,
+            username: `dummy_${currentCount + i}`,
+            role: "dummy",
+            alive: true,
+            tasksCompleted: 0,
+            totalTasks: 5
+        };
+    }
+
+    await saveGame(data);
+    res.status(200).json({ message: `Successfully added ${toAdd} dummy players.` });
+});
 
 app.get("/socket", (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'socket.html'));
@@ -342,24 +358,46 @@ app.post("/start", async (req, res) => {
         const session = req.cookies.session;
         const data = await loadGame();
 
-        if(data.players[session].username != data.gameState.host){
-            return res.status(401).json({message:"Get outa here you dont have credentials clown."});
+        if (!data.players[session] || data.players[session].username != data.gameState.host) {
+            return res.status(401).json({ message: "Get outa here you dont have credentials clown.", auth: false });
         }
 
-        const targetImps = 2;
+        const playerIds = Object.keys(data.players);
+        const totalPlayers = playerIds.length;
+        const targetImpostors = 2;
 
-        await assignPlayerRoles(targetImps);
+        let roleDeck = [];
+        for (let i = 0; i < totalPlayers; i++) {
+            if (i < targetImpostors) {
+                roleDeck.push("impostor");
+            } else {
+                roleDeck.push("crewmate");
+            }
+        }
+
+        for (let i = roleDeck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            const temp = roleDeck[i];
+            roleDeck[i] = roleDeck[j];
+            roleDeck[j] = temp;
+        }
+
+        playerIds.forEach((id, index) => {
+            const assignedRole = roleDeck[index];
+            data.players[id].impostor = (assignedRole === "impostor");
+            data.players[id].role = assignedRole === "impostor" ? "impostor" : "crewmate"; 
+        });
 
         data.gameState.started = true;
-        data.gameState.aliveImpostors = targetImps;
-        data.gameState.playerCount = data.players.length;
-        data.gameState.alivePlayers = data.players.length;
+        data.gameState.aliveImpostors = targetImpostors;
+        data.gameState.playerCount = totalPlayers;
+        data.gameState.alivePlayers = totalPlayers;
 
         await saveGame(data);
         
-        res.status(200).json({message:"May a fine game take place, among us!"})
+        return res.status(200).json({ message: "May a fine game take place, among us!" });
     });
-})
+});
 
 let gameKillTimeout = null;
 
@@ -382,7 +420,11 @@ function startTimestampCountdown(seconds) {
 }
 
 app.get("/reset", async (req, res) => {
-    const data = {
+    const data = await loadGame();
+    if(data[req.cookies.session] != data.gameState.host){
+        return res.status(401).json({ message : "wth is wrong with you? why would you want to erase the game?", access : "denied. (ofc)", response : "401 unauthorised."})
+    }
+    data = {
         gameState: {
             started: false,
             impostorsWon: false,
