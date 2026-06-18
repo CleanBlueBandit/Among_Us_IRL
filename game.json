@@ -1,27 +1,119 @@
 {
-  "players": {
-    "e8c0a44c-d1a4-4e65-8751-b0f949ebd408": {
-      "id": "e8c0a44c-d1a4-4e65-8751-b0f949ebd408",
-      "username": "test22",
-      "alive": true,
-      "tasksCompleted": 0,
-      "totalTasks": 30
-    }
-  },
   "gameState": {
-    "started": false,
+    "started": true,
     "impostorsWon": false,
     "crewmatesWon": false,
     "emergencyMeeting": false,
     "completedTasks": 0,
-    "host": "test22",
-    "aliveImpostors": 0,
-    "playerCount": 1,
-    "alivePlayers": 1
+    "host": "test23",
+    "aliveImpostors": 6,
+    "playerCount": 11,
+    "alivePlayers": 11
+  },
+  "players": {
+    "cba65f12-e7d4-4a44-af55-18bce3074016": {
+      "id": "cba65f12-e7d4-4a44-af55-18bce3074016",
+      "username": "test23",
+      "alive": true,
+      "tasksCompleted": 0,
+      "totalTasks": 22,
+      "impostor": true,
+      "role": "impostor"
+    },
+    "dummy_1781788232055_1": {
+      "id": "e0fd9c67-20ef-45ed-9e77-8199ad4ab149",
+      "username": "dummy_2",
+      "role": "impostor",
+      "alive": true,
+      "tasksCompleted": 0,
+      "totalTasks": 22,
+      "impostor": true
+    },
+    "dummy_1781788232055_2": {
+      "id": "0f44f3e3-79cf-4c2e-a6f5-422aa721a20f",
+      "username": "dummy_3",
+      "role": "crewmate",
+      "alive": true,
+      "tasksCompleted": 0,
+      "totalTasks": 22,
+      "impostor": false
+    },
+    "dummy_1781788232055_3": {
+      "id": "5a39ef61-5e32-4b62-9f7a-4ca9db189aba",
+      "username": "dummy_4",
+      "role": "crewmate",
+      "alive": true,
+      "tasksCompleted": 0,
+      "totalTasks": 22,
+      "impostor": false
+    },
+    "dummy_1781788232055_4": {
+      "id": "7b2268d7-3f8c-4304-b51d-a108e2a65efd",
+      "username": "dummy_5",
+      "role": "impostor",
+      "alive": true,
+      "tasksCompleted": 0,
+      "totalTasks": 22,
+      "impostor": true
+    },
+    "dummy_1781788232055_5": {
+      "id": "5732e366-b37a-40d3-9c01-439c70893f8f",
+      "username": "dummy_6",
+      "role": "impostor",
+      "alive": true,
+      "tasksCompleted": 0,
+      "totalTasks": 22,
+      "impostor": true
+    },
+    "dummy_1781788232055_6": {
+      "id": "1ed7e1b2-63e0-4248-be31-48ed94e4c6a0",
+      "username": "dummy_7",
+      "role": "impostor",
+      "alive": true,
+      "tasksCompleted": 0,
+      "totalTasks": 22,
+      "impostor": true
+    },
+    "dummy_1781788232055_7": {
+      "id": "23ae5369-a49a-4ca6-b99e-05cbed161f42",
+      "username": "dummy_8",
+      "role": "crewmate",
+      "alive": true,
+      "tasksCompleted": 0,
+      "totalTasks": 22,
+      "impostor": false
+    },
+    "dummy_1781788232055_8": {
+      "id": "84b3173b-1cf3-4ffe-bdeb-6bff15b33c96",
+      "username": "dummy_9",
+      "role": "crewmate",
+      "alive": true,
+      "tasksCompleted": 0,
+      "totalTasks": 22,
+      "impostor": false
+    },
+    "dummy_1781788232056_9": {
+      "id": "f37a4b63-a0b5-4006-8f0a-0d9b0d3bea07",
+      "username": "dummy_10",
+      "role": "impostor",
+      "alive": true,
+      "tasksCompleted": 0,
+      "totalTasks": 22,
+      "impostor": true
+    },
+    "dummy_1781788232056_10": {
+      "id": "3f2a3eef-c3c8-4c59-8236-384c68a88092",
+      "username": "dummy_11",
+      "role": "crewmate",
+      "alive": true,
+      "tasksCompleted": 0,
+      "totalTasks": 22,
+      "impostor": false
+    }
   },
   "activeSabotages": {
     "reactor": {
-      "sabotaged": false,
+      "sabotaged": true,
       "meltdown": false,
       "timeLeft": 0
     },
@@ -32,8 +124,8 @@
     }
   },
   "settings": {
-    "impostors": 2,
-    "meltdownCountdown": 30,
-    "tasks": 30
+    "impostors": 6,
+    "meltdownCountdown": 15,
+    "tasks": 22
   }
 }

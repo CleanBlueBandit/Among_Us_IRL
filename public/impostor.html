@@ -68,9 +68,6 @@
             document.getElementById("id").innerText = "id: " + data.id;
             document.getElementById("alive").innerText = data.alive ? "Player is alive" : "Player is dead";
             
-            var imp = data.impostor ? "impostor" : "crewmate";
-            document.getElementById("impostor").innerText = "Player is " + imp;
-            document.getElementById("tasksCompleted").innerText = "Your completed tasks: " + data.tasksCompleted + "/" + data.totalTasks;
         });
 
         socket.on("game_data_request", (data) => {

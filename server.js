@@ -110,7 +110,7 @@ app.post('/enter', async (req, res) => {
             const UUID = crypto.randomUUID();
             res.cookie('session', UUID, {
                 httpOnly: true,
-                secure: true,
+                secure: false,
                 sameSite: 'lax',
                 maxAge: 1000 * 60 * 60 * 12
             });
@@ -162,7 +162,7 @@ app.post('/enter-host', async (req, res) => {
             const UUID = crypto.randomUUID();
             res.cookie('session', UUID, {
                 httpOnly: true,
-                secure: true,
+                secure: false,
                 sameSite: 'lax',
                 maxAge: 1000 * 60 * 60 * 12
             });
