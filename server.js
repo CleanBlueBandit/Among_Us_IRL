@@ -420,8 +420,8 @@ function startTimestampCountdown(seconds) {
 }
 
 app.get("/reset", async (req, res) => {
-    const data = await loadGame();
-    if(data[req.cookies.session] != data.gameState.host){
+    let data = await loadGame();
+    if(data.players[req.cookies.session].username != data.gameState.host){
         return res.status(401).json({ message : "wth is wrong with you? why would you want to erase the game?", access : "denied. (ofc)", response : "401 unauthorised."})
     }
     data = {

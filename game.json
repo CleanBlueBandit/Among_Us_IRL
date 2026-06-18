@@ -1,18 +1,17 @@
 {
   "gameState": {
-    "started": true,
+    "started": false,
     "impostorsWon": false,
     "crewmatesWon": false,
     "emergencyMeeting": false,
     "totalTasks": 30,
     "completedTasks": 0,
-    "host": "test18",
-    "aliveImpostors": 2,
-    "playerCount": 20,
-    "alivePlayers": 20
+    "host": "",
+    "aliveImpostors": 0,
+    "playerCount": 0,
+    "alivePlayers": 0
   },
-  "players": {
-  },
+  "players": {},
   "activeSabotages": {
     "reactor": {
       "sabotaged": false,
