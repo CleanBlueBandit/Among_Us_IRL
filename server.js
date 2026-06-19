@@ -22,7 +22,19 @@ const io = new Server(httpServer);
 
 app.use((req, res, next) => {
     if (req.path.endsWith('.html')) {
-        return res.status(403).json({ error: "Direct access to HTML files is forbidden." });
+        let dynamicHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head><title>Unauthorised</title></head>
+            <body>
+                <p>401 - Direct access to html files is forbidden.</p>
+                <a href="/"><button>back to login</button></a>
+            </body>
+            </html>
+        `;
+
+        res.set('Content-Type', 'text/html');
+        return res.status(401).send(dynamicHtml);
     }
     next();
 });
@@ -48,7 +60,7 @@ async function withGameLock(fn) {
 const DEFAULT_SETTINGS = {
     impostors: 2,
     meltdownCountdown: 30,
-    tasks: 30
+    tasks: 5
 };
 
 async function loadGame() {
@@ -211,7 +223,7 @@ app.get('/dashboard', async (req, res) => {
     }
 
     if(!data.gameState.started){
-        const dynamicHtml = `
+        let dynamicHtml = `
             <!DOCTYPE html>
             <html>
             <head><title>Please wait</title></head>
@@ -295,13 +307,13 @@ app.post("/addDummyPlayers", async (req, res) => {
         };
     }
 
+    const totalCount = Object.keys(data.players).length;
+    data.gameState.playerCount = totalCount;
+    data.gameState.alivePlayers = totalCount;
+
     await saveGame(data);
     res.status(200).json({ message: `Successfully added ${toAdd} dummy players.` });
 });
-
-app.get("/socket", (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'socket.html'));
-})
 
 function parseSocketCookies(cookieHeader) {
     const cookies = {};
@@ -363,13 +375,7 @@ app.get("/waiting", async (req, res) => {
     res.status(401).json({error:"401 unauthorised"})
 })
 
-// Settings array sent by the waiting-room UI is built from
-// document.querySelectorAll('[id*="_val"]') in DOM order, which is:
-//   [0] impostor_val      -> number of impostors
-//   [1] cd_val             -> meltdown/sabotage countdown (seconds)
-//   [2] tasks_val          -> total tasks per player
-//   [3] dummy_val          -> leftover testing control, NOT a game setting
-// Only indices 0-2 are consumed here; index 3 (if present) is ignored.
+
 function parseSettingsArray(rawSettings, playerCount) {
     if (!Array.isArray(rawSettings)) {
         return null;
@@ -389,7 +395,6 @@ function parseSettingsArray(rawSettings, playerCount) {
         return null;
     }
 
-    // Can't have more impostors than players (and never fewer than 1 once a game starts).
     if (playerCount !== undefined && impostors >= playerCount) {
         return null;
     }
@@ -426,6 +431,8 @@ app.post("/start", async (req, res) => {
             }
         }
 
+        let totalTasks = 0;
+
         for (let i = roleDeck.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             const temp = roleDeck[i];
@@ -439,12 +446,14 @@ app.post("/start", async (req, res) => {
             data.players[id].role = assignedRole === "impostor" ? "impostor" : "crewmate";
             data.players[id].totalTasks = data.settings.tasks;
             data.players[id].tasksCompleted = 0;
+            totalTasks += data.settings.tasks;
         });
 
         data.gameState.started = true;
         data.gameState.aliveImpostors = targetImpostors;
         data.gameState.playerCount = totalPlayers;
         data.gameState.alivePlayers = totalPlayers;
+        data.gameState.totalTasks = totalTasks;
 
         await saveGame(data);
 
@@ -476,10 +485,39 @@ function startTimestampCountdown(seconds) {
 
 app.get("/reset", async (req, res) => {
     let data = await loadGame();
-    if(data.players[req.cookies.session].username != data.gameState.host){
-        return res.status(401).json({ message : "wth is wrong with you? why would you want to erase the game?", access : "denied. (ofc)", response : "401 unauthorised."})
-    }
 
+    if(!req.cookies.session || !data.players[req.cookies.session]){
+        let dynamicHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head><title>401</title></head>
+            <body>
+                <h1>401 forbidden</h1>
+                <p>the user has no associated session.</p>
+                <a href="/"><button>back to login</button></a>
+            </body>
+            </html>
+        `;
+
+        res.set('Content-Type', 'text/html');
+        return res.status(401).send(dynamicHtml);
+    }
+    if(data.players[req.cookies.session].username != data.gameState.host){
+        let dynamicHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head><title>401</title></head>
+            <body>
+                <h1>401 forbidden</h1>
+                <p>You are not host</p>
+                <a href="/"><button>back to login</button></a>
+            </body>
+            </html>
+        `;
+
+        res.set('Content-Type', 'text/html');
+        return res.status(401).send(dynamicHtml);
+    }
     if (gameKillTimeout) {
         clearTimeout(gameKillTimeout);
         gameKillTimeout = null;
@@ -491,6 +529,7 @@ app.get("/reset", async (req, res) => {
             impostorsWon: false,
             crewmatesWon: false,
             emergencyMeeting: false,
+            totalTasks: 0,
             completedTasks: 0,
             host: "",
             aliveImpostors: 0,
@@ -514,6 +553,17 @@ app.get("/reset", async (req, res) => {
     };
 
     await saveGame(data);
-    res.status(200).json({message:"json file is reset."})
+    let dynamicHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head><title>Status</title></head>
+        <body>
+            <p>Json file is now reset.</p>
+            <a href="/"><button>back to login</button></a>
+        </body>
+        </html>
+    `;
 
+    res.set('Content-Type', 'text/html');
+    return res.send(dynamicHtml);
 })

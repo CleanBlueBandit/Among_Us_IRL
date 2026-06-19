@@ -5,61 +5,60 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Waiting</title>
     <style>
-        .stable{
-            color: green;
-        }
-        .unstable{
-            color: red;
-        }
+        .stable { color: green; }
+        .unstable { color: red; }
     </style>
+    <link rel="stylesheet" href="common.css">
+
 </head>
 <body>
     <h1>Start anytime</h1>
-    <h3>Overwiew</h3>
+    <h3>Overview</h3>
     <p id="usr"></p>
     <p id="id"></p>
     <p id="host"></p>
     <p id="players"></p>
     <hr>
+    
     <h3>Settings</h3>
     <h4>Impostors</h4>
     <div style="display: flex;">
-        <button onclick="adjustValue('impostor', false, 20)">&lt;</button>
+        <button onclick="adjustValue('impostor_val', false, 20)">&lt;</button>
         <p style="margin: 10px" id="impostor_val">2</p>
-        <button onclick="adjustValue('impostor', true, 20)">&gt;</button>
+        <button onclick="adjustValue('impostor_val', true, 20)">&gt;</button>
     </div>
     <h4>Meltdown countdown</h4>
     <div style="display: flex;">
-        <button onclick="adjustValue('cd', false, 20)">&lt;</button>
+        <button onclick="adjustValue('cd_val', false, 20)">&lt;</button>
         <p style="margin: 10px" id="cd_val">30</p>
-        <button onclick="adjustValue('cd', true, 20)">&gt;</button>
+        <button onclick="adjustValue('cd_val', true, 20)">&gt;</button>
     </div>
-    <h4>Tasks</h4>
+    <h4>Tasks per player</h4>
     <div style="display: flex;">
-        <button onclick="adjustValue('tasks', false, 20)">&lt;</button>
-        <p style="margin: 10px" id="tasks_val">30</p>
-        <button onclick="adjustValue('tasks', true, 20)">&gt;</button>
+        <button onclick="adjustValue('tasks_val', false, 20)">&lt;</button>
+        <p style="margin: 10px" id="tasks_val">5</p>
+        <button onclick="adjustValue('tasks_val', true, 20)">&gt;</button>
     </div>
     
     <hr>
     <h3>Testing</h3>
     <h4>Create dummy players</h4>
     <div style="display: flex;">
-        <button onclick="adjustValuePost('dummy', 'down', 20)">&lt;</button>
-        <p style="margin: 10px" id="dummy_val">0</p>
-        <button onclick="adjustValuePost('dummy', 'up', 20)">&gt;</button>
+        <button onclick="adjustValue('dummy_vv', false, 20)">&lt;</button>
+        <p style="margin: 10px" id="dummy_vv">0</p>
+        <button onclick="adjustValue('dummy_vv', true, 20)">&gt;</button>
     </div>
-    <button style="margin-top: 10px;" onclick="adjustValuePost('dummy', 'fetch', 20)">Create dummy players</button>
+    <button style="margin-top: 10px;" onclick="createDummyPlayers()">Create dummy players</button>
     <p id="dummy_resp"></p>
     <hr>
+    
     <button onclick="post_start()">start game</button>
     <a href="/logout"><button>leave</button></a>
+    <a href="/reset"><button>reset</button></a>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io("http://localhost:6767");
-
-        let clientAnimationId = null;
+        const socket = io(); 
 
         socket.on("player_data_request", (data) => {
             document.getElementById("usr").innerText = "username: " + data.username;
@@ -68,84 +67,44 @@
 
         socket.on("game_data_request", (data) => {
             document.getElementById("players").innerText = "players: " + data.playerCount;
-            if(data.started){
+            if (data.started) {
                 window.location.href = "/dashboard";
             }
-        })
+        });
 
         socket.on("Err", (data) => {
             console.error("Server error\n" + data.error);
         });
 
-        function post_start(){
-            const elements = document.querySelectorAll('[id*="_val"]');
-            const values = Array.from(elements).map(el => parseInt(el.innerText, 10));
+        
 
+        function post_start() {
+            const settingsIds = ['impostor_val', 'cd_val', 'tasks_val'];
+            const values = settingsIds.map(id => parseInt(get(id).innerText, 10));
 
-            fetch('http://localhost:6767/start', {
+            fetch('/start', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body : JSON.stringify({
-                    settings : values
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ settings: values })
             })
-            .then(f => { window.location.href = "/dashboard" })
-            .catch(error => {
-                console.error(error);
-            });
+            .then(() => { window.location.href = "/dashboard"; })
+            .catch(console.error);
         }
 
-        function get(id){
-            return document.getElementById(id);
+        function createDummyPlayers() {
+            let amnt = parseInt(get("dummy_vv").innerText, 10);
+            fetch('/addDummyPlayers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amnt: amnt })
+            })
+            .then(res => res.json())
+            .then((data) => { get('dummy_resp').innerText = data.message; })
+            .catch(console.error);
         }
 
-        function adjustValuePost(name, current, max = 20){
-            let intv = parseInt(get(name + "_val").innerText);
-            if("up" == current){
-                if(intv < max){
-                    get(name + "_val").innerText = intv + 1;
-                }
-            }
-            else if("down" == current){
-                if(intv > 0){ // Prevents negative players
-                    get(name + "_val").innerText = intv - 1;
-                }
-            }
-            else if("fetch" == current){
-                fetch('http://localhost:6767/addDummyPlayers', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        amnt: intv,
-                    })
-                })
-                .then(response => response.json()) 
-                .then((data) => {
-                    get(name + '_resp').innerText = data.message;
-                })
-                .catch(error => {
-                    console.error(error);
-                });
-            }
-        }
-
-        function adjustValue(name, up, max = 20){
-            let intv = parseInt(get(name + "_val").innerText);
-            if(up){
-                if(intv < max){
-                    get(name + "_val").innerText = intv + 1;
-                }
-            }
-            else{
-                if(intv > 0){
-                    get(name + "_val").innerText = intv - 1;
-                }
-            }
-        }
+        
     </script>
+    <script src="common.js"></script>
 </body>
 </html>

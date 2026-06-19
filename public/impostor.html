@@ -22,6 +22,23 @@
     <p id="totalTasks"></p>
     <p id="completedTasks"></p>
     <hr>
+    <h4>Deplete o2</h4>
+    <div style="display: flex;">
+        <button onclick="adjustValue('o2_val', false, 120, 5)">&lt;</button>
+        <p style="margin: 10px" id="o2_val">30</p>
+        <button onclick="adjustValue('o2_val', true, 120, 5)">&gt;</button>
+    </div>
+    <br>
+    <button id="o2_sabotage" onclick="sabotage_o2()">Sabotage</button>
+    <h4>Iniciate reactor meltdown</h4>
+    <div style="display: flex;">
+        <button onclick="adjustValue('reac_val', false, 120, 5)">&lt;</button>
+        <p style="margin: 10px" id="reac_val">30</p>
+        <button onclick="adjustValue('reac_val', true, 120, 5)">&gt;</button>
+    </div>
+    <br>
+    <button id="reac_sabotage" onclick="sabotage_reac()">Sabotage</button>
+    <hr>
     <div style="display: flex;">
         <p style="margin-right: 5px;">reactor: </p>
         <p id="reactor" class="stable">stable</p>
@@ -106,7 +123,15 @@
         socket.on("Err", (data) => {
             console.error("Server error\n" + data.error);
         });
+
+        function sabotage_o2(){
+            alert("that button does nothing yet")
+        }
+        function sabotage_reac(){
+            alert("that button does nothing yet")
+        }
     </script>
+    <script src="common.js"></script>
 </body>
 </body>
 </html>
