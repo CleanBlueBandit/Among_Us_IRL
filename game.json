@@ -1,11 +1,11 @@
 {
   "players": {
-    "e8c0a44c-d1a4-4e65-8751-b0f949ebd408": {
-      "id": "e8c0a44c-d1a4-4e65-8751-b0f949ebd408",
-      "username": "test22",
+    "9f04a415-3428-4a5d-9b15-cf7e61167543": {
+      "id": "9f04a415-3428-4a5d-9b15-cf7e61167543",
+      "username": "test23",
       "alive": true,
       "tasksCompleted": 0,
-      "totalTasks": 30
+      "totalTasks": 5
     }
   },
   "gameState": {
@@ -14,7 +14,7 @@
     "crewmatesWon": false,
     "emergencyMeeting": false,
     "completedTasks": 0,
-    "host": "test22",
+    "host": "test23",
     "aliveImpostors": 0,
     "playerCount": 1,
     "alivePlayers": 1
