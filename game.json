@@ -9,19 +9,20 @@
     }
   },
   "gameState": {
-    "started": false,
+    "started": true,
     "impostorsWon": false,
     "crewmatesWon": false,
     "emergencyMeeting": false,
     "completedTasks": 0,
-    "host": "test23",
+    "host": "",
     "aliveImpostors": 0,
-    "playerCount": 1,
-    "alivePlayers": 1
+    "playerCount": 0,
+    "alivePlayers": 0
   },
+  "players": {},
   "activeSabotages": {
     "reactor": {
-      "sabotaged": false,
+      "sabotaged": true,
       "meltdown": false,
       "timeLeft": 0
     },
@@ -30,10 +31,5 @@
       "depleted": false,
       "timeLeft": 0
     }
-  },
-  "settings": {
-    "impostors": 2,
-    "meltdownCountdown": 30,
-    "tasks": 30
   }
 }

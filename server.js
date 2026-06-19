@@ -45,6 +45,12 @@ async function withGameLock(fn) {
     }
 }
 
+const DEFAULT_SETTINGS = {
+    impostors: 2,
+    meltdownCountdown: 30,
+    tasks: 30
+};
+
 async function loadGame() {
     try {
         const rawData = await fs.readFile('./game.json', 'utf-8');
@@ -62,6 +68,9 @@ async function loadGame() {
                 reactor: { meltdown: false, timeLeft: 0 }
             };
         }
+        if (!data.settings) {
+            data.settings = { ...DEFAULT_SETTINGS };
+        }
         return data;
     } catch (error) {
         return {
@@ -70,7 +79,8 @@ async function loadGame() {
             activeSabotages: {
                 o2: { depleted: false, timeLeft: 0 },
                 reactor: { meltdown: false, timeLeft: 0 }
-            }
+            },
+            settings: { ...DEFAULT_SETTINGS }
         };
     }
 }
@@ -100,7 +110,7 @@ app.post('/enter', async (req, res) => {
             const UUID = crypto.randomUUID();
             res.cookie('session', UUID, {
                 httpOnly: true,
-                secure: true,
+                secure: false,
                 sameSite: 'lax',
                 maxAge: 1000 * 60 * 60 * 12
             });
@@ -110,7 +120,7 @@ app.post('/enter', async (req, res) => {
                 username: username,
                 alive: true,
                 tasksCompleted: 0,
-                totalTasks: 5,
+                totalTasks: data.settings.tasks,
             };
 
             data.players[UUID] = playerData;
@@ -152,7 +162,7 @@ app.post('/enter-host', async (req, res) => {
             const UUID = crypto.randomUUID();
             res.cookie('session', UUID, {
                 httpOnly: true,
-                secure: true,
+                secure: false,
                 sameSite: 'lax',
                 maxAge: 1000 * 60 * 60 * 12
             });
@@ -162,7 +172,7 @@ app.post('/enter-host', async (req, res) => {
                 username: username,
                 alive: true,
                 tasksCompleted: 0,
-                totalTasks: 5,
+                totalTasks: data.settings.tasks,
             };
 
             data.players[UUID] = playerData;
@@ -281,7 +291,7 @@ app.post("/addDummyPlayers", async (req, res) => {
             role: "dummy",
             alive: true,
             tasksCompleted: 0,
-            totalTasks: 5
+            totalTasks: data.settings.tasks
         };
     }
 
@@ -353,6 +363,40 @@ app.get("/waiting", async (req, res) => {
     res.status(401).json({error:"401 unauthorised"})
 })
 
+// Settings array sent by the waiting-room UI is built from
+// document.querySelectorAll('[id*="_val"]') in DOM order, which is:
+//   [0] impostor_val      -> number of impostors
+//   [1] cd_val             -> meltdown/sabotage countdown (seconds)
+//   [2] tasks_val          -> total tasks per player
+//   [3] dummy_val          -> leftover testing control, NOT a game setting
+// Only indices 0-2 are consumed here; index 3 (if present) is ignored.
+function parseSettingsArray(rawSettings, playerCount) {
+    if (!Array.isArray(rawSettings)) {
+        return null;
+    }
+
+    const [impostorsRaw, cdRaw, tasksRaw] = rawSettings;
+
+    const impostors = parseInt(impostorsRaw, 10);
+    const meltdownCountdown = parseInt(cdRaw, 10);
+    const tasks = parseInt(tasksRaw, 10);
+
+    if (isNaN(impostors) || isNaN(meltdownCountdown) || isNaN(tasks)) {
+        return null;
+    }
+
+    if (impostors < 0 || meltdownCountdown < 0 || tasks < 0) {
+        return null;
+    }
+
+    // Can't have more impostors than players (and never fewer than 1 once a game starts).
+    if (playerCount !== undefined && impostors >= playerCount) {
+        return null;
+    }
+
+    return { impostors, meltdownCountdown, tasks };
+}
+
 app.post("/start", async (req, res) => {
     await withGameLock(async () => {
         const session = req.cookies.session;
@@ -364,7 +408,14 @@ app.post("/start", async (req, res) => {
 
         const playerIds = Object.keys(data.players);
         const totalPlayers = playerIds.length;
-        const targetImpostors = 2;
+
+        const parsedSettings = parseSettingsArray(req.body.settings, totalPlayers);
+        if (!parsedSettings) {
+            return res.status(400).json({ message: "Invalid or missing settings.", auth: true });
+        }
+
+        data.settings = parsedSettings;
+        const targetImpostors = data.settings.impostors;
 
         let roleDeck = [];
         for (let i = 0; i < totalPlayers; i++) {
@@ -385,7 +436,9 @@ app.post("/start", async (req, res) => {
         playerIds.forEach((id, index) => {
             const assignedRole = roleDeck[index];
             data.players[id].impostor = (assignedRole === "impostor");
-            data.players[id].role = assignedRole === "impostor" ? "impostor" : "crewmate"; 
+            data.players[id].role = assignedRole === "impostor" ? "impostor" : "crewmate";
+            data.players[id].totalTasks = data.settings.tasks;
+            data.players[id].tasksCompleted = 0;
         });
 
         data.gameState.started = true;
@@ -394,7 +447,9 @@ app.post("/start", async (req, res) => {
         data.gameState.alivePlayers = totalPlayers;
 
         await saveGame(data);
-        
+
+        startTimestampCountdown(data.settings.meltdownCountdown);
+
         return res.status(200).json({ message: "May a fine game take place, among us!" });
     });
 });
@@ -424,13 +479,18 @@ app.get("/reset", async (req, res) => {
     if(data.players[req.cookies.session].username != data.gameState.host){
         return res.status(401).json({ message : "wth is wrong with you? why would you want to erase the game?", access : "denied. (ofc)", response : "401 unauthorised."})
     }
+
+    if (gameKillTimeout) {
+        clearTimeout(gameKillTimeout);
+        gameKillTimeout = null;
+    }
+
     data = {
         gameState: {
             started: false,
             impostorsWon: false,
             crewmatesWon: false,
             emergencyMeeting: false,
-            totalTasks: 30,
             completedTasks: 0,
             host: "",
             aliveImpostors: 0,
@@ -449,10 +509,9 @@ app.get("/reset", async (req, res) => {
                 depleted: false,
                 timeLeft: 0
             }
-        }
+        },
+        settings: { ...DEFAULT_SETTINGS }
     };
-
-    const formattedData = JSON.stringify(data, null, 2);
 
     await saveGame(data);
     res.status(200).json({message:"json file is reset."})
