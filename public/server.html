@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server</title>
+</head>
+<body>
+    <h3>Server config</h3>
+    <h4>Turn this device into</h4>
+    <div style="display: flex;">
+        <button onclick="cicleBetweenValues('func_val', false, ['o2', 'reactor', 'control panel'])">&lt;</button>
+        <p style="margin: 10px" id="func_val">o2</p>
+        <button onclick="cicleBetweenValues('func_val', true, ['o2', 'reactor', 'control panel'])">&gt;</button>
+    </div>
+    <br>
+    <button onclick="postServer()">Submit</button>
+    <script src="common.js"></script>
+    <script>
+        function postServer(){
+            const it = get("func_val").innerText;
+            fetch("http://localhost:6767/deviceFunc", {
+                method : 'POST',
+                headers : {
+                    "Content-Type" : "application/json"
+                },
+                body: JSON.stringify({
+                    setting : it,
+                })
+            })
+            .then(res => res.json())
+            .then((data) => {
+                if(data.accepted){
+                    window.location.href = "/" + it.innerText;
+                }
+            })
+        }
+    </script>
+</body>
+</html>

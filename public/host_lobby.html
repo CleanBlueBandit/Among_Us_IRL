@@ -79,7 +79,7 @@
         
 
         function post_start() {
-            const settingsIds = ['impostor_val', 'cd_val', 'tasks_val'];
+            const settingsIds = ['impostor_val', 'cd_val', 'tasks_val', 'func_val'];
             const values = settingsIds.map(id => parseInt(get(id).innerText, 10));
 
             fetch('/start', {
