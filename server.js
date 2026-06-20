@@ -12,6 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = 6767;
+const IP = "0.0.0.0";
 const host_pass = "$2b$10$xvIai9yC6zGdmBhNq5Dzt.n48g1dP8h1wRM/J9VGZz.YcWZuDo3m2";
 
 var timeLeft = 0
@@ -102,7 +103,7 @@ async function saveGame(data) {
 }
 
 httpServer.listen(PORT, () => {
-    console.log(`Server running on http://0.0.0.0:${PORT}`);
+    console.log(`Server running on http://${IP}:${PORT}`);
 });
 
 
@@ -172,6 +173,15 @@ app.post('/enter-host', async (req, res) => {
             }
 
             if(req.body.server){
+                const UUID = crypto.randomUUID();
+                res.cookie('session', UUID, {
+                    httpOnly: true,
+                    secure: false,
+                    sameSite: 'lax',
+                    maxAge: 1000 * 60 * 60 * 12
+                });
+                data.serverIDs += UUID;
+                await saveGame(data);
                 return res.sendFile(path.join(__dirname, 'public', 'server.html'))
             }
 
@@ -380,8 +390,20 @@ app.get("/waiting", async (req, res) => {
         if(data.players[session].username == data.gameState.host){
             return res.sendFile(path.join(__dirname, 'public', 'host_lobby.html'));
         }
+        let authorise = false;
+        for (const el of data.serverIDs) {
+            if (el == session) {
+                authorise = true;
+                break; 
+            }
+        }
+        if(authorise){
+            return res.sendFile(path.join(__dirname, 'public', 'server.html'));
+        }
+
         return res.sendFile(path.join(__dirname, 'public', 'waiting_lobby.html'));
     }
+
     res.status(401).json({error:"401 unauthorised"})
 })
 
@@ -546,6 +568,7 @@ app.get("/reset", async (req, res) => {
             playerCount: 0,
             alivePlayers: 0
         },
+        serverIDs:{},
         players: {},
         activeSabotages: {
             reactor: {
@@ -579,24 +602,75 @@ app.get("/reset", async (req, res) => {
 })
 
 
-const chaoticStatuses = [200, 301, 302, 401, 403, 418, 500, 503];
+const chaoticStatuses = [100, 101, 102, 103, 200, 201, 202, 203, 204, 205, 206, 207, 208, 226, 300, 301, 302, 303, 304, 307, 308, 401, 403, 400, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 420, 421, 422, 423, 425, 426, 429, 431, 451, 500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511];
+const suspiciousKeywords = ['admin', '.env', '.git', 'wp-', 'backup', '.php', '.aspx', '.jsp'];
 
-
-const suspiciousKeywords = ['admin', '.env', '.git', 'wp-', 'backup', 'php', 'aspx', 'jsp', 'js'];
+const corporatePrankStore = {}; 
+const STRIKE_LIMIT = 3;
 
 app.use((req, res, next) => {
+    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+
+    if (!corporatePrankStore[clientIp]) {
+        corporatePrankStore[clientIp] = { strikes: 0, sessionLimited: false };
+    }
+
+    if (corporatePrankStore[clientIp].sessionLimited) {
+        const randomStatus = chaoticStatuses[Math.floor(Math.random() * chaoticStatuses.length)];
+        console.log(`[PERMA-TROLL] IP ${clientIp} requested ${req.path} -> Sending status ${randomStatus}`);
+        const targetKb = Math.floor(Math.random() * (800 - 300 + 1)) + 300;
+        const byteLength = targetKb * 1024;
+        const randomDataString = crypto.randomBytes(byteLength).toString('hex').slice(0, byteLength);
+
+        let dynamicHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head><title>Haha</title></head>
+            <body>
+                <p>You thought you found something didnt you</p>
+                <p style="display:none">while im here, let me add some characters so that you wont be able to tell if you got the correct page or not</p>
+                <p style="display:none">${randomDataString}</p>
+            </body>
+            </html>
+        `;
+
+        res.set('Content-Type', 'text/html');
+        return res.status(randomStatus).send(dynamicHtml);
+    }
+
     const isScannerPath = suspiciousKeywords.some(keyword => 
         req.path.toLowerCase().includes(keyword)
     );
 
     if (isScannerPath) {
+        corporatePrankStore[clientIp].strikes += 1;
+        console.log(`[WARN] Scanner hit from IP ${clientIp} on ${req.path}. Strikes: ${corporatePrankStore[clientIp].strikes}/${STRIKE_LIMIT}`);
+
+        if (corporatePrankStore[clientIp].strikes >= STRIKE_LIMIT) {
+            corporatePrankStore[clientIp].sessionLimited = true;
+            console.log(`[LOCKDOWN] IP ${clientIp} is now session limited!`);
+        }
+
         const randomStatus = chaoticStatuses[Math.floor(Math.random() * chaoticStatuses.length)];
-        
-        console.log(`Trolling scanner on ${req.path} with status ${randomStatus}`);
-        
-        return res.status(randomStatus).json({
-            message: "Hah you thought you found something didnt you"
-        });
+
+        const targetKb = Math.floor(Math.random() * (800 - 300 + 1)) + 300;
+        const byteLength = targetKb * 1024;
+        const randomDataString = crypto.randomBytes(byteLength).toString('hex').slice(0, byteLength);
+
+        let dynamicHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head><title>Haha</title></head>
+            <body>
+                <p>You thought you found something didnt you</p>
+                <p style="display:none">while im here, let me add some characters so that you wont be able to tell if you got the correct page or not</p>
+                <p style="display:none">${randomDataString}</p>
+            </body>
+            </html>
+        `;
+
+        res.set('Content-Type', 'text/html');
+        return res.status(randomStatus).send(dynamicHtml);
     }
 
     next();
