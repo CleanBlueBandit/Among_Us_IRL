@@ -9,14 +9,17 @@
 <body>
     <input type="text" placeholder="username" id="user" autocomplete="off">
     <input type="text" id="pass" placeholder="password" autocomplete="off">
-    <button id="button-id">enter</button>
-
-
-
+    <div style="display: flex;">
+        <button id="button-id" style="height: 20px;">enter</button>
+        <input type="checkbox" id="serv">
+        <p>server</p>
+    </div>
+    <script src="common.js"></script>
     <script>
         document.querySelector("#button-id").addEventListener('click', f => {
         const usr = document.getElementById("user").value;
         const pass = document.getElementById("pass").value;
+        const serv = get("serv").checked;
 
         fetch('http://localhost:6767/enter-host', {
             method: 'POST',
@@ -25,7 +28,8 @@
             },
             body: JSON.stringify({
                 username: usr,
-                password: pass
+                password: pass,
+                server: serv
             })
         })
         .then(f => {window.location.href = '/waiting'})

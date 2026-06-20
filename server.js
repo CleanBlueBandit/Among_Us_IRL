@@ -102,7 +102,7 @@ async function saveGame(data) {
 }
 
 httpServer.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
 });
 
 
@@ -169,6 +169,10 @@ app.post('/enter-host', async (req, res) => {
 
             if (!(await bcrypt.compare(password, host_pass))) {
                 return res.status(401).json({error:"invalid credentials"})
+            }
+
+            if(req.body.server){
+                return res.sendFile(path.join(__dirname, 'public', 'server.html'))
             }
 
             const UUID = crypto.randomUUID();
@@ -268,6 +272,13 @@ app.get('/logout', async(req, res) => {
     res.redirect('/');
 })
 
+app.post("/deviceFunc", (req, res) => {
+    
+})
+
+// TODO: get paths for o2, reactor and control panel
+
+
 let localVisualTimer = null;
 
 app.post("/addDummyPlayers", async (req, res) => {
@@ -353,7 +364,6 @@ io.on("connection", async (socket) => {
         else {
             socket.emit("Err", { error: "username not found." });
         }
-
         socket.on('disconnect', () => {
             console.log('Client disconnected.');
         });
@@ -567,3 +577,27 @@ app.get("/reset", async (req, res) => {
     res.set('Content-Type', 'text/html');
     return res.send(dynamicHtml);
 })
+
+
+const chaoticStatuses = [200, 301, 302, 401, 403, 418, 500, 503];
+
+
+const suspiciousKeywords = ['admin', '.env', '.git', 'wp-', 'backup', 'php', 'aspx', 'jsp', 'js'];
+
+app.use((req, res, next) => {
+    const isScannerPath = suspiciousKeywords.some(keyword => 
+        req.path.toLowerCase().includes(keyword)
+    );
+
+    if (isScannerPath) {
+        const randomStatus = chaoticStatuses[Math.floor(Math.random() * chaoticStatuses.length)];
+        
+        console.log(`Trolling scanner on ${req.path} with status ${randomStatus}`);
+        
+        return res.status(randomStatus).json({
+            message: "Hah you thought you found something didnt you"
+        });
+    }
+
+    next();
+});
