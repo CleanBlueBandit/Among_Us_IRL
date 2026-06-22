@@ -15,6 +15,7 @@
     </div>
     <br>
     <button onclick="postServer()">Submit</button>
+    <script src="/socket.io/socket.io.js"></script>
     <script src="common.js"></script>
     <script>
         function postServer(){
@@ -30,11 +31,12 @@
             })
             .then(res => res.json())
             .then((data) => {
-                if(data.accepted){
-                    window.location.href = "/" + it.innerText;
+                if(data.ok){
+                    window.location.href = "/" + it;
                 }
             })
         }
     </script>
+
 </body>
 </html>

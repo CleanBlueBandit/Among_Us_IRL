@@ -11,7 +11,7 @@
     "playerCount": 0,
     "alivePlayers": 0
   },
-  "serverIDs":[],
+  "servers": {},
   "players": {},
   "activeSabotages": {
     "reactor": {

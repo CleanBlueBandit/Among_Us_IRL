@@ -7,6 +7,7 @@ import { Server } from 'socket.io';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcrypt';
+import { ok } from 'assert';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,6 +65,24 @@ const DEFAULT_SETTINGS = {
     tasks: 5
 };
 
+function validateServer(servers, session){
+    if (!servers || !session) return false;
+    return servers.hasOwnProperty(session);
+}
+
+function isGameOperational(servers) {
+    if (!servers || typeof servers !== 'object') {
+        return false;
+    }
+    
+    const activeRoles = Object.values(servers);
+    return activeRoles.includes('o2') && activeRoles.includes('reactor');
+}
+
+function publicPath(fileName) {
+    return path.join(__dirname, 'public', fileName + '.html');
+}
+
 async function loadGame() {
     try {
         const rawData = await fs.readFile('./game.json', 'utf-8');
@@ -81,6 +100,10 @@ async function loadGame() {
                 reactor: { meltdown: false, timeLeft: 0 }
             };
         }
+        // Migrated to new servers object format
+        if (!data.servers) {
+            data.servers = {};
+        }
         if (!data.settings) {
             data.settings = { ...DEFAULT_SETTINGS };
         }
@@ -93,6 +116,7 @@ async function loadGame() {
                 o2: { depleted: false, timeLeft: 0 },
                 reactor: { meltdown: false, timeLeft: 0 }
             },
+            servers: {},
             settings: { ...DEFAULT_SETTINGS }
         };
     }
@@ -105,8 +129,6 @@ async function saveGame(data) {
 httpServer.listen(PORT, () => {
     console.log(`Server running on http://${IP}:${PORT}`);
 });
-
-
 
 app.post('/enter', async (req, res) => {
     try {
@@ -163,11 +185,6 @@ app.post('/enter-host', async (req, res) => {
             const username = req.body.username ? String(req.body.username) : "Host";
             const password = req.body.password ? String(req.body.password) : "";
 
-            if (data.gameState.host != "") {
-                return res.status(400).json({error:"Host is already in the game!"})
-            }
-
-
             if (!(await bcrypt.compare(password, host_pass))) {
                 return res.status(401).json({error:"invalid credentials"})
             }
@@ -180,9 +197,15 @@ app.post('/enter-host', async (req, res) => {
                     sameSite: 'lax',
                     maxAge: 1000 * 60 * 60 * 12
                 });
-                data.serverIDs += UUID;
+                
+                data.servers[UUID] = "none";
+                
                 await saveGame(data);
                 return res.sendFile(path.join(__dirname, 'public', 'server.html'))
+            }
+
+            if (data.gameState.host != "") {
+                return res.status(400).json({error:"Host is already in the game!"})
             }
 
             const UUID = crypto.randomUUID();
@@ -264,13 +287,18 @@ app.get('/logout', async(req, res) => {
 
     await withGameLock(async () => {
         const data = await loadGame();
-        if (data.players && session) {
+        if (data.players[session]) {
             if(data.gameState.host == data.players[session].username){
                 data.gameState.host = "";
                 data.gameState.started = false;
             }
             delete data.players[session];
             data.gameState.playerCount -= 1;
+            await saveGame(data);
+        }
+        
+        if (data.servers && data.servers.hasOwnProperty(session)) {
+            delete data.servers[session];
             await saveGame(data);
         }
     });
@@ -282,12 +310,39 @@ app.get('/logout', async(req, res) => {
     res.redirect('/');
 })
 
-app.post("/deviceFunc", (req, res) => {
-    
+app.post("/deviceFunc", async (req, res) => {
+    const data = await loadGame();
+    const sf = req.body.setting;
+    if(!validateServer(data.servers, req.cookies.session)){
+        return res.status(401).json({err:"401 unauthorised"})
+    }
+    data.servers[req.cookies.session] = sf;
+    return res.status(200).json({ok:true});
 })
 
-// TODO: get paths for o2, reactor and control panel
+app.get("/o2", async (req, res) => {
+    const data = await loadGame();
+    if(!validateServer(data.servers, req.cookies.session)){
+        return res.status(401).json({err:"401 unauthorised"})
+    }
+    return res.status(200).sendFile(publicPath("o2"));
+})
 
+app.get("/reactor", async (req, res) => {
+    const data = await loadGame();
+    if(!validateServer(data.servers, req.cookies.session)){
+        return res.status(401).json({err:"401 unauthorised"})
+    }
+    return res.status(200).sendFile(publicPath("reactor"));
+})
+
+app.get("/control%20panel", async (req, res) => {
+    const data = await loadGame();
+    if(!validateServer(data.servers, req.cookies.session)){
+        return res.status(401).json({err:"401 unauthorised"})
+    }
+    return res.status(200).sendFile(publicPath("control panel"));
+})
 
 let localVisualTimer = null;
 
@@ -386,19 +441,18 @@ io.on("connection", async (socket) => {
 app.get("/waiting", async (req, res) => {
     const session = req.cookies.session;
     const data = await loadGame();
-    if(session && data.players[session]){
-        if(data.players[session].username == data.gameState.host){
-            return res.sendFile(path.join(__dirname, 'public', 'host_lobby.html'));
-        }
-        let authorise = false;
-        for (const el of data.serverIDs) {
-            if (el == session) {
-                authorise = true;
-                break; 
+    if(session){
+        if(data.players[session]){
+            if(data.players[session].username == data.gameState.host){
+                return res.sendFile(path.join(__dirname, 'public', 'host_lobby.html'));
             }
         }
-        if(authorise){
+                
+        if(validateServer(data.servers, session)){
             return res.sendFile(path.join(__dirname, 'public', 'server.html'));
+        }
+        else {
+            console.log("Server tried to log in, denied access.")
         }
 
         return res.sendFile(path.join(__dirname, 'public', 'waiting_lobby.html'));
@@ -406,7 +460,6 @@ app.get("/waiting", async (req, res) => {
 
     res.status(401).json({error:"401 unauthorised"})
 })
-
 
 function parseSettingsArray(rawSettings, playerCount) {
     if (!Array.isArray(rawSettings)) {
@@ -440,7 +493,11 @@ app.post("/start", async (req, res) => {
         const data = await loadGame();
 
         if (!data.players[session] || data.players[session].username != data.gameState.host) {
-            return res.status(401).json({ message: "Get outa here you dont have credentials clown.", auth: false });
+            return res.status(401).json({ message: "Get outa here you dont have credentials clown.", failed : true});
+        }
+
+        if(!isGameOperational(data.servers)){
+            return res.status(202).json({ message : "Cant start the game, o2 and reactor are offline.", failed : true})
         }
 
         const playerIds = Object.keys(data.players);
@@ -448,7 +505,7 @@ app.post("/start", async (req, res) => {
 
         const parsedSettings = parseSettingsArray(req.body.settings, totalPlayers);
         if (!parsedSettings) {
-            return res.status(400).json({ message: "Invalid or missing settings.", auth: true });
+            return res.status(400).json({ message: "Invalid or missing settings.", failed : true});
         }
 
         data.settings = parsedSettings;
@@ -491,7 +548,7 @@ app.post("/start", async (req, res) => {
 
         startTimestampCountdown(data.settings.meltdownCountdown);
 
-        return res.status(200).json({ message: "May a fine game take place, among us!" });
+        return res.status(200).json({ message: "May a fine game take place, among us!", failed : true});
     });
 });
 
@@ -568,7 +625,8 @@ app.get("/reset", async (req, res) => {
             playerCount: 0,
             alivePlayers: 0
         },
-        serverIDs:{},
+        // Fixed: Reset fields to an empty object structure on reset
+        servers: {},
         players: {},
         activeSabotages: {
             reactor: {
@@ -600,7 +658,6 @@ app.get("/reset", async (req, res) => {
     res.set('Content-Type', 'text/html');
     return res.send(dynamicHtml);
 })
-
 
 const chaoticStatuses = [100, 101, 102, 103, 200, 201, 202, 203, 204, 205, 206, 207, 208, 226, 300, 301, 302, 303, 304, 307, 308, 401, 403, 400, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 420, 421, 422, 423, 425, 426, 429, 431, 451, 500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511];
 const suspiciousKeywords = ['admin', '.env', '.git', 'wp-', 'backup', '.php', '.aspx', '.jsp'];
