@@ -35,12 +35,41 @@ PASSWORD_HASH = {your password hash}
 
 The `.env` file must sit in the same working directory the server process is launched from — this matters most for the Docker, systemd, and Windows service methods below, where "working directory" isn't automatically the project folder unless you set it explicitly.
 
+## Firewall rules (needed for LAN hosting)
+
+By default, most OS firewalls block unsolicited inbound connections — so even with the server running and `.env` configured correctly, other devices on the same Wi-Fi may not be able to reach it until you open the port. This applies to methods 1–5 below; it's **not** needed for the tunnel method, since ngrok/Cloudflare Tunnel/localtunnel establish an outbound connection and handle inbound traffic themselves.
+
+**Windows** (run in an elevated PowerShell/Command Prompt):
+```powershell
+netsh advfirewall firewall add rule name="Among Us IRL" dir=in action=allow protocol=TCP localport={your port}
+```
+
+**macOS**:
+```bash
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add /usr/local/bin/node
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp /usr/local/bin/node
+```
+(Adjust the path if `which node` points somewhere else, e.g. `/opt/homebrew/bin/node` on Apple Silicon.)
+
+**Linux (ufw)**:
+```bash
+sudo ufw allow {your port}/tcp
+```
+
+**Linux (firewalld)**:
+```bash
+sudo firewall-cmd --add-port={your port}/tcp --permanent
+sudo firewall-cmd --reload
+```
+
+If you're using Docker with the default bridge network (not `network_mode: host`), the Docker daemon manages its own iptables rules for the published port — but the host firewall rule above is usually still required on top of that, since ufw/firewalld can override or coexist awkwardly with Docker's rules depending on distro defaults. If players still can't connect after publishing the port, check the host firewall first.
+
 ## How do I play
 With `.env` in place, host it. There are a few ways to do this — pick whichever fits your setup.
 
 ### 1. Node.js directly (recommended)
 
-Start the server with `npm run dev` (or `node server.js`, depending on your `package.json`), run from the project root so it picks up `.env` automatically.
+Start the server with `npm start` (or `node index.js`, depending on your `package.json`), run from the project root so it picks up `.env` automatically.
 
 This is the simplest option and is best if everyone is going to be on the same Wi-Fi network.
 
@@ -149,6 +178,6 @@ The server is meant for **localhost / same-LAN use only**. If some players aren'
 > ⚠️ **This significantly increases the security risk described below.** Exposing the server to the public internet, even briefly, means anyone who finds the URL can interact with it — not just your players. Only use this for the duration of a single game session, and shut the tunnel down immediately afterward.
 
 ## Important security note
-This server is meant to be hosted on **localhost only**. Several serious vulnerabilities are present intentionally, because I was too lazy to fix them.
+This server is meant to be hosted on **localhost only**. Several serious vulnerabilities are present intentionally, because I didnt bother to fix them. (It aint like im building this for a megacorporation or something)
 
-The client is **completely trusted** (well, mostly), so if you play this game, keep in mind that anyone with decent cybersecurity skills can cheat - though they'd need external tools that aren't easily obtainable on mobile. This risk is much higher if you use one of the remote-access methods above, since the server is no longer confined to your local network.
+The client is **completely trusted** (well, mostly), so if you play this game, keep in mind that anyone with decent cybersecurity skills can cheat  though they'd need external tools that aren't easily obtainable on mobile. This risk is much higher if you use one of the remote-access methods above, since the server is no longer confined to your local network.
