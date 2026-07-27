@@ -1,7 +1,7 @@
 const IP_socket = "10.0.0.110";
 const PORT_socket = 6767;
 
-const socket = io(`ws://${IP_socket}:${PORT_socket}`);
+const socket = io();
 
 function get(id) {
     return document.getElementById(id);
