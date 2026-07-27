@@ -66,6 +66,10 @@
             clientAnimationId = requestAnimationFrame(updateFrame);
         }
 
+        socket.on("game_over", (data) => {
+            window.location.href("/win")
+        })
+
         socket.on("player_data_request", (data) => {
             document.getElementById("usr").innerText = "username: " + data.username;
             document.getElementById("id").innerText = "id: " + data.id;

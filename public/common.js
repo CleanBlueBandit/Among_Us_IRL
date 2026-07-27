@@ -1,4 +1,4 @@
-const IP_socket = "192.168.56.1";
+const IP_socket = "10.0.0.110";
 const PORT_socket = 6767;
 
 const socket = io(`ws://${IP_socket}:${PORT_socket}`);

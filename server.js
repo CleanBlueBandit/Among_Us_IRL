@@ -7,13 +7,21 @@ import { Server } from 'socket.io';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcrypt';
+import 'dotenv/config';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PORT = 6767;
-const IP = "192.168.56.1";
-const host_pass = "$2b$10$xvIai9yC6zGdmBhNq5Dzt.n48g1dP8h1wRM/J9VGZz.YcWZuDo3m2";
+if(!process.env.PORT){
+    console.log("U forgot to add .env dumass")
+}
+
+const PORT = process.env.PORT;
+const IP = process.env.IP;
+const host_pass = process.env.PASSWORD_HASH;
+const protocol = process.env.PROTOCOL;
+
+
 
 const app = express();
 const httpServer = createServer(app);
@@ -151,7 +159,7 @@ async function saveGame(data) {
 }
 
 httpServer.listen(PORT, () => {
-    console.log(`Server running on http://${IP}:${PORT}`);
+    console.log(`Server running on ${protocol}://${IP}:${PORT}`);
 });
 
 app.post('/enter', async (req, res) => {
@@ -373,6 +381,9 @@ app.get("/control%20panel", async (req, res) => {
 // One independent timer per sabotage type, so o2 and reactor can run concurrently.
 const sabotageTimers = new Map(); // type -> intervalId
 
+
+
+
 async function startSabotageCountdown(type, seconds) {
     if (!type || typeof seconds !== 'number' || seconds <= 0) return;
     if (type !== 'o2' && type !== 'reactor') return;
@@ -508,6 +519,12 @@ function clearAllSabotageTimers() {
     }
     sabotageTimers.clear();
 }
+
+
+app.post(`/env`, (req, res) => {
+    return res.json({ip:IP, port:PORT});
+})
+
 
 app.post("/addDummyPlayers", async (req, res) => {
     const data = await loadGame();
