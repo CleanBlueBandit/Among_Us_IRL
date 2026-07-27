@@ -53,8 +53,8 @@
 
 
     <script src="/socket.io/socket.io.js"></script>
+    <script src="common.js"></script>
     <script>
-        const socket = io("http://localhost:6767");
 
         let clientAnimationId = null;
 
@@ -80,6 +80,9 @@
             clientAnimationId = requestAnimationFrame(updateFrame);
         }
 
+        socket.on("game_over", (data) => {
+            window.location.href = "/win"
+        })
         socket.on("player_data_request", (data) => {
             document.getElementById("usr").innerText = "username: " + data.username;
             document.getElementById("id").innerText = "id: " + data.id;
@@ -90,6 +93,14 @@
         socket.on("game_data_request", (data) => {
             document.getElementById("totalTasks").innerText = "Total tasks completed: " + data.completedTasks + "/" + data.totalTasks;
         });
+
+        socket.on("sabotage_ack", (data) => {
+            if(data.ok){
+                document.getElementById("o2_sabotage").disabled = true;
+                document.getElementById("reac_sabotage").disabled = true;
+            }
+            
+        })
 
         socket.on("sabotage_data_request", (data) => {
             if (clientAnimationId) {
@@ -125,13 +136,22 @@
         });
 
         function sabotage_o2(){
-            alert("that button does nothing yet")
+            const val = parseInt(get("o2_val").innerText)
+            const data = {
+                type:"o2",
+                countdown:val
+            }
+            socket.emit("sabotage", data)
         }
         function sabotage_reac(){
-            alert("that button does nothing yet")
+           const val = parseInt(get("reac_val").innerText)
+            const data = {
+                type:"reactor",
+                countdown:val
+            }
+            socket.emit("sabotage", data)
         }
     </script>
-    <script src="common.js"></script>
 </body>
 </body>
 </html>

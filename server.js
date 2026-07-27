@@ -7,16 +7,13 @@ import { Server } from 'socket.io';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcrypt';
-import { ok } from 'assert';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = 6767;
-const IP = "0.0.0.0";
+const IP = "192.168.56.1";
 const host_pass = "$2b$10$xvIai9yC6zGdmBhNq5Dzt.n48g1dP8h1wRM/J9VGZz.YcWZuDo3m2";
-
-var timeLeft = 0
 
 const app = express();
 const httpServer = createServer(app);
@@ -65,7 +62,32 @@ const DEFAULT_SETTINGS = {
     tasks: 5
 };
 
-function validateServer(servers, session){
+// Authoritative duration (seconds) for stage 2 of a sabotage - the crisis
+// phase that runs until impostors win. Set from settings.meltdownCountdown
+// whenever a game starts, rather than trusting the client-supplied
+// per-sabotage countdown for this stage.
+let meltdownCountdownSeconds = DEFAULT_SETTINGS.meltdownCountdown;
+
+const DEFAULT_GAME_STATE = {
+    started: false,
+    winCondition: "",
+    impostorsWon: false,
+    crewmatesWon: false,
+    emergencyMeeting: false,
+    totalTasks: 0,
+    completedTasks: 0,
+    host: "",
+    aliveImpostors: 0,
+    playerCount: 0,
+    alivePlayers: 0
+};
+
+const DEFAULT_SABOTAGES = {
+    o2: { sabotaged: false, depleted: false, timeLeft: 0 },
+    reactor: { sabotaged: false, meltdown: false, timeLeft: 0 }
+};
+
+function validateServer(servers, session) {
     if (!servers || !session) return false;
     return servers.hasOwnProperty(session);
 }
@@ -74,7 +96,7 @@ function isGameOperational(servers) {
     if (!servers || typeof servers !== 'object') {
         return false;
     }
-    
+
     const activeRoles = Object.values(servers);
     return activeRoles.includes('o2') && activeRoles.includes('reactor');
 }
@@ -92,15 +114,17 @@ async function loadGame() {
             data.players = {};
         }
         if (!data.gameState) {
-            data.gameState = { host: "", started: false, playerCount: 0, alivePlayers: 0 };
+            data.gameState = { ...DEFAULT_GAME_STATE };
+        } else {
+            // backfill any missing fields on old/partial saves
+            data.gameState = { ...DEFAULT_GAME_STATE, ...data.gameState };
         }
         if (!data.activeSabotages) {
             data.activeSabotages = {
-                o2: { depleted: false, timeLeft: 0 },
-                reactor: { meltdown: false, timeLeft: 0 }
+                o2: { ...DEFAULT_SABOTAGES.o2 },
+                reactor: { ...DEFAULT_SABOTAGES.reactor }
             };
         }
-        // Migrated to new servers object format
         if (!data.servers) {
             data.servers = {};
         }
@@ -111,10 +135,10 @@ async function loadGame() {
     } catch (error) {
         return {
             players: {},
-            gameState: { host: "", started: false, playerCount: 0, alivePlayers: 0 },
+            gameState: { ...DEFAULT_GAME_STATE },
             activeSabotages: {
-                o2: { depleted: false, timeLeft: 0 },
-                reactor: { meltdown: false, timeLeft: 0 }
+                o2: { ...DEFAULT_SABOTAGES.o2 },
+                reactor: { ...DEFAULT_SABOTAGES.reactor }
             },
             servers: {},
             settings: { ...DEFAULT_SETTINGS }
@@ -139,7 +163,7 @@ app.post('/enter', async (req, res) => {
             const username = req.body.username ? String(req.body.username) : "Anonymous Crewmate";
 
             if (session && typeof session === 'string' && data.players[session]) {
-                return res.status(200).json({message:"username accepted!"})
+                return res.status(200).json({ message: "username accepted!" })
             }
 
             const UUID = crypto.randomUUID();
@@ -165,7 +189,7 @@ app.post('/enter', async (req, res) => {
 
             await saveGame(data);
 
-            return res.status(200).json({message:"username created!"})
+            return res.status(200).json({ message: "username created!" })
         });
     } catch (error) {
         console.error("Error managing game entry:", error);
@@ -186,10 +210,10 @@ app.post('/enter-host', async (req, res) => {
             const password = req.body.password ? String(req.body.password) : "";
 
             if (!(await bcrypt.compare(password, host_pass))) {
-                return res.status(401).json({error:"invalid credentials"})
+                return res.status(401).json({ error: "invalid credentials" })
             }
 
-            if(req.body.server){
+            if (req.body.server) {
                 const UUID = crypto.randomUUID();
                 res.cookie('session', UUID, {
                     httpOnly: true,
@@ -197,15 +221,15 @@ app.post('/enter-host', async (req, res) => {
                     sameSite: 'lax',
                     maxAge: 1000 * 60 * 60 * 12
                 });
-                
+
                 data.servers[UUID] = "none";
-                
+
                 await saveGame(data);
                 return res.sendFile(path.join(__dirname, 'public', 'server.html'))
             }
 
             if (data.gameState.host != "") {
-                return res.status(400).json({error:"Host is already in the game!"})
+                return res.status(400).json({ error: "Host is already in the game!" })
             }
 
             const UUID = crypto.randomUUID();
@@ -231,7 +255,7 @@ app.post('/enter-host', async (req, res) => {
 
             await saveGame(data);
 
-            return res.status(200).json({message:"wellcome, host!"})
+            return res.status(200).json({ message: "wellcome, host!" })
         });
     } catch (error) {
         console.error("Error managing game entry:", error);
@@ -242,7 +266,7 @@ app.post('/enter-host', async (req, res) => {
 app.get("/end", async (req, res) => {
     const data = await loadGame();
     const session = req.cookies.session;
-    if(data.players[session].username != data.gameState.host){
+    if (!data.players[session] || data.players[session].username != data.gameState.host) {
         return res.sendStatus(401);
     }
 
@@ -255,11 +279,11 @@ app.get("/end", async (req, res) => {
 app.get('/dashboard', async (req, res) => {
     const data = await loadGame();
     const session = req.cookies.session;
-    if(!data.players[session]){
-        return res.status(401).json({error:"401 unauthorised."});
+    if (!data.players[session]) {
+        return res.status(401).json({ error: "401 unauthorised." });
     }
 
-    if(!data.gameState.started){
+    if (!data.gameState.started) {
         let dynamicHtml = `
             <!DOCTYPE html>
             <html>
@@ -276,27 +300,28 @@ app.get('/dashboard', async (req, res) => {
     }
     const playerData = data.players[session];
 
-    if(playerData.impostor){
+    if (playerData.impostor) {
         return res.sendFile(path.join(__dirname, 'public', 'impostor.html'));
     }
     return res.sendFile(path.join(__dirname, 'public', 'crewmate.html'));
 })
 
-app.get('/logout', async(req, res) => {
+app.get('/logout', async (req, res) => {
     const session = req.cookies.session;
 
     await withGameLock(async () => {
         const data = await loadGame();
         if (data.players[session]) {
-            if(data.gameState.host == data.players[session].username){
+            if (data.gameState.host == data.players[session].username) {
                 data.gameState.host = "";
                 data.gameState.started = false;
             }
             delete data.players[session];
-            data.gameState.playerCount -= 1;
+            data.gameState.playerCount = Math.max(0, data.gameState.playerCount - 1);
+            data.gameState.alivePlayers = Math.max(0, data.gameState.alivePlayers - 1);
             await saveGame(data);
         }
-        
+
         if (data.servers && data.servers.hasOwnProperty(session)) {
             delete data.servers[session];
             await saveGame(data);
@@ -313,48 +338,186 @@ app.get('/logout', async(req, res) => {
 app.post("/deviceFunc", async (req, res) => {
     const data = await loadGame();
     const sf = req.body.setting;
-    if(!validateServer(data.servers, req.cookies.session)){
-        return res.status(401).json({err:"401 unauthorised"})
+    if (!validateServer(data.servers, req.cookies.session)) {
+        return res.status(401).json({ err: "401 unauthorised" })
     }
     data.servers[req.cookies.session] = sf;
-    return res.status(200).json({ok:true});
+    await saveGame(data);
+    return res.status(200).json({ ok: true });
 })
 
 app.get("/o2", async (req, res) => {
     const data = await loadGame();
-    if(!validateServer(data.servers, req.cookies.session)){
-        return res.status(401).json({err:"401 unauthorised"})
+    if (!validateServer(data.servers, req.cookies.session)) {
+        return res.status(401).json({ err: "401 unauthorised" })
     }
     return res.status(200).sendFile(publicPath("o2"));
 })
 
 app.get("/reactor", async (req, res) => {
     const data = await loadGame();
-    if(!validateServer(data.servers, req.cookies.session)){
-        return res.status(401).json({err:"401 unauthorised"})
+    if (!validateServer(data.servers, req.cookies.session)) {
+        return res.status(401).json({ err: "401 unauthorised" })
     }
     return res.status(200).sendFile(publicPath("reactor"));
 })
 
 app.get("/control%20panel", async (req, res) => {
     const data = await loadGame();
-    if(!validateServer(data.servers, req.cookies.session)){
-        return res.status(401).json({err:"401 unauthorised"})
+    if (!validateServer(data.servers, req.cookies.session)) {
+        return res.status(401).json({ err: "401 unauthorised" })
     }
     return res.status(200).sendFile(publicPath("control panel"));
 })
 
-let localVisualTimer = null;
+// One independent timer per sabotage type, so o2 and reactor can run concurrently.
+const sabotageTimers = new Map(); // type -> intervalId
+
+async function startSabotageCountdown(type, seconds) {
+    if (!type || typeof seconds !== 'number' || seconds <= 0) return;
+    if (type !== 'o2' && type !== 'reactor') return;
+
+    // Only clear THIS type's existing timer, not every sabotage's timer.
+    if (sabotageTimers.has(type)) {
+        clearInterval(sabotageTimers.get(type));
+        sabotageTimers.delete(type);
+    }
+
+    const data = await loadGame();
+
+    // Stage 1: The Delay Phase Begins
+    data.activeSabotages[type].sabotaged = true;
+    data.activeSabotages[type].timeLeft = seconds;
+
+    // Ensure the crisis hasn't started yet
+    if (type === 'o2') data.activeSabotages.o2.depleted = false;
+    else data.activeSabotages.reactor.meltdown = false;
+
+    await saveGame(data);
+
+    const timer = setInterval(async () => {
+        try {
+            const d = await loadGame();
+            const sab = d.activeSabotages[type];
+
+            // Failsafe if the sabotage was cleared (e.g. fixed) from elsewhere
+            if (!sab || !sab.sabotaged) {
+                clearInterval(timer);
+                sabotageTimers.delete(type);
+                return;
+            }
+
+            // Tick down the timer
+            sab.timeLeft = Math.max(0, sab.timeLeft - 1);
+            await saveGame(d);
+            io.emit('sabotage_tick', { type, timeLeft: sab.timeLeft });
+
+            // What happens when a timer hits 0?
+            if (sab.timeLeft <= 0) {
+
+                // Check which phase we just finished
+                const isCrisisPhase = (type === 'o2' && sab.depleted) ||
+                                      (type === 'reactor' && sab.meltdown);
+
+                if (!isCrisisPhase) {
+                    // STAGE 1 FINISHED: Start the Crisis Phase!
+                    if (type === 'o2') sab.depleted = true;
+                    else sab.meltdown = true;
+
+                    // Stage 2's duration is the authoritative meltdownCountdown
+                    // setting, not the client-supplied stage-1 "seconds" value.
+                    sab.timeLeft = meltdownCountdownSeconds;
+                    await saveGame(d);
+
+                    // Tell the clients that the crisis has officially started so their UI updates
+                    const targetEndTime = Date.now() + (meltdownCountdownSeconds * 1000);
+                    io.emit('sabotage_data_request', {
+                        sData: d.activeSabotages,
+                        endTime: targetEndTime
+                    });
+
+                } else {
+                    // STAGE 2 FINISHED: The crewmates failed. Game over!
+                    d.gameState.impostorsWon = true;
+                    d.gameState.crewmatesWon = false;
+                    d.gameState.started = false;
+                    if(type == "o2"){
+                        d.gameState.winCondition = "OXYGEN DEPRIVATION KILLED THE CREW"
+                    }
+                    d.gameState.winCondition = "REACTOR EXPLOSION DESTROYED THE SHIP"
+                    
+                    await saveGame(d);
+
+                    // Push the final o2/reactor depleted/meltdown flags so
+                    // clients update their UI even if they never reconnect.
+                    io.emit('sabotage_data_request', {
+                        sData: d.activeSabotages,
+                        endTime: 0
+                    });
+
+                    // Push the updated gameState (impostorsWon, started, etc.)
+                    // to everyone, not just clients that (re)connect later.
+                    io.emit('game_data_request', d.gameState);
+
+                    if (type === 'o2') {
+                        io.emit('game_over', { winner: 'impostors', reason: 'o2' });
+                    } else {
+                        io.emit('reactor_meltdown', {});
+                        io.emit('game_over', { winner: 'impostors', reason: 'reactor' });
+                    }
+
+                    // Clean up this type's interval only
+                    clearInterval(timer);
+                    sabotageTimers.delete(type);
+                }
+            }
+        } catch (e) {
+            console.error('Error in sabotage timer:', e);
+        }
+    }, 1000);
+
+    sabotageTimers.set(type, timer);
+}
+
+// Crew successfully repairs a sabotage before its timer runs out.
+async function fixSabotage(type) {
+    if (!type || (type !== 'o2' && type !== 'reactor')) return false;
+
+    if (sabotageTimers.has(type)) {
+        clearInterval(sabotageTimers.get(type));
+        sabotageTimers.delete(type);
+    }
+
+    const d = await loadGame();
+    if (!d.activeSabotages[type] || !d.activeSabotages[type].sabotaged) {
+        return false; // nothing to fix
+    }
+
+    d.activeSabotages[type] = type === 'o2'
+        ? { sabotaged: false, depleted: false, timeLeft: 0 }
+        : { sabotaged: false, meltdown: false, timeLeft: 0 };
+    await saveGame(d);
+
+    io.emit('sabotage_fixed', { type });
+    return true;
+}
+
+function clearAllSabotageTimers() {
+    for (const t of sabotageTimers.values()) {
+        clearInterval(t);
+    }
+    sabotageTimers.clear();
+}
 
 app.post("/addDummyPlayers", async (req, res) => {
     const data = await loadGame();
-    
+
     let amnt = parseInt(req.body.amnt);
 
     if (isNaN(amnt)) {
         return res.status(400).json({ message: "Invalid amount provided." });
     }
-    
+
     if (data.players[req.cookies.session]?.username !== data.gameState.host) {
         return res.status(401).json({ message: "401 Unauthorized", hint: "No host - no admin controls." });
     }
@@ -371,8 +534,8 @@ app.post("/addDummyPlayers", async (req, res) => {
 
     for (let i = 1; i <= toAdd; i++) {
         const id = crypto.randomUUID();
-        let dmnKey = `dummy_${Date.now()}_${i}`; 
-        
+        let dmnKey = `dummy_${Date.now()}_${i}`;
+
         data.players[dmnKey] = {
             id: id,
             username: `dummy_${currentCount + i}`,
@@ -416,11 +579,12 @@ io.on("connection", async (socket) => {
 
             let targetEndTimestamp = 0;
 
-            if (data.activeSabotages.o2.depleted) {
+            if (data.activeSabotages.o2 && data.activeSabotages.o2.sabotaged && !data.activeSabotages.o2.depleted) {
                 targetEndTimestamp = Date.now() + (data.activeSabotages.o2.timeLeft * 1000);
-            } else if (data.activeSabotages.reactor.meltdown) {
+            } else if (data.activeSabotages.reactor && data.activeSabotages.reactor.sabotaged && !data.activeSabotages.reactor.meltdown) {
                 targetEndTimestamp = Date.now() + (data.activeSabotages.reactor.timeLeft * 1000);
             }
+
             socket.emit("sabotage_data_request", {
                 sData: data.activeSabotages,
                 endTime: targetEndTimestamp
@@ -429,6 +593,38 @@ io.on("connection", async (socket) => {
         else {
             socket.emit("Err", { error: "username not found." });
         }
+        socket.on("sabotage", async (sabdata) => {
+            try {
+                if (!sabdata || !sabdata.type || typeof sabdata.countdown !== 'number') {
+                    socket.emit('Err', { error: 'invalid sabotage payload' });
+                    socket.emit('sabotage_ack', {ok:false})
+                    return;
+                }
+                if(data.activeSabotages.reactor.sabotaged || data.activeSabotages.reactor.sabotaged || data.activeSabotages.reactor.meltdown || data.activeSabotages.o2.depleted){
+                    socket.emit('Err', { error: 'already sabotaged' });
+                    socket.emit('sabotage_ack', {ok:false})
+                }
+                // delegate countdown handling
+                await startSabotageCountdown(sabdata.type, sabdata.countdown);
+                socket.emit('sabotage_ack', { ok:true });
+            } catch (e) {
+                socket.emit('Err', { error: e.message });
+            }
+        });
+        socket.on("fix_sabotage", async (payload) => {
+            try {
+                if (!payload || !payload.type) {
+                    socket.emit('Err', { error: 'invalid fix payload' });
+                    socket.emit('fix_ack', {ok:false})
+                    return;
+                }
+                const fixed = await fixSabotage(payload.type);
+                socket.emit('fix_ack', { ok: fixed });
+            } catch (e) {
+                socket.emit('Err', { error: e.message });
+                socket.emit('fix_ack', {ok:false})
+            }
+        });
         socket.on('disconnect', () => {
             console.log('Client disconnected.');
         });
@@ -438,17 +634,499 @@ io.on("connection", async (socket) => {
     }
 });
 
+app.get("/win", async (req, res) => {
+    const data = await loadGame();
+    if(data.gameState.impostorsWon){
+        return res.send(`
+            <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Impostors Won</title>
+<style>
+  :root{
+    --glow: #ff1a1a;
+    --glow-soft: rgba(255, 26, 26, 0.55);
+    --glow-faint: rgba(255, 26, 26, 0.12);
+  }
+  html, body{
+    margin:0;
+    padding:0;
+    width:100%;
+    height:100%;
+    background:#050507;
+    overflow:hidden;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+  .stage{
+    position:relative;
+    width:100vw;
+    height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  /* subtle drifting stars/particles for atmosphere */
+  .particles{
+    position:absolute;
+    inset:0;
+    overflow:hidden;
+    pointer-events:none;
+  }
+  .particle{
+    position:absolute;
+    width:2px;
+    height:2px;
+    background:rgba(255,255,255,0.5);
+    border-radius:50%;
+    animation: drift linear infinite;
+    opacity:0;
+  }
+  @keyframes drift{
+    0%{ opacity:0; transform:translateY(0); }
+    10%{ opacity:0.6; }
+    90%{ opacity:0.3; }
+    100%{ opacity:0; transform:translateY(-40px); }
+  }
+
+  /* the horizon glow band behind the text */
+  .horizon{
+    position:absolute;
+    left:50%;
+    top:50%;
+    width:140vw;
+    height:60vh;
+    transform:translate(-50%,-50%) scaleX(0.2);
+    background: radial-gradient(ellipse at center, var(--glow-soft) 0%, var(--glow-faint) 35%, transparent 70%);
+    filter: blur(10px);
+    opacity:0;
+    animation: horizonRise 3.2s ease-out forwards;
+    animation-delay: 0.3s;
+  }
+  @keyframes horizonRise{
+    0%{ opacity:0; transform:translate(-50%,-50%) scaleX(0.1) scaleY(0.4); }
+    40%{ opacity:0.9; }
+    100%{ opacity:0.75; transform:translate(-50%,-50%) scaleX(1) scaleY(1); }
+  }
+
+  /* thin glowing line that sweeps out like a horizon edge */
+  .line{
+    position:absolute;
+    left:50%;
+    top:50%;
+    width:0;
+    height:2px;
+    background: linear-gradient(90deg, transparent, var(--glow), transparent);
+    box-shadow: 0 0 20px 4px var(--glow-soft);
+    transform:translate(-50%,-50%);
+    animation: lineExpand 1.6s ease-out forwards;
+    animation-delay: 0.15s;
+  }
+  @keyframes lineExpand{
+    0%{ width:0; opacity:0; }
+    50%{ opacity:1; }
+    100%{ width:80vw; opacity:0.8; }
+  }
+
+  .content{
+    position:relative;
+    z-index:2;
+    text-align:center;
+  }
+
+  .eyebrow{
+    display:block;
+    font-size:1rem;
+    letter-spacing:0.6em;
+    text-transform:uppercase;
+    color: rgba(255, 90, 90, 0.55);
+    opacity:0;
+    margin-bottom:1.2rem;
+    animation: fadeInSlight 1.2s ease forwards;
+    animation-delay: 2.1s;
+  }
+
+  h1{
+    margin:0;
+    font-size: clamp(2.5rem, 9vw, 7rem);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--glow);
+    font-weight:800;
+    opacity:0;
+    filter: blur(14px);
+    letter-spacing: 0.5em;
+    animation:
+      revealText 1.8s cubic-bezier(.2,.8,.2,1) forwards,
+      pulseGlow 2.4s ease-in-out infinite;
+    animation-delay: 0.6s, 3s;
+    text-shadow:
+      0 0 10px var(--glow),
+      0 0 25px var(--glow-soft),
+      0 0 60px var(--glow-soft),
+      0 0 120px var(--glow-faint);
+  }
+
+  @keyframes revealText{
+    0%{
+      opacity:0;
+      filter: blur(20px);
+      letter-spacing: 1.1em;
+      transform: scale(1.15);
+    }
+    35%{
+      opacity:0.35;
+      filter: blur(10px);
+    }
+    55%{
+      opacity:0.15;
+      filter: blur(16px);
+    }
+    70%{
+      opacity:0.9;
+      filter: blur(2px);
+      letter-spacing: 0.6em;
+    }
+    100%{
+      opacity:1;
+      filter: blur(0px);
+      letter-spacing: 0.12em;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes pulseGlow{
+    0%, 100%{
+      text-shadow:
+        0 0 10px var(--glow),
+        0 0 25px var(--glow-soft),
+        0 0 60px var(--glow-soft),
+        0 0 120px var(--glow-faint);
+    }
+    50%{
+      text-shadow:
+        0 0 16px var(--glow),
+        0 0 40px var(--glow-soft),
+        0 0 90px var(--glow-soft),
+        0 0 160px var(--glow-faint);
+    }
+  }
+
+  @keyframes fadeInSlight{
+    from{ opacity:0; transform:translateY(6px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+
+  .vignette{
+    position:absolute;
+    inset:0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.75) 100%);
+    pointer-events:none;
+    z-index:3;
+  }
+
+  .flicker-overlay{
+    position:absolute;
+    inset:0;
+    background: var(--glow-faint);
+    opacity:0;
+    pointer-events:none;
+    animation: flicker 0.15s steps(1) 3;
+    animation-delay: 0.55s;
+  }
+  @keyframes flicker{
+    0%{ opacity:0; }
+    50%{ opacity:0.15; }
+    100%{ opacity:0; }
+  }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="particles" id="particles"></div>
+    <div class="horizon"></div>
+    <div class="line"></div>
+    <div class="flicker-overlay"></div>
+    <div class="content">
+      <span class="eyebrow">${data.gameState.winCondition}</span>
+      <h1>Impostors Won</h1>
+    </div>
+    <div class="vignette"></div>
+  </div>
+
+<script>
+  const container = document.getElementById('particles');
+  const count = 60;
+  for(let i=0;i<count;i++){
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random()*2 + 1;
+    p.style.width = size+'px';
+    p.style.height = size+'px';
+    p.style.left = Math.random()*100 + 'vw';
+    p.style.top = Math.random()*100 + 'vh';
+    p.style.animationDuration = (6 + Math.random()*10) + 's';
+    p.style.animationDelay = (Math.random()*8) + 's';
+    container.appendChild(p);
+  }
+</script>
+</body>
+</html>
+
+            `)
+    }
+    return res.send(`
+        <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Crewmates Won</title>
+<style>
+  :root{
+    --glow: #1ac8ff;
+    --glow-soft: rgba(26, 200, 255, 0.55);
+    --glow-faint: rgba(26, 200, 255, 0.12);
+  }
+  html, body{
+    margin:0;
+    padding:0;
+    width:100%;
+    height:100%;
+    background:#050507;
+    overflow:hidden;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+  .stage{
+    position:relative;
+    width:100vw;
+    height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  /* subtle drifting stars/particles for atmosphere */
+  .particles{
+    position:absolute;
+    inset:0;
+    overflow:hidden;
+    pointer-events:none;
+  }
+  .particle{
+    position:absolute;
+    width:2px;
+    height:2px;
+    background:rgba(255,255,255,0.5);
+    border-radius:50%;
+    animation: drift linear infinite;
+    opacity:0;
+  }
+  @keyframes drift{
+    0%{ opacity:0; transform:translateY(0); }
+    10%{ opacity:0.6; }
+    90%{ opacity:0.3; }
+    100%{ opacity:0; transform:translateY(-40px); }
+  }
+
+  /* the horizon glow band behind the text */
+  .horizon{
+    position:absolute;
+    left:50%;
+    top:50%;
+    width:140vw;
+    height:60vh;
+    transform:translate(-50%,-50%) scaleX(0.2);
+    background: radial-gradient(ellipse at center, var(--glow-soft) 0%, var(--glow-faint) 35%, transparent 70%);
+    filter: blur(10px);
+    opacity:0;
+    animation: horizonRise 3.2s ease-out forwards;
+    animation-delay: 0.3s;
+  }
+  @keyframes horizonRise{
+    0%{ opacity:0; transform:translate(-50%,-50%) scaleX(0.1) scaleY(0.4); }
+    40%{ opacity:0.9; }
+    100%{ opacity:0.75; transform:translate(-50%,-50%) scaleX(1) scaleY(1); }
+  }
+
+  /* thin glowing line that sweeps out like a horizon edge */
+  .line{
+    position:absolute;
+    left:50%;
+    top:50%;
+    width:0;
+    height:2px;
+    background: linear-gradient(90deg, transparent, var(--glow), transparent);
+    box-shadow: 0 0 20px 4px var(--glow-soft);
+    transform:translate(-50%,-50%);
+    animation: lineExpand 1.6s ease-out forwards;
+    animation-delay: 0.15s;
+  }
+  @keyframes lineExpand{
+    0%{ width:0; opacity:0; }
+    50%{ opacity:1; }
+    100%{ width:80vw; opacity:0.8; }
+  }
+
+  .content{
+    position:relative;
+    z-index:2;
+    text-align:center;
+  }
+
+  .eyebrow{
+    display:block;
+    font-size:1rem;
+    letter-spacing:0.6em;
+    text-transform:uppercase;
+    color: rgba(90, 200, 255, 0.55);
+    opacity:0;
+    margin-bottom:1.2rem;
+    animation: fadeInSlight 1.2s ease forwards;
+    animation-delay: 2.1s;
+  }
+
+  h1{
+    margin:0;
+    font-size: clamp(2.5rem, 9vw, 7rem);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--glow);
+    font-weight:800;
+    opacity:0;
+    filter: blur(14px);
+    letter-spacing: 0.5em;
+    animation:
+      revealText 1.8s cubic-bezier(.2,.8,.2,1) forwards,
+      pulseGlow 2.4s ease-in-out infinite;
+    animation-delay: 0.6s, 3s;
+    text-shadow:
+      0 0 10px var(--glow),
+      0 0 25px var(--glow-soft),
+      0 0 60px var(--glow-soft),
+      0 0 120px var(--glow-faint);
+  }
+
+  @keyframes revealText{
+    0%{
+      opacity:0;
+      filter: blur(20px);
+      letter-spacing: 1.1em;
+      transform: scale(1.15);
+    }
+    35%{
+      opacity:0.35;
+      filter: blur(10px);
+    }
+    55%{
+      opacity:0.15;
+      filter: blur(16px);
+    }
+    70%{
+      opacity:0.9;
+      filter: blur(2px);
+      letter-spacing: 0.6em;
+    }
+    100%{
+      opacity:1;
+      filter: blur(0px);
+      letter-spacing: 0.12em;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes pulseGlow{
+    0%, 100%{
+      text-shadow:
+        0 0 10px var(--glow),
+        0 0 25px var(--glow-soft),
+        0 0 60px var(--glow-soft),
+        0 0 120px var(--glow-faint);
+    }
+    50%{
+      text-shadow:
+        0 0 16px var(--glow),
+        0 0 40px var(--glow-soft),
+        0 0 90px var(--glow-soft),
+        0 0 160px var(--glow-faint);
+    }
+  }
+
+  @keyframes fadeInSlight{
+    from{ opacity:0; transform:translateY(6px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+
+  .vignette{
+    position:absolute;
+    inset:0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.75) 100%);
+    pointer-events:none;
+    z-index:3;
+  }
+
+  .flicker-overlay{
+    position:absolute;
+    inset:0;
+    background: var(--glow-faint);
+    opacity:0;
+    pointer-events:none;
+    animation: flicker 0.15s steps(1) 3;
+    animation-delay: 0.55s;
+  }
+  @keyframes flicker{
+    0%{ opacity:0; }
+    50%{ opacity:0.15; }
+    100%{ opacity:0; }
+  }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="particles" id="particles"></div>
+    <div class="horizon"></div>
+    <div class="line"></div>
+    <div class="flicker-overlay"></div>
+    <div class="content">
+      <span class="eyebrow">${data.gameState.winCondition}</span>
+      <h1>Crewmates Won</h1>
+    </div>
+    <div class="vignette"></div>
+  </div>
+
+<script>
+  const container = document.getElementById('particles');
+  const count = 60;
+  for(let i=0;i<count;i++){
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random()*2 + 1;
+    p.style.width = size+'px';
+    p.style.height = size+'px';
+    p.style.left = Math.random()*100 + 'vw';
+    p.style.top = Math.random()*100 + 'vh';
+    p.style.animationDuration = (6 + Math.random()*10) + 's';
+    p.style.animationDelay = (Math.random()*8) + 's';
+    container.appendChild(p);
+  }
+</script>
+</body>
+</html>
+
+        `)
+})
+
 app.get("/waiting", async (req, res) => {
     const session = req.cookies.session;
     const data = await loadGame();
-    if(session){
-        if(data.players[session]){
-            if(data.players[session].username == data.gameState.host){
+    if (session) {
+        if (data.players[session]) {
+            if (data.players[session].username == data.gameState.host) {
                 return res.sendFile(path.join(__dirname, 'public', 'host_lobby.html'));
             }
         }
-                
-        if(validateServer(data.servers, session)){
+
+        if (validateServer(data.servers, session)) {
             return res.sendFile(path.join(__dirname, 'public', 'server.html'));
         }
         else {
@@ -458,7 +1136,7 @@ app.get("/waiting", async (req, res) => {
         return res.sendFile(path.join(__dirname, 'public', 'waiting_lobby.html'));
     }
 
-    res.status(401).json({error:"401 unauthorised"})
+    res.status(401).json({ error: "401 unauthorised" })
 })
 
 function parseSettingsArray(rawSettings, playerCount) {
@@ -493,11 +1171,11 @@ app.post("/start", async (req, res) => {
         const data = await loadGame();
 
         if (!data.players[session] || data.players[session].username != data.gameState.host) {
-            return res.status(401).json({ message: "Get outa here you dont have credentials clown.", failed : true});
+            return res.status(401).json({ message: "Get outa here you dont have credentials clown.", failed: true });
         }
 
-        if(!isGameOperational(data.servers)){
-            return res.status(202).json({ message : "Cant start the game, o2 and reactor are offline.", failed : true})
+        if (!isGameOperational(data.servers)) {
+            return res.status(202).json({ message: "Cant start the game, o2 and reactor are offline.", failed: true })
         }
 
         const playerIds = Object.keys(data.players);
@@ -505,11 +1183,17 @@ app.post("/start", async (req, res) => {
 
         const parsedSettings = parseSettingsArray(req.body.settings, totalPlayers);
         if (!parsedSettings) {
-            return res.status(400).json({ message: "Invalid or missing settings.", failed : true});
+            return res.status(400).json({ message: "Invalid or missing settings.", failed: true });
         }
+
+        // A fresh game means any leftover timers from a previous round must die.
+        clearAllSabotageTimers();
 
         data.settings = parsedSettings;
         const targetImpostors = data.settings.impostors;
+
+        // Lock in the crisis-phase duration for the round from the host's settings.
+        meltdownCountdownSeconds = data.settings.meltdownCountdown;
 
         let roleDeck = [];
         for (let i = 0; i < totalPlayers; i++) {
@@ -539,43 +1223,30 @@ app.post("/start", async (req, res) => {
         });
 
         data.gameState.started = true;
+        data.gameState.impostorsWon = false;
+        data.gameState.crewmatesWon = false;
         data.gameState.aliveImpostors = targetImpostors;
         data.gameState.playerCount = totalPlayers;
         data.gameState.alivePlayers = totalPlayers;
         data.gameState.totalTasks = totalTasks;
+        data.gameState.completedTasks = 0;
+
+        // Reset any stale sabotage state from a previous round
+        data.activeSabotages = {
+            o2: { ...DEFAULT_SABOTAGES.o2 },
+            reactor: { ...DEFAULT_SABOTAGES.reactor }
+        };
 
         await saveGame(data);
 
-        startTimestampCountdown(data.settings.meltdownCountdown);
-
-        return res.status(200).json({ message: "May a fine game take place, among us!", failed : true});
+        return res.status(200).json({ message: "May a fine game take place, among us!", failed: false });
     });
 });
-
-let gameKillTimeout = null;
-
-function startTimestampCountdown(seconds) {
-    if (gameKillTimeout) clearTimeout(gameKillTimeout);
-
-    const msToWait = seconds * 1000;
-    const targetEndTime = Date.now() + msToWait;
-
-    io.emit("sabotage_countdown_start", {
-        endTime: targetEndTime
-    });
-
-    gameKillTimeout = setTimeout(async () => {
-        const data = await loadGame();
-        if (data.activeSabotages.o2.depleted) {
-            io.emit("game_over", { winner: "impostors" });
-        }
-    }, msToWait);
-}
 
 app.get("/reset", async (req, res) => {
     let data = await loadGame();
 
-    if(!req.cookies.session || !data.players[req.cookies.session]){
+    if (!req.cookies.session || !data.players[req.cookies.session]) {
         let dynamicHtml = `
             <!DOCTYPE html>
             <html>
@@ -591,7 +1262,7 @@ app.get("/reset", async (req, res) => {
         res.set('Content-Type', 'text/html');
         return res.status(401).send(dynamicHtml);
     }
-    if(data.players[req.cookies.session].username != data.gameState.host){
+    if (data.players[req.cookies.session].username != data.gameState.host) {
         let dynamicHtml = `
             <!DOCTYPE html>
             <html>
@@ -607,38 +1278,18 @@ app.get("/reset", async (req, res) => {
         res.set('Content-Type', 'text/html');
         return res.status(401).send(dynamicHtml);
     }
-    if (gameKillTimeout) {
-        clearTimeout(gameKillTimeout);
-        gameKillTimeout = null;
-    }
+    // Kill any in-flight sabotage timers so they can't keep writing
+    // to the freshly-reset game.json.
+    clearAllSabotageTimers();
+    meltdownCountdownSeconds = DEFAULT_SETTINGS.meltdownCountdown;
 
     data = {
-        gameState: {
-            started: false,
-            impostorsWon: false,
-            crewmatesWon: false,
-            emergencyMeeting: false,
-            totalTasks: 0,
-            completedTasks: 0,
-            host: "",
-            aliveImpostors: 0,
-            playerCount: 0,
-            alivePlayers: 0
-        },
-        // Fixed: Reset fields to an empty object structure on reset
+        gameState: { ...DEFAULT_GAME_STATE },
         servers: {},
         players: {},
         activeSabotages: {
-            reactor: {
-                sabotaged: false,
-                meltdown: false,
-                timeLeft: 0
-            },
-            o2: {
-                sabotaged: false,
-                depleted: false,
-                timeLeft: 0
-            }
+            o2: { ...DEFAULT_SABOTAGES.o2 },
+            reactor: { ...DEFAULT_SABOTAGES.reactor }
         },
         settings: { ...DEFAULT_SETTINGS }
     };
@@ -659,10 +1310,13 @@ app.get("/reset", async (req, res) => {
     return res.send(dynamicHtml);
 })
 
+
+// Directory scan defence
+
 const chaoticStatuses = [100, 101, 102, 103, 200, 201, 202, 203, 204, 205, 206, 207, 208, 226, 300, 301, 302, 303, 304, 307, 308, 401, 403, 400, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 420, 421, 422, 423, 425, 426, 429, 431, 451, 500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511];
 const suspiciousKeywords = ['admin', '.env', '.git', 'wp-', 'backup', '.php', '.aspx', '.jsp'];
 
-const corporatePrankStore = {}; 
+const corporatePrankStore = {};
 const STRIKE_LIMIT = 3;
 
 app.use((req, res, next) => {
@@ -695,7 +1349,7 @@ app.use((req, res, next) => {
         return res.status(randomStatus).send(dynamicHtml);
     }
 
-    const isScannerPath = suspiciousKeywords.some(keyword => 
+    const isScannerPath = suspiciousKeywords.some(keyword =>
         req.path.toLowerCase().includes(keyword)
     );
 

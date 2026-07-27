@@ -1,4 +1,4 @@
-const socket = io("http://localhost:6767");
+const socket = io(`http://${IP_socket}:${PORT_socket}`);
 
 let clientAnimationId = null;
 

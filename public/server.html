@@ -20,7 +20,7 @@
     <script>
         function postServer(){
             const it = get("func_val").innerText;
-            fetch("http://localhost:6767/deviceFunc", {
+            fetch(`/deviceFunc`, {
                 method : 'POST',
                 headers : {
                     "Content-Type" : "application/json"

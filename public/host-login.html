@@ -23,7 +23,7 @@
         const pass = document.getElementById("pass").value;
         const serv = get("serv").checked;
 
-        fetch('http://localhost:6767/enter-host', {
+        fetch(`/enter-host`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
