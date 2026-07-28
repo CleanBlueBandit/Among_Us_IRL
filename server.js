@@ -8,12 +8,14 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcrypt';
 import 'dotenv/config';
+import { renderCrewmateWinHtml, renderImpostorWinHtml } from './winscreen.js';
+import { renderRoleRevealHtml } from './roleReveal.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 if(!process.env.PORT){
-    console.log("U forgot to add .env dumass")
+    console.log(".env file is not configured properly")
 }
 
 const PORT = process.env.PORT;
@@ -51,6 +53,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 let gameLock = Promise.resolve();
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function withGameLock(fn) {
     const previous = gameLock;
@@ -284,6 +287,93 @@ app.get("/end", async (req, res) => {
     res.sendStatus(200);
 })
 
+
+app.get("/restart", async (req, res) => {
+    await withGameLock(async () => {
+        const session = req.cookies.session;
+        const data = await loadGame();
+
+        if (!data.players[session] || data.players[session].username != data.gameState.host) {
+            return res.status(401).json({ message: "You are not the host.", failed: true });
+        }
+
+
+        clearAllSabotageTimers();
+
+        for (const id of Object.keys(data.players)) {
+            const p = data.players[id];
+            p.impostor = false;
+            p.role = "none";
+            p.alive = true;
+            p.tasksCompleted = 0;
+            p.totalTasks = data.settings.tasks;
+        }
+
+        const playerCount = Object.keys(data.players).length;
+
+        data.gameState = {
+            ...DEFAULT_GAME_STATE,
+            host: data.gameState.host,
+            playerCount,
+            alivePlayers: playerCount
+        };
+
+        data.activeSabotages = {
+            o2: { ...DEFAULT_SABOTAGES.o2 },
+            reactor: { ...DEFAULT_SABOTAGES.reactor }
+        };
+
+        await saveGame(data);
+
+        io.emit('restart_game', {});
+
+        return res.redirect("/waiting")
+    });
+});
+
+app.post("/restart", async (req, res) => {
+    await withGameLock(async () => {
+        const session = req.cookies.session;
+        const data = await loadGame();
+
+        if (!data.players[session] || data.players[session].username != data.gameState.host) {
+            return res.status(401).json({ message: "You are not the host.", failed: true });
+        }
+
+
+        clearAllSabotageTimers();
+
+        for (const id of Object.keys(data.players)) {
+            const p = data.players[id];
+            p.impostor = false;
+            p.role = "none";
+            p.alive = true;
+            p.tasksCompleted = 0;
+            p.totalTasks = data.settings.tasks; // settings untouched, just re-applied
+        }
+
+        const playerCount = Object.keys(data.players).length;
+
+        data.gameState = {
+            ...DEFAULT_GAME_STATE,
+            host: data.gameState.host,
+            playerCount,
+            alivePlayers: playerCount
+        };
+
+        data.activeSabotages = {
+            o2: { ...DEFAULT_SABOTAGES.o2 },
+            reactor: { ...DEFAULT_SABOTAGES.reactor }
+        };
+
+        await saveGame(data);
+
+        io.emit('restart_game', {});
+
+        return res.status(200).json({ message: "Game restarted.", failed: false });
+    });
+});
+
 app.get('/dashboard', async (req, res) => {
     const data = await loadGame();
     const session = req.cookies.session;
@@ -305,6 +395,16 @@ app.get('/dashboard', async (req, res) => {
 
         res.set('Content-Type', 'text/html');
         return res.send(dynamicHtml);
+    }
+    const playerData = data.players[session];
+    return res.sendFile(path.join(__dirname, 'public', 'crewmate.html'));
+})
+
+app.get('/impostor', async (req, res) => {
+    const data = await loadGame();
+    const session = req.cookies.session;
+    if (!data.players[session]) {
+        return res.status(401).json({ error: "401 unauthorised." });
     }
     const playerData = data.players[session];
 
@@ -452,10 +552,12 @@ async function startSabotageCountdown(type, seconds) {
                     d.gameState.impostorsWon = true;
                     d.gameState.crewmatesWon = false;
                     d.gameState.started = false;
-                    if(type == "o2"){
+                    if(sab.depleted){
                         d.gameState.winCondition = "OXYGEN DEPRIVATION KILLED THE CREW"
                     }
-                    d.gameState.winCondition = "REACTOR EXPLOSION DESTROYED THE SHIP"
+                    else{
+                        d.gameState.winCondition = "REACTOR EXPLOSION DESTROYED THE SHIP"
+                    }
                     
                     await saveGame(d);
 
@@ -653,485 +755,36 @@ io.on("connection", async (socket) => {
 
 app.get("/win", async (req, res) => {
     const data = await loadGame();
-    if(data.gameState.impostorsWon){
-        return res.send(`
-            <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Impostors Won</title>
-<style>
-  :root{
-    --glow: #ff1a1a;
-    --glow-soft: rgba(255, 26, 26, 0.55);
-    --glow-faint: rgba(255, 26, 26, 0.12);
-  }
-  html, body{
-    margin:0;
-    padding:0;
-    width:100%;
-    height:100%;
-    background:#050507;
-    overflow:hidden;
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  }
-  .stage{
-    position:relative;
-    width:100vw;
-    height:100vh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-  }
+    const session = req.cookies.session;
+    const isHost = !!(session && data.players[session] && data.players[session].username === data.gameState.host);
 
-  /* subtle drifting stars/particles for atmosphere */
-  .particles{
-    position:absolute;
-    inset:0;
-    overflow:hidden;
-    pointer-events:none;
-  }
-  .particle{
-    position:absolute;
-    width:2px;
-    height:2px;
-    background:rgba(255,255,255,0.5);
-    border-radius:50%;
-    animation: drift linear infinite;
-    opacity:0;
-  }
-  @keyframes drift{
-    0%{ opacity:0; transform:translateY(0); }
-    10%{ opacity:0.6; }
-    90%{ opacity:0.3; }
-    100%{ opacity:0; transform:translateY(-40px); }
-  }
-
-  /* the horizon glow band behind the text */
-  .horizon{
-    position:absolute;
-    left:50%;
-    top:50%;
-    width:140vw;
-    height:60vh;
-    transform:translate(-50%,-50%) scaleX(0.2);
-    background: radial-gradient(ellipse at center, var(--glow-soft) 0%, var(--glow-faint) 35%, transparent 70%);
-    filter: blur(10px);
-    opacity:0;
-    animation: horizonRise 3.2s ease-out forwards;
-    animation-delay: 0.3s;
-  }
-  @keyframes horizonRise{
-    0%{ opacity:0; transform:translate(-50%,-50%) scaleX(0.1) scaleY(0.4); }
-    40%{ opacity:0.9; }
-    100%{ opacity:0.75; transform:translate(-50%,-50%) scaleX(1) scaleY(1); }
-  }
-
-  /* thin glowing line that sweeps out like a horizon edge */
-  .line{
-    position:absolute;
-    left:50%;
-    top:50%;
-    width:0;
-    height:2px;
-    background: linear-gradient(90deg, transparent, var(--glow), transparent);
-    box-shadow: 0 0 20px 4px var(--glow-soft);
-    transform:translate(-50%,-50%);
-    animation: lineExpand 1.6s ease-out forwards;
-    animation-delay: 0.15s;
-  }
-  @keyframes lineExpand{
-    0%{ width:0; opacity:0; }
-    50%{ opacity:1; }
-    100%{ width:80vw; opacity:0.8; }
-  }
-
-  .content{
-    position:relative;
-    z-index:2;
-    text-align:center;
-  }
-
-  .eyebrow{
-    display:block;
-    font-size:1rem;
-    letter-spacing:0.6em;
-    text-transform:uppercase;
-    color: rgba(255, 90, 90, 0.55);
-    opacity:0;
-    margin-bottom:1.2rem;
-    animation: fadeInSlight 1.2s ease forwards;
-    animation-delay: 2.1s;
-  }
-
-  h1{
-    margin:0;
-    font-size: clamp(2.5rem, 9vw, 7rem);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--glow);
-    font-weight:800;
-    opacity:0;
-    filter: blur(14px);
-    letter-spacing: 0.5em;
-    animation:
-      revealText 1.8s cubic-bezier(.2,.8,.2,1) forwards,
-      pulseGlow 2.4s ease-in-out infinite;
-    animation-delay: 0.6s, 3s;
-    text-shadow:
-      0 0 10px var(--glow),
-      0 0 25px var(--glow-soft),
-      0 0 60px var(--glow-soft),
-      0 0 120px var(--glow-faint);
-  }
-
-  @keyframes revealText{
-    0%{
-      opacity:0;
-      filter: blur(20px);
-      letter-spacing: 1.1em;
-      transform: scale(1.15);
+    if (data.gameState.crewmatesWon) {
+        return res.send(renderCrewmateWinHtml(data, isHost));
     }
-    35%{
-      opacity:0.35;
-      filter: blur(10px);
-    }
-    55%{
-      opacity:0.15;
-      filter: blur(16px);
-    }
-    70%{
-      opacity:0.9;
-      filter: blur(2px);
-      letter-spacing: 0.6em;
-    }
-    100%{
-      opacity:1;
-      filter: blur(0px);
-      letter-spacing: 0.12em;
-      transform: scale(1);
-    }
-  }
-
-  @keyframes pulseGlow{
-    0%, 100%{
-      text-shadow:
-        0 0 10px var(--glow),
-        0 0 25px var(--glow-soft),
-        0 0 60px var(--glow-soft),
-        0 0 120px var(--glow-faint);
-    }
-    50%{
-      text-shadow:
-        0 0 16px var(--glow),
-        0 0 40px var(--glow-soft),
-        0 0 90px var(--glow-soft),
-        0 0 160px var(--glow-faint);
-    }
-  }
-
-  @keyframes fadeInSlight{
-    from{ opacity:0; transform:translateY(6px); }
-    to{ opacity:1; transform:translateY(0); }
-  }
-
-  .vignette{
-    position:absolute;
-    inset:0;
-    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.75) 100%);
-    pointer-events:none;
-    z-index:3;
-  }
-
-  .flicker-overlay{
-    position:absolute;
-    inset:0;
-    background: var(--glow-faint);
-    opacity:0;
-    pointer-events:none;
-    animation: flicker 0.15s steps(1) 3;
-    animation-delay: 0.55s;
-  }
-  @keyframes flicker{
-    0%{ opacity:0; }
-    50%{ opacity:0.15; }
-    100%{ opacity:0; }
-  }
-</style>
-</head>
-<body>
-  <div class="stage">
-    <div class="particles" id="particles"></div>
-    <div class="horizon"></div>
-    <div class="line"></div>
-    <div class="flicker-overlay"></div>
-    <div class="content">
-      <span class="eyebrow">${data.gameState.winCondition}</span>
-      <h1>Impostors Won</h1>
-    </div>
-    <div class="vignette"></div>
-  </div>
-
-<script>
-  const container = document.getElementById('particles');
-  const count = 60;
-  for(let i=0;i<count;i++){
-    const p = document.createElement('div');
-    p.className = 'particle';
-    const size = Math.random()*2 + 1;
-    p.style.width = size+'px';
-    p.style.height = size+'px';
-    p.style.left = Math.random()*100 + 'vw';
-    p.style.top = Math.random()*100 + 'vh';
-    p.style.animationDuration = (6 + Math.random()*10) + 's';
-    p.style.animationDelay = (Math.random()*8) + 's';
-    container.appendChild(p);
-  }
-</script>
-</body>
-</html>
-
-            `)
-    }
-    return res.send(`
-        <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Crewmates Won</title>
-<style>
-  :root{
-    --glow: #1ac8ff;
-    --glow-soft: rgba(26, 200, 255, 0.55);
-    --glow-faint: rgba(26, 200, 255, 0.12);
-  }
-  html, body{
-    margin:0;
-    padding:0;
-    width:100%;
-    height:100%;
-    background:#050507;
-    overflow:hidden;
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  }
-  .stage{
-    position:relative;
-    width:100vw;
-    height:100vh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-  }
-
-  /* subtle drifting stars/particles for atmosphere */
-  .particles{
-    position:absolute;
-    inset:0;
-    overflow:hidden;
-    pointer-events:none;
-  }
-  .particle{
-    position:absolute;
-    width:2px;
-    height:2px;
-    background:rgba(255,255,255,0.5);
-    border-radius:50%;
-    animation: drift linear infinite;
-    opacity:0;
-  }
-  @keyframes drift{
-    0%{ opacity:0; transform:translateY(0); }
-    10%{ opacity:0.6; }
-    90%{ opacity:0.3; }
-    100%{ opacity:0; transform:translateY(-40px); }
-  }
-
-  /* the horizon glow band behind the text */
-  .horizon{
-    position:absolute;
-    left:50%;
-    top:50%;
-    width:140vw;
-    height:60vh;
-    transform:translate(-50%,-50%) scaleX(0.2);
-    background: radial-gradient(ellipse at center, var(--glow-soft) 0%, var(--glow-faint) 35%, transparent 70%);
-    filter: blur(10px);
-    opacity:0;
-    animation: horizonRise 3.2s ease-out forwards;
-    animation-delay: 0.3s;
-  }
-  @keyframes horizonRise{
-    0%{ opacity:0; transform:translate(-50%,-50%) scaleX(0.1) scaleY(0.4); }
-    40%{ opacity:0.9; }
-    100%{ opacity:0.75; transform:translate(-50%,-50%) scaleX(1) scaleY(1); }
-  }
-
-  /* thin glowing line that sweeps out like a horizon edge */
-  .line{
-    position:absolute;
-    left:50%;
-    top:50%;
-    width:0;
-    height:2px;
-    background: linear-gradient(90deg, transparent, var(--glow), transparent);
-    box-shadow: 0 0 20px 4px var(--glow-soft);
-    transform:translate(-50%,-50%);
-    animation: lineExpand 1.6s ease-out forwards;
-    animation-delay: 0.15s;
-  }
-  @keyframes lineExpand{
-    0%{ width:0; opacity:0; }
-    50%{ opacity:1; }
-    100%{ width:80vw; opacity:0.8; }
-  }
-
-  .content{
-    position:relative;
-    z-index:2;
-    text-align:center;
-  }
-
-  .eyebrow{
-    display:block;
-    font-size:1rem;
-    letter-spacing:0.6em;
-    text-transform:uppercase;
-    color: rgba(90, 200, 255, 0.55);
-    opacity:0;
-    margin-bottom:1.2rem;
-    animation: fadeInSlight 1.2s ease forwards;
-    animation-delay: 2.1s;
-  }
-
-  h1{
-    margin:0;
-    font-size: clamp(2.5rem, 9vw, 7rem);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--glow);
-    font-weight:800;
-    opacity:0;
-    filter: blur(14px);
-    letter-spacing: 0.5em;
-    animation:
-      revealText 1.8s cubic-bezier(.2,.8,.2,1) forwards,
-      pulseGlow 2.4s ease-in-out infinite;
-    animation-delay: 0.6s, 3s;
-    text-shadow:
-      0 0 10px var(--glow),
-      0 0 25px var(--glow-soft),
-      0 0 60px var(--glow-soft),
-      0 0 120px var(--glow-faint);
-  }
-
-  @keyframes revealText{
-    0%{
-      opacity:0;
-      filter: blur(20px);
-      letter-spacing: 1.1em;
-      transform: scale(1.15);
-    }
-    35%{
-      opacity:0.35;
-      filter: blur(10px);
-    }
-    55%{
-      opacity:0.15;
-      filter: blur(16px);
-    }
-    70%{
-      opacity:0.9;
-      filter: blur(2px);
-      letter-spacing: 0.6em;
-    }
-    100%{
-      opacity:1;
-      filter: blur(0px);
-      letter-spacing: 0.12em;
-      transform: scale(1);
-    }
-  }
-
-  @keyframes pulseGlow{
-    0%, 100%{
-      text-shadow:
-        0 0 10px var(--glow),
-        0 0 25px var(--glow-soft),
-        0 0 60px var(--glow-soft),
-        0 0 120px var(--glow-faint);
-    }
-    50%{
-      text-shadow:
-        0 0 16px var(--glow),
-        0 0 40px var(--glow-soft),
-        0 0 90px var(--glow-soft),
-        0 0 160px var(--glow-faint);
-    }
-  }
-
-  @keyframes fadeInSlight{
-    from{ opacity:0; transform:translateY(6px); }
-    to{ opacity:1; transform:translateY(0); }
-  }
-
-  .vignette{
-    position:absolute;
-    inset:0;
-    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.75) 100%);
-    pointer-events:none;
-    z-index:3;
-  }
-
-  .flicker-overlay{
-    position:absolute;
-    inset:0;
-    background: var(--glow-faint);
-    opacity:0;
-    pointer-events:none;
-    animation: flicker 0.15s steps(1) 3;
-    animation-delay: 0.55s;
-  }
-  @keyframes flicker{
-    0%{ opacity:0; }
-    50%{ opacity:0.15; }
-    100%{ opacity:0; }
-  }
-</style>
-</head>
-<body>
-  <div class="stage">
-    <div class="particles" id="particles"></div>
-    <div class="horizon"></div>
-    <div class="line"></div>
-    <div class="flicker-overlay"></div>
-    <div class="content">
-      <span class="eyebrow">${data.gameState.winCondition}</span>
-      <h1>Crewmates Won</h1>
-    </div>
-    <div class="vignette"></div>
-  </div>
-
-<script>
-  const container = document.getElementById('particles');
-  const count = 60;
-  for(let i=0;i<count;i++){
-    const p = document.createElement('div');
-    p.className = 'particle';
-    const size = Math.random()*2 + 1;
-    p.style.width = size+'px';
-    p.style.height = size+'px';
-    p.style.left = Math.random()*100 + 'vw';
-    p.style.top = Math.random()*100 + 'vh';
-    p.style.animationDuration = (6 + Math.random()*10) + 's';
-    p.style.animationDelay = (Math.random()*8) + 's';
-    container.appendChild(p);
-  }
-</script>
-</body>
-</html>
-
-        `)
+    return res.send(renderImpostorWinHtml(data, isHost));
 })
+
+
+app.get('/reveal', async (req, res) => {
+    let data = await loadGame();
+    const session = req.cookies.session;
+    const player = data.players[session];
+
+    if (!player) {
+        return res.status(401).json({ error: "401 unauthorized" });
+    }
+
+    if (!data.gameState.started) {
+        await delay(1000);
+        data = await loadGame();
+        
+        if (!data.gameState.started) {
+            return res.redirect("/waiting");
+        }
+    }
+
+    return res.send(renderRoleRevealHtml(player.impostor));
+});
 
 app.get("/waiting", async (req, res) => {
     const session = req.cookies.session;

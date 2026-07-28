@@ -27,11 +27,11 @@
         <p style="margin: 10px" id="impostor_val">2</p>
         <button onclick="adjustValue('impostor_val', true, 20)">&gt;</button>
     </div>
-    <h4>Meltdown countdown</h4>
+    <h4>Crisis countdown</h4>
     <div style="display: flex;">
-        <button onclick="adjustValue('cd_val', false, 20)">&lt;</button>
+        <button onclick="adjustValue('cd_val', false, 510)">&lt;</button>
         <p style="margin: 10px" id="cd_val">30</p>
-        <button onclick="adjustValue('cd_val', true, 20)">&gt;</button>
+        <button onclick="adjustValue('cd_val', true, 510)">&gt;</button>
     </div>
     <h4>Tasks per player</h4>
     <div style="display: flex;">
@@ -95,7 +95,7 @@
                     get("fail").innerText = data.message;
                 }
                 else{
-                    window.location.href = "/dashboard"; 
+                    window.location.href = "/reveal"; 
                 } 
             })
             .catch(console.error);

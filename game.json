@@ -1,203 +1,19 @@
 {
   "gameState": {
-    "started": true,
-    "winCondition": "REACTOR EXPLOSION DESTROYED THE SHIP",
+    "started": false,
+    "winCondition": "",
     "impostorsWon": false,
     "crewmatesWon": false,
     "emergencyMeeting": false,
-    "totalTasks": 100,
+    "totalTasks": 0,
     "completedTasks": 0,
-    "host": "test47",
-    "aliveImpostors": 19,
-    "playerCount": 20,
-    "alivePlayers": 20
+    "host": "",
+    "aliveImpostors": 0,
+    "playerCount": 0,
+    "alivePlayers": 0
   },
-  "servers": {
-    "ss": "o2",
-    "53023bbf-a525-4a85-b60a-f5fec4d8f636": "reactor"
-  },
-  "players": {
-    "dummy_1785143369545_1": {
-      "id": "ea4b9304-c7f0-4e23-8aef-1a138e29a4c5",
-      "username": "dummy_2",
-      "role": "impostor",
-      "alive": true,
-      "tasksCompleted": 0,
-      "totalTasks": 5,
-      "impostor": true
-    },
-    "dummy_1785143369545_2": {
-      "id": "04c6aa43-91d2-4d35-aae1-91c53f9287a6",
-      "username": "dummy_3",
-      "role": "impostor",
-      "alive": true,
-      "tasksCompleted": 0,
-      "totalTasks": 5,
-      "impostor": true
-    },
-    "dummy_1785143369545_3": {
-      "id": "f3c8f0ac-af25-48a3-8fde-254f7b5ca5b8",
-      "username": "dummy_4",
-      "role": "impostor",
-      "alive": true,
-      "tasksCompleted": 0,
-      "totalTasks": 5,
-      "impostor": true
-    },
-    "dummy_1785143369545_4": {
-      "id": "453a6620-80a5-4d51-93bf-63b025887ffa",
-      "username": "dummy_5",
-      "role": "impostor",
-      "alive": true,
-      "tasksCompleted": 0,
-      "totalTasks": 5,
-      "impostor": true
-    },
-    "dummy_1785143369545_5": {
-      "id": "f8002f11-539c-4093-81a8-8fe8e7bb439c",
-      "username": "dummy_6",
-      "role": "impostor",
-      "alive": true,
-      "tasksCompleted": 0,
-      "totalTasks": 5,
-      "impostor": true
-    },
-    "dummy_1785143369545_6": {
-      "id": "505539a4-373c-4e5c-90f8-c9a8fea38eed",
-      "username": "dummy_7",
-      "role": "impostor",
-      "alive": true,
-      "tasksCompleted": 0,
-      "totalTasks": 5,
-      "impostor": true
-    },
-    "dummy_1785143369545_7": {
-      "id": "77afea72-e14e-4156-b9da-ff4455be974c",
-      "username": "dummy_8",
-      "role": "impostor",
-      "alive": true,
-      "tasksCompleted": 0,
-      "totalTasks": 5,
-      "impostor": true
-    },
-    "dummy_1785143369545_8": {
-      "id": "c4abf37d-6401-42d0-8153-28278c70a5ac",
-      "username": "dummy_9",
-      "role": "impostor",
-      "alive": true,
-      "tasksCompleted": 0,
-      "totalTasks": 5,
-      "impostor": true
-    },
-    "dummy_1785143369545_9": {
-      "id": "a2db64ab-d230-4d67-80f8-6ceb37f9d280",
-      "username": "dummy_10",
-      "role": "impostor",
-      "alive": true,
-      "tasksCompleted": 0,
-      "totalTasks": 5,
-      "impostor": true
-    },
-    "dummy_1785143369545_10": {
-      "id": "f132bdce-3529-4d5f-b762-7dba7de726ee",
-      "username": "dummy_11",
-      "role": "impostor",
-      "alive": true,
-      "tasksCompleted": 0,
-      "totalTasks": 5,
-      "impostor": true
-    },
-    "dummy_1785143369545_11": {
-      "id": "b434ae55-7df2-4d1f-8634-25af506aeddb",
-      "username": "dummy_12",
-      "role": "crewmate",
-      "alive": true,
-      "tasksCompleted": 0,
-      "totalTasks": 5,
-      "impostor": false
-    },
-    "dummy_1785143369545_12": {
-      "id": "fc363dbe-17a6-4ee6-bdb6-274df6d5efce",
-      "username": "dummy_13",
-      "role": "impostor",
-      "alive": true,
-      "tasksCompleted": 0,
-      "totalTasks": 5,
-      "impostor": true
-    },
-    "dummy_1785143369545_13": {
-      "id": "df371e07-c34b-45f7-89db-d9022bb2f75d",
-      "username": "dummy_14",
-      "role": "impostor",
-      "alive": true,
-      "tasksCompleted": 0,
-      "totalTasks": 5,
-      "impostor": true
-    },
-    "dummy_1785143369545_14": {
-      "id": "2b2edf8f-ec68-41f5-93b9-a4ecb435c8f4",
-      "username": "dummy_15",
-      "role": "impostor",
-      "alive": true,
-      "tasksCompleted": 0,
-      "totalTasks": 5,
-      "impostor": true
-    },
-    "dummy_1785143369546_15": {
-      "id": "c895795c-4d8a-40b4-9429-cb6ae9719844",
-      "username": "dummy_16",
-      "role": "impostor",
-      "alive": true,
-      "tasksCompleted": 0,
-      "totalTasks": 5,
-      "impostor": true
-    },
-    "dummy_1785143369546_16": {
-      "id": "3cb8986b-0a79-4a6b-b3f1-c53e1ecadbf9",
-      "username": "dummy_17",
-      "role": "impostor",
-      "alive": true,
-      "tasksCompleted": 0,
-      "totalTasks": 5,
-      "impostor": true
-    },
-    "dummy_1785143369546_17": {
-      "id": "b89373c0-e638-4589-bb0c-2aac38e7b08f",
-      "username": "dummy_18",
-      "role": "impostor",
-      "alive": true,
-      "tasksCompleted": 0,
-      "totalTasks": 5,
-      "impostor": true
-    },
-    "dummy_1785143369546_18": {
-      "id": "ba626535-ec25-47b3-843c-a0089198437e",
-      "username": "dummy_19",
-      "role": "impostor",
-      "alive": true,
-      "tasksCompleted": 0,
-      "totalTasks": 5,
-      "impostor": true
-    },
-    "dummy_1785143369546_19": {
-      "id": "2b8b08ff-a592-4725-8d86-6c9353ecbab2",
-      "username": "dummy_20",
-      "role": "impostor",
-      "alive": true,
-      "tasksCompleted": 0,
-      "totalTasks": 5,
-      "impostor": true
-    },
-    "36fc7747-257f-48d2-bb34-e66b41e4f6ce": {
-      "id": "36fc7747-257f-48d2-bb34-e66b41e4f6ce",
-      "username": "test47",
-      "alive": true,
-      "tasksCompleted": 0,
-      "totalTasks": 5,
-      "impostor": true,
-      "role": "impostor"
-    }
-  },
+  "servers": {},
+  "players": {},
   "activeSabotages": {
     "o2": {
       "sabotaged": false,
@@ -211,8 +27,8 @@
     }
   },
   "settings": {
-    "impostors": 19,
-    "meltdownCountdown": 5,
+    "impostors": 2,
+    "meltdownCountdown": 30,
     "tasks": 5
   }
 }

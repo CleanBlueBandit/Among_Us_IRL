@@ -2,61 +2,378 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crewmate</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Impostor Remote</title>
     <style>
-        .stable{
-            color: green;
+        :root {
+            --rust-dark: #1a120c;
+            --rust-mid: #2e1d14;
+            --rust-metal: #422d20;
+            --rust-accent: #8b4513;
+            --blood-red: #8b0000;
+            --blood-bright: #d32f2f;
+            --terminal-green: #33ff33;
+            --metal-shine: rgba(255, 255, 255, 0.08);
         }
-        .unstable{
-            color: red;
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background-color: #0a0807;
+            background-image: 
+                radial-gradient(circle at 15% 20%, rgba(139, 0, 0, 0.15) 0%, transparent 20%),
+                radial-gradient(circle at 85% 80%, rgba(139, 0, 0, 0.1) 0%, transparent 25%),
+                linear-gradient(135deg, #0d0a08 0%, #050403 100%);
+            color: #d1c7bd;
+            font-family: 'Courier New', Courier, monospace;
+            min-height: 100vh;
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Rusty Remote Chassis */
+        .remote-case {
+            width: 100%;
+            max-width: 420px;
+            background: 
+                /* Subtle Blood Splatters */
+                radial-gradient(circle at 25% 18%, rgba(120, 10, 10, 0.6) 2px, transparent 5px),
+                radial-gradient(circle at 28% 22%, rgba(90, 5, 5, 0.5) 1px, transparent 3px),
+                radial-gradient(circle at 75% 65%, rgba(140, 15, 15, 0.7) 3px, transparent 7px),
+                radial-gradient(circle at 72% 70%, rgba(80, 0, 0, 0.4) 2px, transparent 4px),
+                radial-gradient(circle at 50% 88%, rgba(110, 8, 8, 0.5) 4px, transparent 8px),
+                /* Metal Texture */
+                linear-gradient(170deg, var(--rust-metal) 0%, var(--rust-mid) 50%, var(--rust-dark) 100%);
+            border: 4px solid #140d09;
+            border-radius: 20px;
+            padding: 20px 16px;
+            box-shadow: 
+                inset 2px 2px 4px rgba(255, 255, 255, 0.15),
+                inset -3px -3px 8px rgba(0, 0, 0, 0.9),
+                0 15px 35px rgba(0, 0, 0, 0.95);
+            position: relative;
+        }
+
+        /* Decorative Screws/Rivets */
+        .rivet {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: linear-gradient(135deg, #5a4334, #1a100a);
+            border-radius: 50%;
+            border: 1px solid #100a06;
+            box-shadow: inset 1px 1px 1px rgba(255,255,255,0.2);
+        }
+        .rivet-tl { top: 10px; left: 10px; }
+        .rivet-tr { top: 10px; right: 10px; }
+        .rivet-bl { bottom: 10px; left: 10px; }
+        .rivet-br { bottom: 10px; right: 10px; }
+
+        /* Header Display */
+        .header {
+            text-align: center;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #241710;
+            padding-bottom: 10px;
+        }
+
+        .header h1 {
+            color: var(--blood-bright);
+            font-size: 2rem;
+            margin: 0;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px rgba(211, 47, 47, 0.6), 2px 2px 0px #000;
+        }
+
+        /* Player Info Screen */
+        .terminal-screen {
+            background-color: #060a06;
+            border: 2px solid #2b2018;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 15px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.9);
+            font-size: 0.85rem;
+        }
+
+        .terminal-screen p {
+            margin: 4px 0;
+            color: #88a888;
+        }
+
+        /* Progress Bar Styles */
+        .task-container {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px dashed #2b2018;
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+            color: #88a888;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 12px;
+            background-color: #0a110a;
+            border: 1px solid #1c2b1c;
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.8);
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #2b662b, #44aa44);
+            transition: width 0.5s ease-out;
+            box-shadow: 0 0 8px rgba(68, 170, 68, 0.4);
+        }
+
+        /* Control Sections */
+        .control-group {
+            background: rgba(15, 10, 7, 0.6);
+            border: 1px solid #3d271a;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 15px;
+        }
+
+        .control-group h4 {
+            margin: 0 0 10px 0;
+            color: #d19a66;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Stepper Buttons & Displays */
+        .stepper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+            gap: 15px;
+        }
+
+        .btn-stepper {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(180deg, #4a3528 0%, #241710 100%);
+            border: 2px solid #5a3e2e;
+            color: #e0d0c0;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #120b07, inset 0 1px 0 rgba(255,255,255,0.2);
+            touch-action: manipulation;
+        }
+
+        .btn-stepper:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #120b07;
+        }
+
+        .val-display {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #ffcc00;
+            background: #000;
+            padding: 6px 16px;
+            border-radius: 6px;
+            border: 1px solid #443020;
+            min-width: 65px;
+            text-align: center;
+        }
+
+        /* Main Sabotage Trigger Buttons */
+        .btn-sabotage {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(180deg, #8b0000 0%, #4a0000 100%);
+            border: 2px solid #ff3333;
+            color: #ffffff;
+            font-family: inherit;
+            font-size: 1.1rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #200000, 0 0 10px rgba(255, 0, 0, 0.3);
+            transition: all 0.1s ease;
+            touch-action: manipulation;
+        }
+
+        .btn-sabotage:active:not(:disabled) {
+            transform: translateY(4px);
+            box-shadow: 0 1px 0 #200000;
+        }
+
+        .btn-sabotage:disabled {
+            background: #2b221c;
+            border-color: #44352c;
+            color: #66554b;
+            box-shadow: none;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        /* System Status Panel */
+        .status-panel {
+            background: #050505;
+            border: 2px solid #2e1d14;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 15px;
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 6px 0;
+            font-size: 1rem;
+        }
+
+        .stable {
+            color: var(--terminal-green);
+            text-shadow: 0 0 5px rgba(51, 255, 51, 0.5);
+            font-weight: bold;
+        }
+
+        .unstable {
+            color: var(--blood-bright);
+            text-shadow: 0 0 8px rgba(211, 47, 47, 0.8);
+            font-weight: bold;
+            animation: blink 0.8s infinite alternate;
+        }
+
+        @keyframes blink {
+            from { opacity: 1; }
+            to { opacity: 0.4; }
+        }
+
+        #time {
+            text-align: center;
+            color: #ff3333;
+            font-size: 1.1rem;
+            font-weight: bold;
+            min-height: 1.4em;
+            margin-top: 8px;
+        }
+
+        /* Leave Button */
+        .btn-leave {
+            width: 100%;
+            padding: 10px;
+            background: #1c1410;
+            border: 1px solid #3a281c;
+            color: #88776c;
+            font-family: inherit;
+            border-radius: 6px;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
-    <h1 style="color: red">Impostor</h1>
-    <p id="usr"></p>
-    <p id="alive"></p>
-    <p id="id"></p>
-    <hr>
-    <p id="totalTasks"></p>
-    <p id="completedTasks"></p>
-    <hr>
-    <h4>Deplete o2</h4>
-    <div style="display: flex;">
-        <button onclick="adjustValue('o2_val', false, 120, 5)">&lt;</button>
-        <p style="margin: 10px" id="o2_val">30</p>
-        <button onclick="adjustValue('o2_val', true, 120, 5)">&gt;</button>
-    </div>
-    <br>
-    <button id="o2_sabotage" onclick="sabotage_o2()">Sabotage</button>
-    <h4>Iniciate reactor meltdown</h4>
-    <div style="display: flex;">
-        <button onclick="adjustValue('reac_val', false, 120, 5)">&lt;</button>
-        <p style="margin: 10px" id="reac_val">30</p>
-        <button onclick="adjustValue('reac_val', true, 120, 5)">&gt;</button>
-    </div>
-    <br>
-    <button id="reac_sabotage" onclick="sabotage_reac()">Sabotage</button>
-    <hr>
-    <div style="display: flex;">
-        <p style="margin-right: 5px;">reactor: </p>
-        <p id="reactor" class="stable">stable</p>
-    </div>
-    <div style="display: flex;">
-        <p style="margin-right: 5px;">O2: </p>
-        <p id="o2" class="stable">stable</p>
-    </div>
-    <p id="time"></p>
-    
-    <a href="/logout"><button>leave</button></a>
 
+    <div class="remote-case">
+        <div class="rivet rivet-tl"></div>
+        <div class="rivet rivet-tr"></div>
+        <div class="rivet rivet-bl"></div>
+        <div class="rivet rivet-br"></div>
+
+        <div class="header">
+            <h1>1MP0ST0R REM0TE H4CK</h1>
+        </div>
+
+        <div class="terminal-screen">
+            <p id="usr">username: ---</p>
+            <p id="id">id: ---</p>
+            <p id="alive">status: ---</p>
+            
+            <div class="task-container">
+                <div class="task-header">
+                    <span>Crew Tasks:</span>
+                    <span id="totalTasksText">--/--</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="taskProgressFill"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h4>Deplete O2</h4>
+            <div class="stepper">
+                <button class="btn-stepper" onclick="adjustValue('o2_val', false, 120, 5)">&lt;</button>
+                <div class="val-display" id="o2_val">30</div>
+                <button class="btn-stepper" onclick="adjustValue('o2_val', true, 120, 5)">&gt;</button>
+            </div>
+            <button id="o2_sabotage" class="btn-sabotage" onclick="sabotage_o2()">Sabotage O2</button>
+        </div>
+
+        <div class="control-group">
+            <h4>Initiate Reactor Meltdown</h4>
+            <div class="stepper">
+                <button class="btn-stepper" onclick="adjustValue('reac_val', false, 120, 5)">&lt;</button>
+                <div class="val-display" id="reac_val">30</div>
+                <button class="btn-stepper" onclick="adjustValue('reac_val', true, 120, 5)">&gt;</button>
+            </div>
+            <button id="reac_sabotage" class="btn-sabotage" onclick="sabotage_reac()">Sabotage Reactor</button>
+        </div>
+
+        <div class="status-panel">
+            <div class="status-row">
+                <span>Reactor:</span>
+                <span id="reactor" class="stable">stable</span>
+            </div>
+            <div class="status-row">
+                <span>Oxygen:</span>
+                <span id="o2" class="stable">stable</span>
+            </div>
+            <div id="time"></div>
+        </div>
+
+        <a href="/logout" style="text-decoration: none;">
+            <button class="btn-leave">LEAVE GAME</button>
+        </a>
+        <a href="/dashboard" style="text-decoration: none;">
+            <button class="btn-leave">BACK TO CREWMATE</button>
+        </a>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script type="module" src="common.js"></script>
+    <script src="common.js"></script>
     <script>
-
         let clientAnimationId = null;
+
+        // Helper function for adjustment buttons
+        function adjustValue(elementId, isIncrement, maxVal = 120, minVal = 5) {
+            const el = document.getElementById(elementId);
+            let val = parseInt(el.innerText) || 30;
+            val = isIncrement ? val + 5 : val - 5;
+            if (val > maxVal) val = maxVal;
+            if (val < minVal) val = minVal;
+            el.innerText = val;
+        }
+
+        function get(id) {
+            return document.getElementById(id);
+        }
 
         function animateCountdown(targetEndTime) {
             if (clientAnimationId) cancelAnimationFrame(clientAnimationId);
@@ -64,11 +381,10 @@
             function updateFrame() {
                 const now = Date.now();
                 const genericTimeRemaining = targetEndTime - now;
-
                 const secondsLeft = Math.max(0, (genericTimeRemaining / 1000)).toFixed(1);
 
                 if (genericTimeRemaining <= 0) {
-                    document.getElementById("time").innerText = "0.0s - SYSTEM CRISIS!";
+                    document.getElementById("time").innerText = "0.0s - CRITICAL SYSTEM FAILURE!";
                     cancelAnimationFrame(clientAnimationId);
                     return;
                 }
@@ -80,78 +396,111 @@
             clientAnimationId = requestAnimationFrame(updateFrame);
         }
 
+        function clearActiveSabotageUI() {
+            if (clientAnimationId) {
+                cancelAnimationFrame(clientAnimationId);
+                clientAnimationId = null;
+            }
+            document.getElementById("time").innerText = "";
+            document.getElementById("o2").innerText = "stable";
+            document.getElementById("o2").className = "stable";
+            document.getElementById("reactor").innerText = "stable";
+            document.getElementById("reactor").className = "stable";
+            
+            // Re-enable sabotage buttons once systems are clear
+            document.getElementById("o2_sabotage").disabled = false;
+            document.getElementById("reac_sabotage").disabled = false;
+        }
+
+        // --- Socket Listeners ---
+
         socket.on("game_over", (data) => {
-            window.location.href = "/win"
-        })
+            window.location.href = "/win";
+        });
+
         socket.on("player_data_request", (data) => {
             document.getElementById("usr").innerText = "username: " + data.username;
             document.getElementById("id").innerText = "id: " + data.id;
-            document.getElementById("alive").innerText = data.alive ? "Player is alive" : "Player is dead";
-            
+            document.getElementById("alive").innerText = data.alive ? "status: Alive" : "status: Dead";
         });
 
         socket.on("game_data_request", (data) => {
-            document.getElementById("totalTasks").innerText = "Total tasks completed: " + data.completedTasks + "/" + data.totalTasks;
+            // Update Text
+            document.getElementById("totalTasksText").innerText = data.completedTasks + "/" + data.totalTasks;
+            
+            // Update Progress Bar
+            let percentage = 0;
+            if (data.totalTasks > 0) {
+                percentage = (data.completedTasks / data.totalTasks) * 100;
+            }
+            // Cap at 100% just in case
+            percentage = Math.min(percentage, 100);
+            document.getElementById("taskProgressFill").style.width = percentage + "%";
         });
 
+        // Disable buttons when server acknowledges an active sabotage
         socket.on("sabotage_ack", (data) => {
-            if(data.ok){
+            if (data.ok) {
                 document.getElementById("o2_sabotage").disabled = true;
                 document.getElementById("reac_sabotage").disabled = true;
             }
-            
-        })
+        });
 
+        // LISTEN FOR SABOTAGE FIXED EVENT: Resets timers & unlocks buttons
+        socket.on("sabotage_fixed", (data) => {
+            clearActiveSabotageUI();
+        });
+
+        // Sync active state from server
         socket.on("sabotage_data_request", (data) => {
-            if (clientAnimationId) {
-                cancelAnimationFrame(clientAnimationId);
-                document.getElementById("time").innerText = "";
-            }
-
             if (data.sData.o2.depleted) {
                 document.getElementById("o2").innerText = "depleted";
                 document.getElementById("o2").className = "unstable";
+                document.getElementById("reactor").innerText = "stable";
                 document.getElementById("reactor").className = "stable";
+                
+                document.getElementById("o2_sabotage").disabled = true;
+                document.getElementById("reac_sabotage").disabled = true;
                 
                 animateCountdown(data.endTime);
             } 
             else if (data.sData.reactor.meltdown) {
                 document.getElementById("reactor").innerText = "meltdown";
                 document.getElementById("reactor").className = "unstable";
+                document.getElementById("o2").innerText = "stable";
                 document.getElementById("o2").className = "stable";
+                
+                document.getElementById("o2_sabotage").disabled = true;
+                document.getElementById("reac_sabotage").disabled = true;
                 
                 animateCountdown(data.endTime);
             } 
             else {
-                document.getElementById("o2").innerText = "stable";
-                document.getElementById("o2").className = "stable";
-                document.getElementById("reactor").innerText = "stable";
-                document.getElementById("reactor").className = "stable";
-                document.getElementById("time").innerText = "";
+                clearActiveSabotageUI();
             }
         });
 
         socket.on("Err", (data) => {
-            console.error("Server error\n" + data.error);
+            console.error("Server error:\n" + data.error);
         });
 
-        function sabotage_o2(){
-            const val = parseInt(get("o2_val").innerText)
+        function sabotage_o2() {
+            const val = parseInt(get("o2_val").innerText);
             const data = {
-                type:"o2",
-                countdown:val
-            }
-            socket.emit("sabotage", data)
+                type: "o2",
+                countdown: val
+            };
+            socket.emit("sabotage", data);
         }
-        function sabotage_reac(){
-           const val = parseInt(get("reac_val").innerText)
+
+        function sabotage_reac() {
+            const val = parseInt(get("reac_val").innerText);
             const data = {
-                type:"reactor",
-                countdown:val
-            }
-            socket.emit("sabotage", data)
+                type: "reactor",
+                countdown: val
+            };
+            socket.emit("sabotage", data);
         }
     </script>
-</body>
 </body>
 </html>

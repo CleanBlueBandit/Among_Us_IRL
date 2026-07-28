@@ -3,9 +3,264 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>o2</title>
+    <title>O2 Level Monitor</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        body {
+            background-color: #111;
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            transition: background-color 0.5s ease;
+        }
+
+        .container {
+            text-align: center;
+            z-index: 10;
+        }
+
+        #status-display {
+            font-size: 3.5rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            transition: color 0.3s ease;
+        }
+
+        /* State Classes */
+        .stable {
+            color: #00e5ff;
+            text-shadow: 0 0 15px rgba(0, 229, 255, 0.6);
+        }
+
+        .depleting {
+            color: #ff0000;
+            text-shadow: 0 0 25px rgba(255, 0, 0, 0.8);
+            animation: pulse 1s infinite alternate;
+        }
+
+        /* Countdown Timer */
+        #countdown {
+            font-size: 6rem;
+            color: #ff3333;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        /* Flashing Red Overlay */
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(255, 0, 0, 0.35);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .flashing-overlay {
+            animation: flash 1s infinite;
+        }
+
+        @keyframes flash {
+            0% { opacity: 0; }
+            50% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.03); }
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 15px 30px;
+            background-color: #222;
+            font-family: inherit;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin: 10px;
+        }
+
+        #start-btn {
+            color: #00e5ff;
+            border: 2px solid #00e5ff;
+            box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
+        }
+
+        #start-btn:hover {
+            background-color: #00e5ff;
+            color: #111;
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.6);
+        }
+
+        #fix-btn {
+            color: #ff3333;
+            border: 2px solid #ff3333;
+            box-shadow: 0 0 10px rgba(255, 51, 51, 0.3);
+            display: none;
+        }
+
+        #fix-btn:hover {
+            background-color: #ff3333;
+            color: #111;
+            box-shadow: 0 0 20px rgba(255, 51, 51, 0.6);
+        }
+    </style>
 </head>
 <body>
-    <h1>ts is o2</h1>
+
+    <div id="overlay"></div>
+
+    <div class="container">
+        <button id="start-btn" class="btn">CONNECT TO O2 FEED</button>
+        <div id="status-display" style="display: none;">O2 RESERVES OPTIMAL</div>
+        <div id="countdown" style="display: none;">30</div>
+        <button id="fix-btn" class="btn">RESTORE O2</button>
+    </div>
+
+    <audio id="alarm-sound" loop src="alarm.mp3"></audio>
+
+    <script>
+        // DOM Elements
+        const statusDisplay = document.getElementById('status-display');
+        const countdownDisplay = document.getElementById('countdown');
+        const overlay = document.getElementById('overlay');
+        const alarmSound = document.getElementById('alarm-sound');
+        const startBtn = document.getElementById('start-btn');
+        const fixBtn = document.getElementById('fix-btn');
+
+        // State Tracking
+        let socket;
+        let countdownInterval = null;
+        let timeLeft = 30;
+        let currentState = 'stable';
+
+        // Connect and initialize user gesture requirement for audio
+        startBtn.addEventListener('click', () => {
+            startBtn.style.display = 'none';
+            statusDisplay.style.display = 'block';
+            statusDisplay.className = 'stable';
+
+            // Initialize Socket.IO connection
+            socket = io();
+
+            setupSocketListeners();
+        });
+
+        // Emit fix command when user clicks "Restore O2"
+        fixBtn.addEventListener('click', () => {
+            if (socket) {
+                socket.emit('fix_sabotage', { type: 'o2' });
+            }
+        });
+
+        function setupSocketListeners() {
+            // Check active O2 state on connect/update
+            socket.on('sabotage_data_request', ({ sData, endTime }) => {
+                const o2 = sData.o2;
+                if (!o2) return;
+
+                if (o2.sabotaged && o2.depleted) {
+                    enterO2DepletionUI();
+                    const secondsLeft = Math.max(0, Math.round((endTime - Date.now()) / 1000));
+                    timeLeft = secondsLeft;
+                    countdownDisplay.textContent = timeLeft;
+                } else {
+                    resetToOptimal();
+                }
+            });
+
+            // Handle direct game over events
+            socket.on('o2_depleted', () => triggerGameOver());
+            
+            socket.on('game_over', (payload) => {
+                if (payload.winner === 'impostors') triggerGameOver();
+            });
+
+            // Listen for fix acknowledgments
+            socket.on('fix_ack', (ack) => {
+                if (ack.ok) {
+                    resetToOptimal();
+                } else {
+                    console.warn("O2 restoration failed or not active.");
+                }
+            });
+
+            // Listen for global resolution broadcast
+            socket.on('sabotage_fixed', (data) => {
+                if (data.type === 'o2') {
+                    resetToOptimal();
+                }
+            });
+
+            // Errors
+            socket.on('Err', (err) => {
+                console.error("Server Error Received:", err.error);
+            });
+        }
+
+        function enterO2DepletionUI() {
+            if (currentState === 'unstable' || currentState === 'game-over') return;
+            currentState = 'unstable';
+            
+            statusDisplay.textContent = 'O2 CRITICAL - DEPLETING';
+            statusDisplay.className = 'depleting';
+            countdownDisplay.style.display = 'block';
+            fixBtn.style.display = 'inline-block';
+            overlay.classList.add('flashing-overlay');
+            
+            alarmSound.currentTime = 0;
+            alarmSound.play().catch(err => console.log("Audio waiting for interaction."));
+            
+            clearInterval(countdownInterval);
+            countdownInterval = setInterval(() => {
+                timeLeft--;
+                countdownDisplay.textContent = timeLeft;
+                if (timeLeft <= 0) clearInterval(countdownInterval);
+            }, 1000);
+        }
+
+        function resetToOptimal() {
+            currentState = 'stable';
+            
+            // Stop timers & hide emergency UI
+            clearInterval(countdownInterval);
+            countdownDisplay.style.display = 'none';
+            fixBtn.style.display = 'none';
+            
+            // Reset visuals
+            document.body.style.backgroundColor = '#111';
+            statusDisplay.textContent = 'O2 RESERVES OPTIMAL';
+            statusDisplay.className = 'stable';
+            overlay.classList.remove('flashing-overlay');
+            
+            // Silence alarm
+            alarmSound.pause();
+            alarmSound.currentTime = 0;
+        }
+
+        function triggerGameOver() {
+            currentState = 'game-over';
+            clearInterval(countdownInterval);
+            
+            // Stop alarm & reset layout
+            alarmSound.pause();
+            overlay.classList.remove('flashing-overlay');
+            countdownDisplay.style.display = 'none';
+            fixBtn.style.display = 'none';
+            
+            window.location.href = "/win";
+        }
+    </script>
 </body>
 </html>

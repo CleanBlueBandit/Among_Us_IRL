@@ -3,9 +3,282 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>reactor</title>
+    <title>Reactor Status Monitor</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        body {
+            background-color: #111;
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            transition: background-color 0.5s ease;
+        }
+
+        .container {
+            text-align: center;
+            z-index: 10;
+        }
+
+        #status-display {
+            font-size: 3.5rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            transition: color 0.3s ease;
+        }
+
+        /* State Classes */
+        .stable {
+            color: #00ff00;
+            text-shadow: 0 0 15px rgba(0, 255, 0, 0.6);
+        }
+
+        .meltdown {
+            color: #ff0000;
+            text-shadow: 0 0 25px rgba(255, 0, 0, 0.8);
+            animation: pulse 1s infinite alternate;
+        }
+
+        .game-over {
+            color: #ffffff;
+            font-size: 5rem;
+            letter-spacing: 5px;
+        }
+
+        /* Countdown Timer */
+        #countdown {
+            font-size: 6rem;
+            color: #ff3333;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        /* Flashing Red Overlay */
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(255, 0, 0, 0.35);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .flashing-overlay {
+            animation: flash 1s infinite;
+        }
+
+        @keyframes flash {
+            0% { opacity: 0; }
+            50% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.03); }
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 15px 30px;
+            background-color: #222;
+            font-family: inherit;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin: 10px;
+        }
+
+        #start-btn {
+            color: #00ff00;
+            border: 2px solid #00ff00;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        }
+
+        #start-btn:hover {
+            background-color: #00ff00;
+            color: #111;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.6);
+        }
+
+        #fix-btn {
+            color: #ff3333;
+            border: 2px solid #ff3333;
+            box-shadow: 0 0 10px rgba(255, 51, 51, 0.3);
+            display: none;
+        }
+
+        #fix-btn:hover {
+            background-color: #ff3333;
+            color: #111;
+            box-shadow: 0 0 20px rgba(255, 51, 51, 0.6);
+        }
+    </style>
 </head>
 <body>
-    <h1>ts is reactor</h1>
+
+    <div id="overlay"></div>
+
+    <div class="container">
+        <button id="start-btn" class="btn">CONNECT TO REACTOR FEED</button>
+        <div id="status-display" style="display: none;">REACTOR STABLE</div>
+        <div id="countdown" style="display: none;">30</div>
+        <button id="fix-btn" class="btn">FIX REACTOR</button>
+    </div>
+
+    <audio id="alarm-sound" loop src="alarm.mp3"></audio>
+
+    <script>
+        // DOM Elements
+        const statusDisplay = document.getElementById('status-display');
+        const countdownDisplay = document.getElementById('countdown');
+        const overlay = document.getElementById('overlay');
+        const alarmSound = document.getElementById('alarm-sound');
+        const startBtn = document.getElementById('start-btn');
+        const fixBtn = document.getElementById('fix-btn');
+
+        // State Tracking
+        let socket;
+        let countdownInterval = null;
+        let timeLeft = 30;
+        let currentState = 'stable';
+
+        // Connect and initialize user gesture requirement for audio
+        startBtn.addEventListener('click', () => {
+            startBtn.style.display = 'none';
+            statusDisplay.style.display = 'block';
+            statusDisplay.className = 'stable';
+
+            // Initialize Socket.IO connection
+            socket = io(); // Pass server URL here if backend is on another port/domain (e.g., io('http://localhost:3000'))
+
+            setupSocketListeners();
+        });
+
+        // Emit fix command when user clicks "Fix Reactor"
+        fixBtn.addEventListener('click', () => {
+            if (socket) {
+                socket.emit('fix_sabotage', { type: 'reactor' });
+            }
+        });
+
+        function setupSocketListeners() {
+            // Initial state on connect, and on stage1 -> stage2 transition
+            socket.on('sabotage_data_request', ({ sData, endTime }) => {
+                const reactor = sData.reactor;
+                if (!reactor) return;
+
+                if (reactor.sabotaged && reactor.meltdown) {
+                    // Stage 2: crisis phase - THIS is when the alarm shows
+                    enterMeltdownUI();
+                    const secondsLeft = Math.max(0, Math.round((endTime - Date.now()) / 1000));
+                    timeLeft = secondsLeft;
+                    countdownDisplay.textContent = timeLeft;
+                } else {
+                    // Either fully fixed, or still in the silent stage-1 delay phase.
+                    // Both look identical to the crew: "REACTOR STABLE".
+                    resetToStable();
+                }
+            });
+
+            // Stage-1 ticks exist server-side but are intentionally not shown to players.
+            // (No UI update here - the crew has no early warning.)
+            socket.on('sabotage_tick', ({ type, timeLeft: tl }) => {
+                // no-op for reactor UI by design
+            });
+
+            socket.on('reactor_meltdown', () => triggerGameOver());
+            
+            socket.on('game_over', (payload) => {
+                if (payload.winner === 'impostors') triggerGameOver();
+            });
+
+            // Listen for sabotage acknowledgment responses
+            socket.on('sabotage_ack', (ack) => {
+                if (!ack.ok) {
+                    console.warn("Sabotage request rejected or already active.");
+                }
+            });
+
+            // Listen for fix acknowledgment response from server
+            socket.on('fix_ack', (ack) => {
+                if (ack.ok) {
+                    resetToStable();
+                } else {
+                    console.warn("Fix failed or nothing to fix.");
+                }
+            });
+
+            // Global broadcast when any sabotage is resolved
+            socket.on('sabotage_fixed', (data) => {
+                if (data.type === 'reactor') {
+                    resetToStable();
+                }
+            });
+
+            // Listen for generic errors from server
+            socket.on('Err', (err) => {
+                console.error("Server Error Received:", err.error);
+            });
+        }
+
+        function enterMeltdownUI() {
+            if (currentState === 'unstable' || currentState === 'game-over') return;
+            currentState = 'unstable';
+            statusDisplay.textContent = 'REACTOR MELTDOWN';
+            statusDisplay.className = 'meltdown';
+            countdownDisplay.style.display = 'block';
+            fixBtn.style.display = 'inline-block';
+            overlay.classList.add('flashing-overlay');
+            alarmSound.currentTime = 0;
+            alarmSound.play().catch(err => console.log("Audio waiting for interaction."));
+            clearInterval(countdownInterval);
+            countdownInterval = setInterval(() => {
+                timeLeft--;
+                countdownDisplay.textContent = timeLeft;
+                if (timeLeft <= 0) clearInterval(countdownInterval); // server drives actual game_over via reactor_meltdown/game_over
+            }, 1000);
+        }
+
+        function resetToStable() {
+            currentState = 'stable';
+            
+            // Stop timers & hide meltdown UI
+            clearInterval(countdownInterval);
+            countdownDisplay.style.display = 'none';
+            fixBtn.style.display = 'none';
+            
+            // Reset visuals
+            document.body.style.backgroundColor = '#111';
+            statusDisplay.textContent = 'REACTOR STABLE';
+            statusDisplay.className = 'stable';
+            overlay.classList.remove('flashing-overlay');
+            
+            // Silence alarm
+            alarmSound.pause();
+            alarmSound.currentTime = 0;
+        }
+
+        function triggerGameOver() {
+            currentState = 'game-over';
+            clearInterval(countdownInterval);
+            
+            // Stop components
+            alarmSound.pause();
+            overlay.classList.remove('flashing-overlay');
+            countdownDisplay.style.display = 'none';
+            fixBtn.style.display = 'none';
+            
+            window.location.href = "/win"
+        }
+    </script>
 </body>
 </html>
