@@ -70,7 +70,8 @@ async function withGameLock(fn) {
 const DEFAULT_SETTINGS = {
     impostors: 2,
     meltdownCountdown: 30,
-    tasks: 5
+    tasks: 5,
+    emergencyCountdown: 30
 };
 
 // Authoritative duration (seconds) for stage 2 of a sabotage - the crisis
@@ -79,12 +80,18 @@ const DEFAULT_SETTINGS = {
 // per-sabotage countdown for this stage.
 let meltdownCountdownSeconds = DEFAULT_SETTINGS.meltdownCountdown;
 
+// Authoritative duration (seconds) for the discussion/voting phase of an
+// emergency meeting. Set from settings.emergencyCountdown whenever a game
+// starts, same pattern as meltdownCountdownSeconds above.
+let emergencyCountdownSeconds = DEFAULT_SETTINGS.emergencyCountdown;
+
 const DEFAULT_GAME_STATE = {
     started: false,
     winCondition: "",
     impostorsWon: false,
     crewmatesWon: false,
     emergencyMeeting: false,
+    emergencyMeetingEndTime: 0,
     totalTasks: 0,
     completedTasks: 0,
     host: "",
@@ -109,7 +116,7 @@ function isGameOperational(servers) {
     }
 
     const activeRoles = Object.values(servers);
-    return activeRoles.includes('o2') && activeRoles.includes('reactor');
+    return activeRoles.includes('o2') && activeRoles.includes('reactor') && activeRoles.includes('emergency');
 }
 
 function publicPath(fileName) {
@@ -299,6 +306,7 @@ app.get("/restart", async (req, res) => {
 
 
         clearAllSabotageTimers();
+        clearEmergencyMeetingTimer();
 
         for (const id of Object.keys(data.players)) {
             const p = data.players[id];
@@ -342,6 +350,7 @@ app.post("/restart", async (req, res) => {
 
 
         clearAllSabotageTimers();
+        clearEmergencyMeetingTimer();
 
         for (const id of Object.keys(data.players)) {
             const p = data.players[id];
@@ -476,6 +485,14 @@ app.get("/control%20panel", async (req, res) => {
         return res.status(401).json({ err: "401 unauthorised" })
     }
     return res.status(200).sendFile(publicPath("control panel"));
+})
+
+app.get("/emergency", async (req, res) => {
+    const data = await loadGame();
+    if (!validateServer(data.servers, req.cookies.session)) {
+        return res.status(401).json({ err: "401 unauthorised" })
+    }
+    return res.status(200).sendFile(publicPath("emergency"));
 })
 
 // One independent timer per sabotage type, so o2 and reactor can run concurrently.
@@ -622,6 +639,102 @@ function clearAllSabotageTimers() {
     sabotageTimers.clear();
 }
 
+// A single timer for the discussion/voting phase of an emergency meeting -
+// only one meeting can be in progress at a time.
+let emergencyMeetingTimer = null;
+
+function clearEmergencyMeetingTimer() {
+    if (emergencyMeetingTimer) {
+        clearTimeout(emergencyMeetingTimer);
+        emergencyMeetingTimer = null;
+    }
+}
+
+// Called when the emergency device (or a player) requests a meeting.
+async function startEmergencyMeeting() {
+    const data = await loadGame();
+
+    if (!data.gameState.started || data.gameState.impostorsWon || data.gameState.crewmatesWon) {
+        io.emit('Err', { error: 'cannot call an emergency meeting right now' });
+        return;
+    }
+
+    if (data.gameState.emergencyMeeting) {
+        // A meeting is already underway - ignore duplicate calls.
+        return;
+    }
+
+    clearEmergencyMeetingTimer();
+
+    // Discussion time is the authoritative setting, not something the caller supplies.
+    const countdown = emergencyCountdownSeconds;
+    const endTime = Date.now() + (countdown * 1000);
+
+    data.gameState.emergencyMeeting = true;
+    data.gameState.emergencyMeetingEndTime = endTime;
+    await saveGame(data);
+
+    io.emit('emergency_ack', { countdown, endTime });
+
+    emergencyMeetingTimer = setTimeout(async () => {
+        emergencyMeetingTimer = null;
+        // Discussion time is up - ask the emergency device for the final vote tally.
+        io.emit('emergency', { requestResults: true });
+    }, countdown * 1000);
+}
+
+// Called once the emergency device hands over the vote tally, whether that
+// happens because we asked (countdown ran out) or prematurely (the device
+// pushed results early, e.g. everyone voted before time ran out).
+//
+// Expected shape: { votes: { [playerId]: count, skip: count } }
+// The highest-voted key wins the ejection, unless there's a tie for first
+// place or the winner is "skip" - in either case nobody is ejected.
+async function resolveEmergencyMeeting(resultData) {
+    const data = await loadGame();
+
+    if (!data.gameState.emergencyMeeting) {
+        // No meeting in progress (already resolved, or none was ever called) - ignore.
+        return;
+    }
+
+    clearEmergencyMeetingTimer();
+
+    data.gameState.emergencyMeeting = false;
+    data.gameState.emergencyMeetingEndTime = 0;
+
+    const votes = (resultData && typeof resultData.votes === 'object' && resultData.votes) ? resultData.votes : {};
+    const entries = Object.entries(votes).filter(([, count]) => typeof count === 'number' && count > 0);
+
+    let ejectedId = null;
+
+    if (entries.length > 0) {
+        const topCount = Math.max(...entries.map(([, count]) => count));
+        const topEntries = entries.filter(([, count]) => count === topCount);
+
+        // Only eject if there's a single, unambiguous top vote-getter who isn't "skip".
+        if (topEntries.length === 1 && topEntries[0][0] !== 'skip') {
+            ejectedId = topEntries[0][0];
+        }
+    }
+
+    if (ejectedId && data.players[ejectedId] && data.players[ejectedId].alive) {
+        data.players[ejectedId].alive = false;
+        data.gameState.alivePlayers = Math.max(0, data.gameState.alivePlayers - 1);
+        if (data.players[ejectedId].impostor) {
+            data.gameState.aliveImpostors = Math.max(0, data.gameState.aliveImpostors - 1);
+        }
+    }
+
+    await saveGame(data);
+
+    io.emit('emergency_result', {
+        ejected: ejectedId,
+        players: data.players,
+        gameState: data.gameState
+    });
+}
+
 
 app.post(`/env`, (req, res) => {
     return res.json({ip:IP, port:PORT});
@@ -708,6 +821,13 @@ io.on("connection", async (socket) => {
                 sData: data.activeSabotages,
                 endTime: targetEndTimestamp
             });
+
+            if (data.gameState.emergencyMeeting && data.gameState.emergencyMeetingEndTime) {
+                socket.emit("emergency_ack", {
+                    countdown: Math.max(0, Math.round((data.gameState.emergencyMeetingEndTime - Date.now()) / 1000)),
+                    endTime: data.gameState.emergencyMeetingEndTime
+                });
+            }
         }
         else {
             socket.emit("Err", { error: "username not found." });
@@ -730,6 +850,34 @@ io.on("connection", async (socket) => {
                 socket.emit('Err', { error: e.message });
             }
         });
+        socket.on("emergency", async (payload) => {
+            try {
+                const hasResults = payload && typeof payload === 'object' && payload.votes && typeof payload.votes === 'object';
+
+                if (hasResults) {
+                    // The emergency device is handing over the (possibly premature)
+                    // final vote tally - resolve the meeting right away regardless
+                    // of whether the discussion countdown has actually elapsed.
+                    await resolveEmergencyMeeting(payload);
+                    return;
+                }
+
+                // No vote data attached - this is a request to call a new meeting.
+                await startEmergencyMeeting();
+            } catch (e) {
+                socket.emit('Err', { error: e.message });
+            }
+        });
+        socket.on("im-dead", async () => {
+            if(!data.players[cookies.session]){
+                socket.emit("Err", {error:"No user found with associated session."})
+                socket.emit("imdead_ack", {ok:false});
+                return;
+            }
+            data.players[cookies.session].alive = false;
+            socket.emit("imdead_ack", {ok:true});
+            await saveGame(data);
+        })
         socket.on("fix_sabotage", async (payload) => {
             try {
                 if (!payload || !payload.type) {
@@ -814,17 +962,22 @@ function parseSettingsArray(rawSettings, playerCount) {
         return null;
     }
 
-    const [impostorsRaw, cdRaw, tasksRaw] = rawSettings;
+    const [impostorsRaw, cdRaw, tasksRaw, emergencyRaw] = rawSettings;
 
     const impostors = parseInt(impostorsRaw, 10);
     const meltdownCountdown = parseInt(cdRaw, 10);
     const tasks = parseInt(tasksRaw, 10);
+    // 4th slot is optional so older clients that only send 3 settings still
+    // work; falls back to the default discussion time.
+    const emergencyCountdown = emergencyRaw === undefined
+        ? DEFAULT_SETTINGS.emergencyCountdown
+        : parseInt(emergencyRaw, 10);
 
-    if (isNaN(impostors) || isNaN(meltdownCountdown) || isNaN(tasks)) {
+    if (isNaN(impostors) || isNaN(meltdownCountdown) || isNaN(tasks) || isNaN(emergencyCountdown)) {
         return null;
     }
 
-    if (impostors < 0 || meltdownCountdown < 0 || tasks < 0) {
+    if (impostors < 0 || meltdownCountdown < 0 || tasks < 0 || emergencyCountdown < 0) {
         return null;
     }
 
@@ -832,7 +985,7 @@ function parseSettingsArray(rawSettings, playerCount) {
         return null;
     }
 
-    return { impostors, meltdownCountdown, tasks };
+    return { impostors, meltdownCountdown, tasks, emergencyCountdown };
 }
 
 app.post("/start", async (req, res) => {
@@ -858,12 +1011,16 @@ app.post("/start", async (req, res) => {
 
         // A fresh game means any leftover timers from a previous round must die.
         clearAllSabotageTimers();
+        clearEmergencyMeetingTimer();
 
         data.settings = parsedSettings;
         const targetImpostors = data.settings.impostors;
 
         // Lock in the crisis-phase duration for the round from the host's settings.
         meltdownCountdownSeconds = data.settings.meltdownCountdown;
+
+        // Lock in the emergency-meeting discussion duration for the round.
+        emergencyCountdownSeconds = data.settings.emergencyCountdown;
 
         let roleDeck = [];
         for (let i = 0; i < totalPlayers; i++) {
@@ -900,6 +1057,8 @@ app.post("/start", async (req, res) => {
         data.gameState.alivePlayers = totalPlayers;
         data.gameState.totalTasks = totalTasks;
         data.gameState.completedTasks = 0;
+        data.gameState.emergencyMeeting = false;
+        data.gameState.emergencyMeetingEndTime = 0;
 
         // Reset any stale sabotage state from a previous round
         data.activeSabotages = {
@@ -951,7 +1110,9 @@ app.get("/reset", async (req, res) => {
     // Kill any in-flight sabotage timers so they can't keep writing
     // to the freshly-reset game.json.
     clearAllSabotageTimers();
+    clearEmergencyMeetingTimer();
     meltdownCountdownSeconds = DEFAULT_SETTINGS.meltdownCountdown;
+    emergencyCountdownSeconds = DEFAULT_SETTINGS.emergencyCountdown;
 
     data = {
         gameState: { ...DEFAULT_GAME_STATE },

@@ -1,11 +1,452 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emergency meeting</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Who Is The Impostor?</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: radial-gradient(ellipse at center, #6a6d72 0%, #4a4d52 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Nunito', sans-serif;
+      padding: 16px;
+    }
+
+    /* ═══════════════════════════════════════
+       TABLET SHELL  — landscape on desktop
+    ═══════════════════════════════════════ */
+    .tablet {
+      position: relative;
+      background: #b0b3b8;
+      border-radius: 24px;
+      padding: 10px;
+      box-shadow:
+        0 0 0 3px #7a7d82,
+        0 12px 48px rgba(0,0,0,0.65),
+        inset 0 2px 0 rgba(255,255,255,0.22);
+      display: flex;
+      flex-direction: row;        /* landscape */
+      gap: 0;
+      width: min(900px, 96vw);
+    }
+
+    /* ── HOME BUTTON COLUMN (right side on desktop) ── */
+    .tablet-home {
+      width: 48px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .home-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 38% 30%, #d8dadd, #8e9197);
+      border: 2.5px solid #6e7178;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.35), inset 0 1px 2px rgba(255,255,255,0.35);
+    }
+
+    /* ═══════════════════════════════════════
+       SCREEN
+    ═══════════════════════════════════════ */
+    .screen {
+      flex: 1;
+      border-radius: 14px;
+      overflow: hidden;
+      background-color: #c2d8ee;
+      background-image:
+        repeating-linear-gradient(
+          125deg,
+          rgba(255,255,255,0.13) 0px,
+          rgba(255,255,255,0.13) 3px,
+          transparent 3px,
+          transparent 44px
+        );
+      display: flex;
+      flex-direction: column;
+      padding: 16px 16px 12px 16px;
+      gap: 10px;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 0 4px;
+    }
+    .title {
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(22px, 3.6vw, 38px);
+      color: #2a3548;
+      text-shadow: 1px 2px 0 rgba(255,255,255,0.5);
+      letter-spacing: 0.5px;
+    }
+    
+
+    /* ── PLAYER GRID ── */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      flex: 1;
+      align-content: start;
+    }
+
+    /* ── PLAYER CARD ── */
+    .card {
+      background: rgba(255,255,255,0.90);
+      border: 2px solid rgba(220,230,240,0.95);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      padding: 6px 10px 6px 8px;
+      gap: 8px;
+      cursor: pointer;
+      transition: background 0.12s, transform 0.1s;
+      min-height: 70px;
+      user-select: none;
+      position: relative;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
+    }
+    .card:hover:not(.no-hover) {
+      background: rgba(255,255,255,0.98);
+      transform: scale(1.01);
+    }
+    .card.selected {
+      background: rgba(255,255,255,0.99);
+      border-color: #a8c8e0;
+    }
+    .card.no-hover { cursor: default; }
+
+    /* crewmate container */
+    .crewmate-wrap {
+      position: relative;
+      flex-shrink: 0;
+      width: 54px;
+      height: 62px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .crewmate-wrap svg {
+      width: 50px;
+      height: 58px;
+    }
+
+    /* I VOTED badge */
+    .voted-badge {
+      position: absolute;
+      top: -3px;
+      left: -3px;
+      width: 24px;
+      height: 24px;
+      background: radial-gradient(circle at 38% 30%, #e84040, #991010);
+      border: 2.5px solid #770808;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.45);
+      z-index: 5;
+    }
+    .voted-badge .vi {
+      color: #fff;
+      font-family: 'Nunito', sans-serif;
+      font-weight: 900;
+      font-size: 6px;
+      display: block;
+      letter-spacing: 0;
+    }
+    .voted-badge .vt {
+      color: #fff;
+      font-family: 'Nunito', sans-serif;
+      font-weight: 900;
+      font-size: 4.8px;
+      display: block;
+      letter-spacing: -0.2px;
+    }
+
+    .player-name {
+      font-family: 'Nunito', sans-serif;
+      font-weight: 800;
+      font-size: clamp(13px, 1.9vw, 18px);
+      color: #2a3548;
+      font-size: 30px;
+      flex: 1;
+    }
+
+    .dead{
+        text-decoration: line-through;
+        color:red;
+    }
+
+    
+    /* vote confirm buttons */
+    .vote-btns {
+      display: flex;
+      gap: 6px;
+      margin-left: auto;
+    }
+    .vote-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 6px;
+      border: 3px solid;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .vote-btn:hover  { transform: scale(1.08); }
+    .vote-btn:active { transform: scale(0.95); }
+    .vote-btn.confirm {
+      background: #c8f0bc;
+      border-color: #58a840;
+    }
+    .vote-btn.deny {
+      background: #f5c0b8;
+      border-color: #d03030;
+    }
+    .vote-btn svg { width: 24px; height: 24px; }
+
+
+    /* ── FOOTER ── */
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 2px;
+    }
+    .skip-btn {
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(11px, 1.6vw, 15px);
+      color: #2a3548;
+      background: #c8cdd4;
+      border: 2.5px solid #8898a8;
+      border-radius: 5px;
+      padding: 5px 14px;
+      cursor: pointer;
+      letter-spacing: 1.2px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.55);
+      transition: background 0.12s, transform 0.1s;
+    }
+    .skip-btn:hover  { background: #d8dde4; transform: scale(1.02); }
+    .skip-btn:active { transform: scale(0.97); }
+    .skip-btn.used   { background: #b0b8c4; color: #606878; cursor: default; transform: none; }
+    .timer {
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(13px, 1.8vw, 18px);
+      color: #2a3548;
+    }
+    .timer.urgent { color: #cc2020; }
+
+    /* ═══════════════════════════════════════
+       MOBILE — PORTRAIT
+       home button moves to bottom
+    ═══════════════════════════════════════ */
+    @media (max-width: 620px) {
+      body {
+        padding: 10px;
+        align-items: flex-start;
+        padding-top: 16px;
+      }
+      .tablet {
+        flex-direction: column;    /* portrait */
+        width: 100%;
+        max-width: 400px;
+        margin: 0 auto;
+        border-radius: 22px;
+      }
+      .screen {
+        border-radius: 14px 14px 0 0;
+        padding: 12px 11px 10px 11px;
+        gap: 7px;
+      }
+      /* home button row at bottom */
+      .tablet-home {
+        width: 100%;
+        height: 46px;
+        flex-direction: row;
+        border-radius: 0 0 14px 14px;
+      }
+
+      /* single column on mobile */
+      .grid {
+        grid-template-columns: 1fr;
+        gap: 5px;
+      }
+
+      .title { font-size: clamp(17px, 5.5vw, 23px); }
+      .card { min-height: 56px; padding: 5px 9px 5px 7px; gap: 7px; }
+      .crewmate-wrap { width: 44px; height: 52px; }
+      .crewmate-wrap svg { width: 40px; height: 47px; }
+      .player-name { font-size: 22px; }
+      .vote-btn { width: 36px; height: 36px; }
+      .vote-btn svg { width: 19px; height: 19px; }
+      .skip-btn { font-size: 11px; padding: 4px 10px; }
+      .timer { font-size: 13px; }
+    }
+  </style>
+  <meta property="og:image" content="https://bolt.new/static/og_default.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://bolt.new/static/og_default.png">
 </head>
 <body>
-    
+
+<div class="tablet">
+
+  <!-- ═══ SCREEN ═══ -->
+  <div class="screen">
+
+    <!-- HEADER -->
+    <div class="header">
+      <h1 class="title">Who Is The Impostor?</h1>
+    </div>
+
+    <!-- PLAYER GRID -->
+    <div class="grid" id="playerGrid"></div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+      <button class="skip-btn" id="skipBtn" onclick="skipVote()">SKIP VOTE</button>
+      <div class="timer" id="timerDisplay">Voting Ends In: 0s</div>
+    </div>
+
+  </div>
+
+  <!-- ═══ HOME BUTTON ═══ -->
+  <div class="tablet-home">
+    <div class="home-btn"></div>
+  </div>
+
+</div>
+
+<script>
+  // ── DATA ──────────────────────────────────────────────────────
+  const players = [
+    { id: 1, name: 'Dejv',  voted: false, dead : false },
+    { id: 2, name: 'Dummy 1', dead : false},
+    { id: 3, name: 'Dummy 2', voted: false, dead : false},
+    { id: 4, name: 'Dummy 3', voted: false, dead : false},
+    { id: 5, name: 'Dummy 4', voted: false, dead : true},
+    { id: 6, name: 'Dummy 5', voted: false, dead : false},
+    { id: 7, name: 'Dummy 6', voted: false, dead : true},
+  ];
+
+  // Dummy 2 (id=3) is pre-selected, mirroring the screenshot
+  let selectedId = -1;
+  let hasVoted   = false;
+  let countdown  = 100;
+
+
+  // ── I VOTED BADGE ─────────────────────────────────────────────
+  const BADGE = `<div class="voted-badge"><span class="vi">I</span><span class="vt">VOTED</span></div>`;
+
+
+  // ── BUILD CARD ───────────────────────────────────────────────
+  function buildCard(p) {
+    const isSel = selectedId === p.id && !hasVoted;
+
+    let rightSlot = '';
+    if (isSel) {
+      rightSlot = `
+        <div class="vote-btns">
+          <div class="vote-btn confirm" onclick="confirmVote(event,${p.id})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#3a8828"
+                 stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+          <div class="vote-btn deny" onclick="cancelVote(event)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#cc2222"
+                 stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6"  y1="6" x2="18" y2="18"/>
+            </svg>
+          </div>
+        </div>`;
+    }
+
+    const noHover  = p.isCaller || hasVoted;
+    const clickAttr = (!hasVoted && !p.isCaller) ? `onclick="selectPlayer(${p.id})"` : '';
+    const cls = ['card', isSel ? 'selected' : '', noHover ? 'no-hover' : ''].filter(Boolean).join(' ');
+
+    return `
+      <div class="${cls}" ${clickAttr}>
+        <div class="crewmate-wrap">
+          ${p.voted ? BADGE : ''}
+        </div>
+        <span class="player-name${p.dead ? " dead" : ""}" >${p.name}</span>
+        ${rightSlot}
+      </div>`;
+  }
+
+  // ── RENDER ───────────────────────────────────────────────────
+  function render() {
+    document.getElementById('playerGrid').innerHTML = players.map(buildCard).join('');
+  }
+
+  // ── ACTIONS ──────────────────────────────────────────────────
+  function selectPlayer(id) {
+    if (hasVoted) return;
+    if(players[id - 1].dead) return;
+    selectedId = (selectedId === id) ? null : id;
+    render();
+  }
+
+  function confirmVote(e, id) {
+    e.stopPropagation();
+    if (hasVoted) return;
+    hasVoted = true;
+    selectedId = null;
+    players[0].voted = true;  // Dejv (local player) now shows I VOTED
+    document.getElementById('skipBtn').classList.add('used');
+    render();
+  }
+
+  function cancelVote(e) {
+    e.stopPropagation();
+    selectedId = null;
+    render();
+  }
+
+  function skipVote() {
+    if (hasVoted) return;
+    hasVoted = true;
+    selectedId = null;
+    players[0].voted = true;
+    document.getElementById('skipBtn').classList.add('used');
+    render();
+  }
+
+  // ── TIMER ────────────────────────────────────────────────────
+  const timerEl = document.getElementById('timerDisplay');
+  const tick = setInterval(() => {
+    if (countdown <= 0) {
+      clearInterval(tick);
+      timerEl.textContent = 'Voting Ended';
+      timerEl.classList.add('urgent');
+      return;
+    }
+    countdown--;
+    timerEl.textContent = `Voting Ends In: ${countdown}s`;
+    if (countdown <= 10) timerEl.classList.add('urgent');
+  }, 1000);
+
+  render();
+</script>
 </body>
 </html>
