@@ -91,7 +91,7 @@
       text-shadow: 1px 2px 0 rgba(255,255,255,0.5);
       letter-spacing: 0.5px;
     }
-    
+
 
     /* ── PLAYER GRID ── */
     .grid {
@@ -192,7 +192,15 @@
         color:red;
     }
 
-    
+    .you-tag {
+      font-family: 'Nunito', sans-serif;
+      font-weight: 900;
+      font-size: 12px;
+      color: #4a80b0;
+      margin-left: 6px;
+    }
+
+
     /* vote confirm buttons */
     .vote-btns {
       display: flex;
@@ -246,12 +254,28 @@
     .skip-btn:hover  { background: #d8dde4; transform: scale(1.02); }
     .skip-btn:active { transform: scale(0.97); }
     .skip-btn.used   { background: #b0b8c4; color: #606878; cursor: default; transform: none; }
+    .skip-btn:disabled { background: #b0b8c4; color: #606878; cursor: default; transform: none; }
     .timer {
       font-family: 'Fredoka One', cursive;
       font-size: clamp(13px, 1.8vw, 18px);
       color: #2a3548;
     }
     .timer.urgent { color: #cc2020; }
+
+    /* ── RESULT OVERLAY ── */
+    .result-banner {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      flex: 1;
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(16px, 2.6vw, 26px);
+      color: #2a3548;
+      padding: 20px;
+    }
+    .result-banner.show { display: flex; }
+    .result-banner.hidden-grid ~ .footer { display: none; }
 
     /* ═══════════════════════════════════════
        MOBILE — PORTRAIT
@@ -300,9 +324,6 @@
       .timer { font-size: 13px; }
     }
   </style>
-  <meta property="og:image" content="https://bolt.new/static/og_default.png">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image" content="https://bolt.new/static/og_default.png">
 </head>
 <body>
 
@@ -316,13 +337,16 @@
       <h1 class="title">Who Is The Impostor?</h1>
     </div>
 
+    <!-- RESULT BANNER (shown once the meeting resolves) -->
+    <div class="result-banner" id="resultBanner"></div>
+
     <!-- PLAYER GRID -->
     <div class="grid" id="playerGrid"></div>
 
     <!-- FOOTER -->
-    <div class="footer">
+    <div class="footer" id="footer">
       <button class="skip-btn" id="skipBtn" onclick="skipVote()">SKIP VOTE</button>
-      <div class="timer" id="timerDisplay">Voting Ends In: 0s</div>
+      <div class="timer" id="timerDisplay">Voting Ends In: --s</div>
     </div>
 
   </div>
@@ -334,37 +358,34 @@
 
 </div>
 
+<script src="/socket.io/socket.io.js"></script>
 <script>
-  // ── DATA ──────────────────────────────────────────────────────
-  const players = [
-    { id: 1, name: 'Dejv',  voted: false, dead : false },
-    { id: 2, name: 'Dummy 1', dead : false},
-    { id: 3, name: 'Dummy 2', voted: false, dead : false},
-    { id: 4, name: 'Dummy 3', voted: false, dead : false},
-    { id: 5, name: 'Dummy 4', voted: false, dead : true},
-    { id: 6, name: 'Dummy 5', voted: false, dead : false},
-    { id: 7, name: 'Dummy 6', voted: false, dead : true},
-  ];
+  const socket = io();
 
-  // Dummy 2 (id=3) is pre-selected, mirroring the screenshot
-  let selectedId = -1;
-  let hasVoted   = false;
-  let countdown  = 100;
-
+  // ── STATE ────────────────────────────────────────────────────
+  // Live roster, kept in sync with the server. Each entry:
+  // { id, name, dead, voted }
+  let players = [];
+  let localPlayerId = null;   // filled in from player_data_request
+  let selectedId = null;      // currently highlighted target (before confirm)
+  let hasVoted = false;       // derived from the roster + local optimistic flag
+  let votingOpen = false;     // true while an emergency meeting is active
+  let meetingEndTime = null;  // ms timestamp, for the live countdown
+  let countdownTick = null;
 
   // ── I VOTED BADGE ─────────────────────────────────────────────
   const BADGE = `<div class="voted-badge"><span class="vi">I</span><span class="vt">VOTED</span></div>`;
 
-
   // ── BUILD CARD ───────────────────────────────────────────────
   function buildCard(p) {
+    const isLocal = p.id === localPlayerId;
     const isSel = selectedId === p.id && !hasVoted;
 
     let rightSlot = '';
     if (isSel) {
       rightSlot = `
         <div class="vote-btns">
-          <div class="vote-btn confirm" onclick="confirmVote(event,${p.id})">
+          <div class="vote-btn confirm" onclick="confirmVote(event,'${p.id}')">
             <svg viewBox="0 0 24 24" fill="none" stroke="#3a8828"
                  stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="20 6 9 17 4 12"/>
@@ -380,8 +401,9 @@
         </div>`;
     }
 
-    const noHover  = p.isCaller || hasVoted;
-    const clickAttr = (!hasVoted && !p.isCaller) ? `onclick="selectPlayer(${p.id})"` : '';
+    const canClick = votingOpen && !hasVoted && !p.dead && !isLocal;
+    const noHover = !canClick;
+    const clickAttr = canClick ? `onclick="selectPlayer('${p.id}')"` : '';
     const cls = ['card', isSel ? 'selected' : '', noHover ? 'no-hover' : ''].filter(Boolean).join(' ');
 
     return `
@@ -389,7 +411,7 @@
         <div class="crewmate-wrap">
           ${p.voted ? BADGE : ''}
         </div>
-        <span class="player-name${p.dead ? " dead" : ""}" >${p.name}</span>
+        <span class="player-name${p.dead ? " dead" : ""}">${p.name}${isLocal ? '<span class="you-tag">(you)</span>' : ''}</span>
         ${rightSlot}
       </div>`;
   }
@@ -397,23 +419,31 @@
   // ── RENDER ───────────────────────────────────────────────────
   function render() {
     document.getElementById('playerGrid').innerHTML = players.map(buildCard).join('');
+    const skipBtn = document.getElementById('skipBtn');
+    skipBtn.disabled = hasVoted || !votingOpen;
+    skipBtn.classList.toggle('used', hasVoted);
+  }
+
+  function syncLocalVoteStatus() {
+    const me = players.find(p => p.id === localPlayerId);
+    if (me && me.voted) hasVoted = true;
   }
 
   // ── ACTIONS ──────────────────────────────────────────────────
   function selectPlayer(id) {
-    if (hasVoted) return;
-    if(players[id - 1].dead) return;
+    if (hasVoted || !votingOpen) return;
+    const target = players.find(p => p.id === id);
+    if (!target || target.dead || target.id === localPlayerId) return;
     selectedId = (selectedId === id) ? null : id;
     render();
   }
 
   function confirmVote(e, id) {
     e.stopPropagation();
-    if (hasVoted) return;
-    hasVoted = true;
+    if (hasVoted || !votingOpen) return;
+    hasVoted = true; // optimistic - vote_ack / roster update will confirm
     selectedId = null;
-    players[0].voted = true;  // Dejv (local player) now shows I VOTED
-    document.getElementById('skipBtn').classList.add('used');
+    socket.emit('cast_vote', { target: id });
     render();
   }
 
@@ -424,27 +454,106 @@
   }
 
   function skipVote() {
-    if (hasVoted) return;
+    if (hasVoted || !votingOpen) return;
     hasVoted = true;
     selectedId = null;
-    players[0].voted = true;
-    document.getElementById('skipBtn').classList.add('used');
+    socket.emit('cast_vote', { target: 'skip' });
     render();
   }
 
-  // ── TIMER ────────────────────────────────────────────────────
-  const timerEl = document.getElementById('timerDisplay');
-  const tick = setInterval(() => {
-    if (countdown <= 0) {
-      clearInterval(tick);
-      timerEl.textContent = 'Voting Ended';
-      timerEl.classList.add('urgent');
-      return;
+  // ── TIMER (driven by the server's endTime, not a local countdown) ──
+  function startCountdown(endTime) {
+    meetingEndTime = endTime;
+    if (countdownTick) clearInterval(countdownTick);
+
+    const timerEl = document.getElementById('timerDisplay');
+    const tick = () => {
+      const remaining = Math.max(0, Math.round((meetingEndTime - Date.now()) / 1000));
+      if (remaining <= 0) {
+        timerEl.textContent = 'Voting Ended';
+        timerEl.classList.add('urgent');
+        clearInterval(countdownTick);
+        return;
+      }
+      timerEl.textContent = `Voting Ends In: ${remaining}s`;
+      timerEl.classList.toggle('urgent', remaining <= 10);
+    };
+    tick();
+    countdownTick = setInterval(tick, 1000);
+  }
+
+  // ── SOCKET WIRING ────────────────────────────────────────────
+  socket.on('player_data_request', (me) => {
+    localPlayerId = me.id;
+    render();
+  });
+
+  socket.on('game_data_request', (gameState) => {
+    // If we land on this page with no meeting in progress, there's nothing to vote on.
+    if (!gameState.emergencyMeeting) {
+      votingOpen = false;
+      render();
     }
-    countdown--;
-    timerEl.textContent = `Voting Ends In: ${countdown}s`;
-    if (countdown <= 10) timerEl.classList.add('urgent');
-  }, 1000);
+    if (gameState.impostorsWon || gameState.crewmatesWon) {
+      window.location = '/win';
+    }
+  });
+
+  socket.on('emergency_ack', (payload) => {
+    votingOpen = true;
+    hasVoted = false;
+    selectedId = null;
+    document.getElementById('resultBanner').classList.remove('show');
+    document.getElementById('footer').style.display = '';
+    document.getElementById('playerGrid').style.display = '';
+
+    if (Array.isArray(payload.players)) players = payload.players;
+    syncLocalVoteStatus();
+    startCountdown(payload.endTime);
+    render();
+  });
+
+  socket.on('emergency_vote_update', (payload) => {
+    if (Array.isArray(payload.players)) players = payload.players;
+    syncLocalVoteStatus();
+    render();
+  });
+
+  socket.on('vote_ack', (payload) => {
+    if (!payload.ok) {
+      // Server rejected the vote (e.g. already voted, invalid target) -
+      // undo the optimistic lock so the player can try again.
+      hasVoted = false;
+      render();
+    }
+  });
+
+  socket.on('emergency_result', (payload) => {
+    votingOpen = false;
+    if (countdownTick) clearInterval(countdownTick);
+
+    const banner = document.getElementById('resultBanner');
+    const ejectedName = payload.ejected && payload.players[payload.ejected]
+      ? payload.players[payload.ejected].username
+      : null;
+
+    banner.textContent = ejectedName
+      ? `${ejectedName} was ejected.`
+      : 'No one was ejected.';
+    banner.classList.add('show');
+    document.getElementById('playerGrid').style.display = 'none';
+    document.getElementById('footer').style.display = 'none';
+
+    setTimeout(() => { window.location = '/dashboard'; }, 4000);
+  });
+
+  socket.on("game_over", (data) => {
+    window.location.href = "/win";
+  });
+
+  socket.on('Err', (payload) => {
+    console.warn('Server error:', payload && payload.error);
+  });
 
   render();
 </script>

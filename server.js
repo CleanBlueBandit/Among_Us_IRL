@@ -14,16 +14,61 @@ import { renderRoleRevealHtml } from './roleReveal.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-if(!process.env.PORT){
-    console.log(".env file is not configured properly")
+// --- LOGGING SYSTEM ---
+const DEBUG_LOG = path.join(__dirname, 'debug.log');
+const ERROR_LOG = path.join(__dirname, 'error.log');
+
+function logDebug(message) {
+    const timestamp = new Date().toISOString();
+    const logMsg = `[DEBUG] [${timestamp}] ${message}`;
+    console.log(logMsg);
+    // Fire and forget to avoid blocking the event loop
+    fs.appendFile(DEBUG_LOG, logMsg + '\n', 'utf-8').catch(e => console.error("Logger error:", e));
 }
 
-const PORT = process.env.PORT;
-const IP = process.env.IP;
-const host_pass = process.env.PASSWORD_HASH;
-const protocol = process.env.PROTOCOL;
+function logError(message, error = "") {
+    const timestamp = new Date().toISOString();
+    const errorStr = error instanceof Error ? (error.stack || error.message) : String(error);
+    const logMsg = `[ERROR] [${timestamp}] ${message} ${errorStr}`;
+    console.error(logMsg);
+    // Fire and forget
+    fs.appendFile(ERROR_LOG, logMsg + '\n', 'utf-8').catch(e => console.error("Logger error:", e));
+}
+// ----------------------
 
+let PORT = process.env.PORT;
+let IP = process.env.IP;
+let host_pass = process.env.PASSWORD_HASH;
+let protocol = process.env.PROTOCOL;
 
+let ic = 0;
+if(!process.env.PORT){
+    logError("PORT variable missing in .env, defaulting to 8080");
+    PORT = 8080
+    ic++;
+}
+if(!process.env.IP){
+    logError("IP variable missing in .env, defaulting to localhost");
+    IP = "localhost";
+    ic++
+}
+if(!process.env.PASSWORD_HASH){
+    logError("PASSWORD_HASH variable missing in .env, defaulting to the password \"Password\"");
+    host_pass = "$2b$10$Okp8WCSOnQ23BEJMYWKcCO.L8QkpABXWEFCrcN3PYVvKwUwsgF7D2";
+    ic++;
+}
+if(!process.env.PROTOCOL){
+    logError("PROTOCOL variable missing in .env, defaulting to http");
+    protocol = "http";
+    ic++;
+}
+
+if(ic > 0){
+    logError(`${ic}/4 .env variables missing. (Did you create the .env file?)`);
+}
+else{
+    logDebug("All .env variables present.");
+}
 
 const app = express();
 const httpServer = createServer(app);
@@ -31,6 +76,7 @@ const io = new Server(httpServer);
 
 app.use((req, res, next) => {
     if (req.path.endsWith('.html')) {
+        logDebug(`Direct access to HTML file forbidden: ${req.path}`);
         let dynamicHtml = `
             <!DOCTYPE html>
             <html>
@@ -74,15 +120,7 @@ const DEFAULT_SETTINGS = {
     emergencyCountdown: 30
 };
 
-// Authoritative duration (seconds) for stage 2 of a sabotage - the crisis
-// phase that runs until impostors win. Set from settings.meltdownCountdown
-// whenever a game starts, rather than trusting the client-supplied
-// per-sabotage countdown for this stage.
 let meltdownCountdownSeconds = DEFAULT_SETTINGS.meltdownCountdown;
-
-// Authoritative duration (seconds) for the discussion/voting phase of an
-// emergency meeting. Set from settings.emergencyCountdown whenever a game
-// starts, same pattern as meltdownCountdownSeconds above.
 let emergencyCountdownSeconds = DEFAULT_SETTINGS.emergencyCountdown;
 
 const DEFAULT_GAME_STATE = {
@@ -114,7 +152,6 @@ function isGameOperational(servers) {
     if (!servers || typeof servers !== 'object') {
         return false;
     }
-
     const activeRoles = Object.values(servers);
     return activeRoles.includes('o2') && activeRoles.includes('reactor') && activeRoles.includes('emergency');
 }
@@ -128,29 +165,23 @@ async function loadGame() {
         const rawData = await fs.readFile('./game.json', 'utf-8');
         const data = JSON.parse(rawData);
 
-        if (!data.players) {
-            data.players = {};
-        }
-        if (!data.gameState) {
-            data.gameState = { ...DEFAULT_GAME_STATE };
-        } else {
-            // backfill any missing fields on old/partial saves
-            data.gameState = { ...DEFAULT_GAME_STATE, ...data.gameState };
-        }
+        if (!data.players) data.players = {};
+        if (!data.gameState) data.gameState = { ...DEFAULT_GAME_STATE };
+        else data.gameState = { ...DEFAULT_GAME_STATE, ...data.gameState };
+        
         if (!data.activeSabotages) {
             data.activeSabotages = {
                 o2: { ...DEFAULT_SABOTAGES.o2 },
                 reactor: { ...DEFAULT_SABOTAGES.reactor }
             };
         }
-        if (!data.servers) {
-            data.servers = {};
-        }
-        if (!data.settings) {
-            data.settings = { ...DEFAULT_SETTINGS };
-        }
+        if (!data.servers) data.servers = {};
+        if (!data.settings) data.settings = { ...DEFAULT_SETTINGS };
+        
+        logDebug("data loaded");
         return data;
     } catch (error) {
+        logError("Failed to load game.json, returning defaults.", error);
         return {
             players: {},
             gameState: { ...DEFAULT_GAME_STATE },
@@ -166,10 +197,11 @@ async function loadGame() {
 
 async function saveGame(data) {
     await fs.writeFile('./game.json', JSON.stringify(data, null, 2), 'utf-8');
+    logDebug("data saved");
 }
 
 httpServer.listen(PORT, () => {
-    console.log(`Server running on ${protocol}://${IP}:${PORT}`);
+    logDebug(`Server connected. Express server running on ${protocol}://${IP}:${PORT}`);
 });
 
 app.post('/enter', async (req, res) => {
@@ -181,6 +213,7 @@ app.post('/enter', async (req, res) => {
             const username = req.body.username ? String(req.body.username) : "Anonymous Crewmate";
 
             if (session && typeof session === 'string' && data.players[session]) {
+                logDebug(`Player re-entered with existing session: ${username}`);
                 return res.status(200).json({ message: "username accepted!" })
             }
 
@@ -201,16 +234,16 @@ app.post('/enter', async (req, res) => {
             };
 
             data.players[UUID] = playerData;
-
             data.gameState.playerCount = Object.keys(data.players).length;
             data.gameState.alivePlayers = Object.keys(data.players).length;
 
             await saveGame(data);
+            logDebug(`New player joined: ${username} with ID ${UUID}`);
 
             return res.status(200).json({ message: "username created!" })
         });
     } catch (error) {
-        console.error("Error managing game entry:", error);
+        logError("Error managing game entry:", error);
         return res.status(500).json({ error: "Internal Server Error during lobby entry." });
     }
 })
@@ -227,7 +260,13 @@ app.post('/enter-host', async (req, res) => {
             const username = req.body.username ? String(req.body.username) : "Host";
             const password = req.body.password ? String(req.body.password) : "";
 
+             if (!password || !host_pass) {
+                logDebug(`Host login failed: missing credentials for ${username}`);
+                return res.status(401).json({ error: "invalid credentials" });
+            }
+
             if (!(await bcrypt.compare(password, host_pass))) {
+                logDebug(`Host login failed: invalid password for ${username}`);
                 return res.status(401).json({ error: "invalid credentials" })
             }
 
@@ -241,12 +280,14 @@ app.post('/enter-host', async (req, res) => {
                 });
 
                 data.servers[UUID] = "none";
-
                 await saveGame(data);
+                
+                logDebug(`New server joined with ID ${UUID}`);
                 return res.sendFile(path.join(__dirname, 'public', 'server.html'))
             }
 
             if (data.gameState.host != "") {
+                logDebug(`Host login denied: Host is already in the game.`);
                 return res.status(400).json({ error: "Host is already in the game!" })
             }
 
@@ -272,11 +313,12 @@ app.post('/enter-host', async (req, res) => {
             data.gameState.alivePlayers = Object.keys(data.players).length;
 
             await saveGame(data);
+            logDebug(`Host successfully joined: ${username} with ID ${UUID}`);
 
             return res.status(200).json({ message: "wellcome, host!" })
         });
     } catch (error) {
-        console.error("Error managing game entry:", error);
+        logError("Error managing host entry:", error);
         return res.status(500).json({ error: "Internal Server Error during lobby entry." });
     }
 })
@@ -285,15 +327,15 @@ app.get("/end", async (req, res) => {
     const data = await loadGame();
     const session = req.cookies.session;
     if (!data.players[session] || data.players[session].username != data.gameState.host) {
+        logDebug(`Unauthorised game end attempt by session: ${session}`);
         return res.sendStatus(401);
     }
 
     data.gameState.started = false;
-
+    logDebug("Host ended the game.");
     await saveGame(data);
     res.sendStatus(200);
 })
-
 
 app.get("/restart", async (req, res) => {
     await withGameLock(async () => {
@@ -301,10 +343,11 @@ app.get("/restart", async (req, res) => {
         const data = await loadGame();
 
         if (!data.players[session] || data.players[session].username != data.gameState.host) {
+            logDebug(`Unauthorised game restart attempt by session: ${session}`);
             return res.status(401).json({ message: "You are not the host.", failed: true });
         }
 
-
+        logDebug("Host restarted the game.");
         clearAllSabotageTimers();
         clearEmergencyMeetingTimer();
 
@@ -332,7 +375,6 @@ app.get("/restart", async (req, res) => {
         };
 
         await saveGame(data);
-
         io.emit('restart_game', {});
 
         return res.redirect("/waiting")
@@ -345,10 +387,11 @@ app.post("/restart", async (req, res) => {
         const data = await loadGame();
 
         if (!data.players[session] || data.players[session].username != data.gameState.host) {
+            logDebug(`Unauthorised POST game restart attempt by session: ${session}`);
             return res.status(401).json({ message: "You are not the host.", failed: true });
         }
 
-
+        logDebug("Host restarted the game via POST.");
         clearAllSabotageTimers();
         clearEmergencyMeetingTimer();
 
@@ -358,7 +401,7 @@ app.post("/restart", async (req, res) => {
             p.role = "none";
             p.alive = true;
             p.tasksCompleted = 0;
-            p.totalTasks = data.settings.tasks; // settings untouched, just re-applied
+            p.totalTasks = data.settings.tasks; 
         }
 
         const playerCount = Object.keys(data.players).length;
@@ -376,7 +419,6 @@ app.post("/restart", async (req, res) => {
         };
 
         await saveGame(data);
-
         io.emit('restart_game', {});
 
         return res.status(200).json({ message: "Game restarted.", failed: false });
@@ -391,6 +433,7 @@ app.get('/dashboard', async (req, res) => {
     }
 
     if (!data.gameState.started) {
+        logDebug(`Player ${session} attempted to view dashboard before game start.`);
         let dynamicHtml = `
             <!DOCTYPE html>
             <html>
@@ -401,11 +444,9 @@ app.get('/dashboard', async (req, res) => {
             </body>
             </html>
         `;
-
         res.set('Content-Type', 'text/html');
         return res.send(dynamicHtml);
     }
-    const playerData = data.players[session];
     return res.sendFile(path.join(__dirname, 'public', 'crewmate.html'));
 })
 
@@ -420,7 +461,24 @@ app.get('/impostor', async (req, res) => {
     if (playerData.impostor) {
         return res.sendFile(path.join(__dirname, 'public', 'impostor.html'));
     }
+    logDebug(`Non-impostor ${session} tried to access /impostor`);
     return res.sendFile(path.join(__dirname, 'public', 'crewmate.html'));
+})
+
+app.get("/emergency", async (req, res) => {
+    const data = await loadGame();
+    if (!validateServer(data.servers, req.cookies.session)) {
+        return res.status(401).json({ err: "401 unauthorised" })
+    }
+    return res.status(200).sendFile(path.join(__dirname, 'public', 'emergency.html'));
+})
+app.get('/emergency-client', async (req, res) => {
+    const data = await loadGame();
+    const session = req.cookies.session;
+    if (!data.players[session]) {
+        return res.status(401).json({ error: "401 unauthorised." });
+    }
+    return res.sendFile(path.join(__dirname, 'public', 'EM.html'));
 })
 
 app.get('/logout', async (req, res) => {
@@ -429,7 +487,9 @@ app.get('/logout', async (req, res) => {
     await withGameLock(async () => {
         const data = await loadGame();
         if (data.players[session]) {
+            logDebug(`Player logged out: ${data.players[session].username} (${session})`);
             if (data.gameState.host == data.players[session].username) {
+                logDebug(`Host logged out! Stopping game.`);
                 data.gameState.host = "";
                 data.gameState.started = false;
             }
@@ -440,6 +500,7 @@ app.get('/logout', async (req, res) => {
         }
 
         if (data.servers && data.servers.hasOwnProperty(session)) {
+            logDebug(`Server device logged out: ${session}`);
             delete data.servers[session];
             await saveGame(data);
         }
@@ -456,9 +517,11 @@ app.post("/deviceFunc", async (req, res) => {
     const data = await loadGame();
     const sf = req.body.setting;
     if (!validateServer(data.servers, req.cookies.session)) {
+        logDebug(`Unauthorised /deviceFunc request by ${req.cookies.session}`);
         return res.status(401).json({ err: "401 unauthorised" })
     }
     data.servers[req.cookies.session] = sf;
+    logDebug(`${sf} server is now online and registered to session ${req.cookies.session}`);
     await saveGame(data);
     return res.status(200).json({ ok: true });
 })
@@ -495,17 +558,12 @@ app.get("/emergency", async (req, res) => {
     return res.status(200).sendFile(publicPath("emergency"));
 })
 
-// One independent timer per sabotage type, so o2 and reactor can run concurrently.
-const sabotageTimers = new Map(); // type -> intervalId
-
-
-
+const sabotageTimers = new Map();
 
 async function startSabotageCountdown(type, seconds) {
     if (!type || typeof seconds !== 'number' || seconds <= 0) return;
     if (type !== 'o2' && type !== 'reactor') return;
 
-    // Only clear THIS type's existing timer, not every sabotage's timer.
     if (sabotageTimers.has(type)) {
         clearInterval(sabotageTimers.get(type));
         sabotageTimers.delete(type);
@@ -513,11 +571,10 @@ async function startSabotageCountdown(type, seconds) {
 
     const data = await loadGame();
 
-    // Stage 1: The Delay Phase Begins
+    logDebug(`Sabotage started: ${type} with initial delay of ${seconds} seconds.`);
     data.activeSabotages[type].sabotaged = true;
     data.activeSabotages[type].timeLeft = seconds;
 
-    // Ensure the crisis hasn't started yet
     if (type === 'o2') data.activeSabotages.o2.depleted = false;
     else data.activeSabotages.reactor.meltdown = false;
 
@@ -528,36 +585,29 @@ async function startSabotageCountdown(type, seconds) {
             const d = await loadGame();
             const sab = d.activeSabotages[type];
 
-            // Failsafe if the sabotage was cleared (e.g. fixed) from elsewhere
             if (!sab || !sab.sabotaged) {
+                logDebug(`Sabotage timer cancelled naturally for: ${type}`);
                 clearInterval(timer);
                 sabotageTimers.delete(type);
                 return;
             }
 
-            // Tick down the timer
             sab.timeLeft = Math.max(0, sab.timeLeft - 1);
             await saveGame(d);
             io.emit('sabotage_tick', { type, timeLeft: sab.timeLeft });
 
-            // What happens when a timer hits 0?
             if (sab.timeLeft <= 0) {
-
-                // Check which phase we just finished
                 const isCrisisPhase = (type === 'o2' && sab.depleted) ||
                                       (type === 'reactor' && sab.meltdown);
 
                 if (!isCrisisPhase) {
-                    // STAGE 1 FINISHED: Start the Crisis Phase!
+                    logDebug(`Sabotage ${type} reached crisis phase!`);
                     if (type === 'o2') sab.depleted = true;
                     else sab.meltdown = true;
 
-                    // Stage 2's duration is the authoritative meltdownCountdown
-                    // setting, not the client-supplied stage-1 "seconds" value.
                     sab.timeLeft = meltdownCountdownSeconds;
                     await saveGame(d);
 
-                    // Tell the clients that the crisis has officially started so their UI updates
                     const targetEndTime = Date.now() + (meltdownCountdownSeconds * 1000);
                     io.emit('sabotage_data_request', {
                         sData: d.activeSabotages,
@@ -565,10 +615,11 @@ async function startSabotageCountdown(type, seconds) {
                     });
 
                 } else {
-                    // STAGE 2 FINISHED: The crewmates failed. Game over!
+                    logDebug(`Sabotage ${type} failed to be fixed. Impostors win!`);
                     d.gameState.impostorsWon = true;
                     d.gameState.crewmatesWon = false;
                     d.gameState.started = false;
+                    
                     if(sab.depleted){
                         d.gameState.winCondition = "OXYGEN DEPRIVATION KILLED THE CREW"
                     }
@@ -578,15 +629,11 @@ async function startSabotageCountdown(type, seconds) {
                     
                     await saveGame(d);
 
-                    // Push the final o2/reactor depleted/meltdown flags so
-                    // clients update their UI even if they never reconnect.
                     io.emit('sabotage_data_request', {
                         sData: d.activeSabotages,
                         endTime: 0
                     });
 
-                    // Push the updated gameState (impostorsWon, started, etc.)
-                    // to everyone, not just clients that (re)connect later.
                     io.emit('game_data_request', d.gameState);
 
                     if (type === 'o2') {
@@ -596,20 +643,18 @@ async function startSabotageCountdown(type, seconds) {
                         io.emit('game_over', { winner: 'impostors', reason: 'reactor' });
                     }
 
-                    // Clean up this type's interval only
                     clearInterval(timer);
                     sabotageTimers.delete(type);
                 }
             }
         } catch (e) {
-            console.error('Error in sabotage timer:', e);
+            logError(`Error in sabotage timer for ${type}:`, e);
         }
     }, 1000);
 
     sabotageTimers.set(type, timer);
 }
 
-// Crew successfully repairs a sabotage before its timer runs out.
 async function fixSabotage(type) {
     if (!type || (type !== 'o2' && type !== 'reactor')) return false;
 
@@ -620,9 +665,11 @@ async function fixSabotage(type) {
 
     const d = await loadGame();
     if (!d.activeSabotages[type] || !d.activeSabotages[type].sabotaged) {
-        return false; // nothing to fix
+        logDebug(`Ignored fix for non-active sabotage: ${type}`);
+        return false;
     }
 
+    logDebug(`Sabotage fixed by crew: ${type}`);
     d.activeSabotages[type] = type === 'o2'
         ? { sabotaged: false, depleted: false, timeLeft: 0 }
         : { sabotaged: false, meltdown: false, timeLeft: 0 };
@@ -633,40 +680,66 @@ async function fixSabotage(type) {
 }
 
 function clearAllSabotageTimers() {
+    logDebug("Clearing all sabotage timers.");
     for (const t of sabotageTimers.values()) {
         clearInterval(t);
     }
     sabotageTimers.clear();
 }
 
-// A single timer for the discussion/voting phase of an emergency meeting -
-// only one meeting can be in progress at a time.
 let emergencyMeetingTimer = null;
+let emergencyVotes = {};
 
 function clearEmergencyMeetingTimer() {
     if (emergencyMeetingTimer) {
+        logDebug("Clearing emergency meeting timer.");
         clearTimeout(emergencyMeetingTimer);
         emergencyMeetingTimer = null;
     }
 }
 
-// Called when the emergency device (or a player) requests a meeting.
+function buildEmergencyRoster(data) {
+    return Object.entries(data.players).map(([id, p]) => ({
+        id,
+        name: p.username,
+        dead: p.alive === false,
+        voted: Object.prototype.hasOwnProperty.call(emergencyVotes, id)
+    }));
+}
+
+function tallyEmergencyVotes() {
+    const tally = {};
+    for (const target of Object.values(emergencyVotes)) {
+        tally[target] = (tally[target] || 0) + 1;
+    }
+    return tally;
+}
+
+function emergencyVoterIds(data) {
+    return Object.keys(data.players).filter(id => {
+        const p = data.players[id];
+        return p.alive !== false && p.role !== 'dummy';
+    });
+}
+
 async function startEmergencyMeeting() {
     const data = await loadGame();
 
     if (!data.gameState.started || data.gameState.impostorsWon || data.gameState.crewmatesWon) {
+        logDebug("Emergency meeting rejected: Game not actively running.");
         io.emit('Err', { error: 'cannot call an emergency meeting right now' });
         return;
     }
 
     if (data.gameState.emergencyMeeting) {
-        // A meeting is already underway - ignore duplicate calls.
+        logDebug("Emergency meeting rejected: Meeting already underway.");
         return;
     }
 
+    logDebug("Emergency meeting started.");
     clearEmergencyMeetingTimer();
+    emergencyVotes = {};
 
-    // Discussion time is the authoritative setting, not something the caller supplies.
     const countdown = emergencyCountdownSeconds;
     const endTime = Date.now() + (countdown * 1000);
 
@@ -674,72 +747,95 @@ async function startEmergencyMeeting() {
     data.gameState.emergencyMeetingEndTime = endTime;
     await saveGame(data);
 
-    io.emit('emergency_ack', { countdown, endTime });
+    io.emit('emergency_ack', { countdown, endTime, players: buildEmergencyRoster(data) });
 
     emergencyMeetingTimer = setTimeout(async () => {
+        logDebug("Emergency meeting timer concluded.");
         emergencyMeetingTimer = null;
-        // Discussion time is up - ask the emergency device for the final vote tally.
-        io.emit('emergency', { requestResults: true });
+        await resolveEmergencyMeeting({ votes: tallyEmergencyVotes() });
     }, countdown * 1000);
 }
 
-// Called once the emergency device hands over the vote tally, whether that
-// happens because we asked (countdown ran out) or prematurely (the device
-// pushed results early, e.g. everyone voted before time ran out).
-//
-// Expected shape: { votes: { [playerId]: count, skip: count } }
-// The highest-voted key wins the ejection, unless there's a tie for first
-// place or the winner is "skip" - in either case nobody is ejected.
 async function resolveEmergencyMeeting(resultData) {
     const data = await loadGame();
-
+ 
     if (!data.gameState.emergencyMeeting) {
         // No meeting in progress (already resolved, or none was ever called) - ignore.
         return;
     }
-
+ 
     clearEmergencyMeetingTimer();
-
+ 
     data.gameState.emergencyMeeting = false;
     data.gameState.emergencyMeetingEndTime = 0;
-
+    emergencyVotes = {};
+ 
     const votes = (resultData && typeof resultData.votes === 'object' && resultData.votes) ? resultData.votes : {};
     const entries = Object.entries(votes).filter(([, count]) => typeof count === 'number' && count > 0);
-
+ 
     let ejectedId = null;
-
+ 
     if (entries.length > 0) {
         const topCount = Math.max(...entries.map(([, count]) => count));
         const topEntries = entries.filter(([, count]) => count === topCount);
-
+ 
         // Only eject if there's a single, unambiguous top vote-getter who isn't "skip".
         if (topEntries.length === 1 && topEntries[0][0] !== 'skip') {
             ejectedId = topEntries[0][0];
         }
     }
-
+ 
     if (ejectedId && data.players[ejectedId] && data.players[ejectedId].alive) {
         data.players[ejectedId].alive = false;
         data.gameState.alivePlayers = Math.max(0, data.gameState.alivePlayers - 1);
         if (data.players[ejectedId].impostor) {
             data.gameState.aliveImpostors = Math.max(0, data.gameState.aliveImpostors - 1);
         }
+ 
+        // Check win conditions now that someone's been ejected.
+        const aliveImpostors = data.gameState.aliveImpostors;
+        const aliveCrew = Math.max(0, data.gameState.alivePlayers - aliveImpostors);
+ 
+        if (aliveImpostors <= 0) {
+            data.gameState.crewmatesWon = true;
+            data.gameState.impostorsWon = false;
+            data.gameState.started = false;
+            data.gameState.winCondition = "THE CREW EJECTED EVERY IMPOSTOR";
+        } else if (aliveImpostors >= aliveCrew) {
+            data.gameState.impostorsWon = true;
+            data.gameState.crewmatesWon = false;
+            data.gameState.started = false;
+            data.gameState.winCondition = "THE IMPOSTORS OVERWHELMED THE CREW";
+        }
+ 
+        if (!data.gameState.started) {
+            // The round just ended - kill any leftover sabotage timers so
+            // they can't flip the result again after the fact.
+            clearAllSabotageTimers();
+        }
     }
-
+ 
     await saveGame(data);
-
+ 
     io.emit('emergency_result', {
         ejected: ejectedId,
         players: data.players,
         gameState: data.gameState
     });
+ 
+    if (!data.gameState.started && (data.gameState.crewmatesWon || data.gameState.impostorsWon)) {
+        // Push the final gameState to everyone, then announce the win.
+        io.emit('game_data_request', data.gameState);
+        io.emit('game_over', {
+            winner: data.gameState.crewmatesWon ? 'crewmates' : 'impostors',
+            reason: 'emergency_meeting'
+        });
+    }
 }
-
 
 app.post(`/env`, (req, res) => {
     return res.json({ip:IP, port:PORT});
 })
-
 
 app.post("/addDummyPlayers", async (req, res) => {
     const data = await loadGame();
@@ -747,10 +843,12 @@ app.post("/addDummyPlayers", async (req, res) => {
     let amnt = parseInt(req.body.amnt);
 
     if (isNaN(amnt)) {
+        logDebug(`Dummy player request failed: Invalid amount provided.`);
         return res.status(400).json({ message: "Invalid amount provided." });
     }
 
     if (data.players[req.cookies.session]?.username !== data.gameState.host) {
+        logDebug(`Unauthorised dummy player request by ${req.cookies.session}`);
         return res.status(401).json({ message: "401 Unauthorized", hint: "No host - no admin controls." });
     }
 
@@ -783,6 +881,7 @@ app.post("/addDummyPlayers", async (req, res) => {
     data.gameState.alivePlayers = totalCount;
 
     await saveGame(data);
+    logDebug(`Host successfully added ${toAdd} dummy players.`);
     res.status(200).json({ message: `Successfully added ${toAdd} dummy players.` });
 });
 
@@ -803,6 +902,8 @@ io.on("connection", async (socket) => {
     const rawCookieHeader = socket.request.headers.cookie;
     const cookies = parseSocketCookies(rawCookieHeader);
     const data = await loadGame();
+    
+    logDebug(`Client connected via socket (session: ${cookies.session || 'unknown'})`);
 
     try {
         if (data.players[cookies.session]) {
@@ -817,6 +918,7 @@ io.on("connection", async (socket) => {
                 targetEndTimestamp = Date.now() + (data.activeSabotages.reactor.timeLeft * 1000);
             }
 
+            logDebug(`client requested sabotage data (sent via connect for ${cookies.session})`);
             socket.emit("sabotage_data_request", {
                 sData: data.activeSabotages,
                 endTime: targetEndTimestamp
@@ -825,14 +927,18 @@ io.on("connection", async (socket) => {
             if (data.gameState.emergencyMeeting && data.gameState.emergencyMeetingEndTime) {
                 socket.emit("emergency_ack", {
                     countdown: Math.max(0, Math.round((data.gameState.emergencyMeetingEndTime - Date.now()) / 1000)),
-                    endTime: data.gameState.emergencyMeetingEndTime
+                    endTime: data.gameState.emergencyMeetingEndTime,
+                    players: buildEmergencyRoster(data)
                 });
             }
         }
         else {
+            logDebug(`Socket connection rejected: username not found for session ${cookies.session}`);
             socket.emit("Err", { error: "username not found." });
         }
+        
         socket.on("sabotage", async (sabdata) => {
+            logDebug(`Client (${cookies.session}) requested sabotage: ${sabdata ? sabdata.type : 'unknown'}`);
             try {
                 if (!sabdata || !sabdata.type || typeof sabdata.countdown !== 'number') {
                     socket.emit('Err', { error: 'invalid sabotage payload' });
@@ -843,42 +949,104 @@ io.on("connection", async (socket) => {
                     socket.emit('Err', { error: 'already sabotaged' });
                     socket.emit('sabotage_ack', {ok:false})
                 }
-                // delegate countdown handling
                 await startSabotageCountdown(sabdata.type, sabdata.countdown);
                 socket.emit('sabotage_ack', { ok:true });
             } catch (e) {
+                logError("Sabotage error:", e);
                 socket.emit('Err', { error: e.message });
             }
         });
+        
         socket.on("emergency", async (payload) => {
+            logDebug(`Client (${cookies.session}) triggered emergency event.`);
             try {
                 const hasResults = payload && typeof payload === 'object' && payload.votes && typeof payload.votes === 'object';
-
                 if (hasResults) {
-                    // The emergency device is handing over the (possibly premature)
-                    // final vote tally - resolve the meeting right away regardless
-                    // of whether the discussion countdown has actually elapsed.
                     await resolveEmergencyMeeting(payload);
                     return;
                 }
-
-                // No vote data attached - this is a request to call a new meeting.
                 await startEmergencyMeeting();
             } catch (e) {
+                logError("Emergency error:", e);
                 socket.emit('Err', { error: e.message });
             }
         });
+        
+        socket.on("cast_vote", async (payload) => {
+            try {
+                const voterId = cookies.session;
+                const d = await loadGame();
+
+                if (!d.gameState.emergencyMeeting) {
+                    socket.emit('Err', { error: 'no emergency meeting in progress' });
+                    socket.emit('vote_ack', { ok: false });
+                    return;
+                }
+
+                const voter = d.players[voterId];
+                if (!voter) {
+                    socket.emit('Err', { error: 'no player session' });
+                    socket.emit('vote_ack', { ok: false });
+                    return;
+                }
+                if (voter.alive === false) {
+                    socket.emit('Err', { error: 'dead players cannot vote' });
+                    socket.emit('vote_ack', { ok: false });
+                    return;
+                }
+                if (Object.prototype.hasOwnProperty.call(emergencyVotes, voterId)) {
+                    socket.emit('Err', { error: 'you already voted' });
+                    socket.emit('vote_ack', { ok: false });
+                    return;
+                }
+
+                const target = payload && payload.target;
+                const targetIsSkip = target === 'skip';
+                const targetPlayer = !targetIsSkip ? d.players[target] : null;
+
+                if (!targetIsSkip && (!targetPlayer || targetPlayer.alive === false)) {
+                    socket.emit('Err', { error: 'invalid vote target' });
+                    socket.emit('vote_ack', { ok: false });
+                    return;
+                }
+
+                logDebug(`${voterId} cast a vote for ${targetIsSkip ? 'skip' : target}`);
+                emergencyVotes[voterId] = targetIsSkip ? 'skip' : target;
+                socket.emit('vote_ack', { ok: true });
+
+                io.emit('emergency_vote_update', { players: buildEmergencyRoster(d) });
+
+                const requiredVoters = emergencyVoterIds(d);
+                const allVoted = requiredVoters.length > 0 &&
+                    requiredVoters.every(id => Object.prototype.hasOwnProperty.call(emergencyVotes, id));
+
+                if (allVoted) {
+                    logDebug("All votes have been cast. Resolving emergency meeting early.");
+                    await resolveEmergencyMeeting({ votes: tallyEmergencyVotes() });
+                }
+            } catch (e) {
+                logError("Cast vote error:", e);
+                socket.emit('Err', { error: e.message });
+                socket.emit('vote_ack', { ok: false });
+            }
+        });
+        
         socket.on("im-dead", async () => {
+            logDebug(`${cookies.session} requested death`);
             if(!data.players[cookies.session]){
+                logDebug(`Death request failed: No user found for session ${cookies.session}`);
                 socket.emit("Err", {error:"No user found with associated session."})
                 socket.emit("imdead_ack", {ok:false});
                 return;
             }
-            data.players[cookies.session].alive = false;
+            data.players[cookies.session].alive = false; 
+            logDebug(`${cookies.session} death confirmed`);
             socket.emit("imdead_ack", {ok:true});
             await saveGame(data);
         })
+        
         socket.on("fix_sabotage", async (payload) => {
+            logDebug(`Client (${cookies.session}) requested to fix sabotage: ${payload ? payload.type : 'unknown'}`);
             try {
                 if (!payload || !payload.type) {
                     socket.emit('Err', { error: 'invalid fix payload' });
@@ -888,15 +1056,18 @@ io.on("connection", async (socket) => {
                 const fixed = await fixSabotage(payload.type);
                 socket.emit('fix_ack', { ok: fixed });
             } catch (e) {
+                logError("Fix sabotage error:", e);
                 socket.emit('Err', { error: e.message });
                 socket.emit('fix_ack', {ok:false})
             }
         });
+        
         socket.on('disconnect', () => {
-            console.log('Client disconnected.');
+            logDebug(`Client disconnected (session: ${cookies.session || 'unknown'}).`);
         });
     }
     catch (err) {
+        logError("Socket connection error:", err);
         socket.emit("Err", { error: err.message });
     }
 });
@@ -906,12 +1077,12 @@ app.get("/win", async (req, res) => {
     const session = req.cookies.session;
     const isHost = !!(session && data.players[session] && data.players[session].username === data.gameState.host);
 
+    logDebug(`Client (${session}) fetching win screen.`);
     if (data.gameState.crewmatesWon) {
         return res.send(renderCrewmateWinHtml(data, isHost));
     }
     return res.send(renderImpostorWinHtml(data, isHost));
 })
-
 
 app.get('/reveal', async (req, res) => {
     let data = await loadGame();
@@ -931,6 +1102,7 @@ app.get('/reveal', async (req, res) => {
         }
     }
 
+    logDebug(`Client (${session}) fetched role reveal. Role: ${player.impostor ? 'Impostor' : 'Crewmate'}`);
     return res.send(renderRoleRevealHtml(player.impostor));
 });
 
@@ -948,42 +1120,31 @@ app.get("/waiting", async (req, res) => {
             return res.sendFile(path.join(__dirname, 'public', 'server.html'));
         }
         else {
-            console.log("Server tried to log in, denied access.")
+            logDebug(`Server tried to log in, denied access for session ${session}`);
         }
 
         return res.sendFile(path.join(__dirname, 'public', 'waiting_lobby.html'));
     }
 
+    logDebug("Unauthorised access attempt to /waiting.");
     res.status(401).json({ error: "401 unauthorised" })
 })
 
 function parseSettingsArray(rawSettings, playerCount) {
-    if (!Array.isArray(rawSettings)) {
-        return null;
-    }
+    if (!Array.isArray(rawSettings)) return null;
 
     const [impostorsRaw, cdRaw, tasksRaw, emergencyRaw] = rawSettings;
 
     const impostors = parseInt(impostorsRaw, 10);
     const meltdownCountdown = parseInt(cdRaw, 10);
     const tasks = parseInt(tasksRaw, 10);
-    // 4th slot is optional so older clients that only send 3 settings still
-    // work; falls back to the default discussion time.
     const emergencyCountdown = emergencyRaw === undefined
         ? DEFAULT_SETTINGS.emergencyCountdown
         : parseInt(emergencyRaw, 10);
 
-    if (isNaN(impostors) || isNaN(meltdownCountdown) || isNaN(tasks) || isNaN(emergencyCountdown)) {
-        return null;
-    }
-
-    if (impostors < 0 || meltdownCountdown < 0 || tasks < 0 || emergencyCountdown < 0) {
-        return null;
-    }
-
-    if (playerCount !== undefined && impostors >= playerCount) {
-        return null;
-    }
+    if (isNaN(impostors) || isNaN(meltdownCountdown) || isNaN(tasks) || isNaN(emergencyCountdown)) return null;
+    if (impostors < 0 || meltdownCountdown < 0 || tasks < 0 || emergencyCountdown < 0) return null;
+    if (playerCount !== undefined && impostors >= playerCount) return null;
 
     return { impostors, meltdownCountdown, tasks, emergencyCountdown };
 }
@@ -994,11 +1155,13 @@ app.post("/start", async (req, res) => {
         const data = await loadGame();
 
         if (!data.players[session] || data.players[session].username != data.gameState.host) {
+            logDebug(`Unauthorised game start attempt by ${session}`);
             return res.status(401).json({ message: "Get outa here you dont have credentials clown.", failed: true });
         }
 
         if (!isGameOperational(data.servers)) {
-            return res.status(202).json({ message: "Cant start the game, o2 and reactor are offline.", failed: true })
+            logDebug("Game start blocked: Operational servers are missing.");
+            return res.status(202).json({ message: "Cant start the game - o2, reactor or emergency server is missing.", failed: true })
         }
 
         const playerIds = Object.keys(data.players);
@@ -1006,20 +1169,17 @@ app.post("/start", async (req, res) => {
 
         const parsedSettings = parseSettingsArray(req.body.settings, totalPlayers);
         if (!parsedSettings) {
+            logDebug("Game start blocked: Invalid or missing settings.");
             return res.status(400).json({ message: "Invalid or missing settings.", failed: true });
         }
 
-        // A fresh game means any leftover timers from a previous round must die.
+        logDebug(`Starting game with ${totalPlayers} players.`);
         clearAllSabotageTimers();
         clearEmergencyMeetingTimer();
 
         data.settings = parsedSettings;
         const targetImpostors = data.settings.impostors;
-
-        // Lock in the crisis-phase duration for the round from the host's settings.
         meltdownCountdownSeconds = data.settings.meltdownCountdown;
-
-        // Lock in the emergency-meeting discussion duration for the round.
         emergencyCountdownSeconds = data.settings.emergencyCountdown;
 
         let roleDeck = [];
@@ -1047,6 +1207,8 @@ app.post("/start", async (req, res) => {
             data.players[id].totalTasks = data.settings.tasks;
             data.players[id].tasksCompleted = 0;
             totalTasks += data.settings.tasks;
+            
+            logDebug(`${id} is now ${assignedRole}`);
         });
 
         data.gameState.started = true;
@@ -1060,13 +1222,13 @@ app.post("/start", async (req, res) => {
         data.gameState.emergencyMeeting = false;
         data.gameState.emergencyMeetingEndTime = 0;
 
-        // Reset any stale sabotage state from a previous round
         data.activeSabotages = {
             o2: { ...DEFAULT_SABOTAGES.o2 },
             reactor: { ...DEFAULT_SABOTAGES.reactor }
         };
 
         await saveGame(data);
+        logDebug("Game successfully started.");
 
         return res.status(200).json({ message: "May a fine game take place, among us!", failed: false });
     });
@@ -1076,6 +1238,7 @@ app.get("/reset", async (req, res) => {
     let data = await loadGame();
 
     if (!req.cookies.session || !data.players[req.cookies.session]) {
+        logDebug("Unauthorised reset attempt: No valid session.");
         let dynamicHtml = `
             <!DOCTYPE html>
             <html>
@@ -1092,6 +1255,7 @@ app.get("/reset", async (req, res) => {
         return res.status(401).send(dynamicHtml);
     }
     if (data.players[req.cookies.session].username != data.gameState.host) {
+        logDebug(`Unauthorised reset attempt by non-host: ${req.cookies.session}`);
         let dynamicHtml = `
             <!DOCTYPE html>
             <html>
@@ -1107,8 +1271,8 @@ app.get("/reset", async (req, res) => {
         res.set('Content-Type', 'text/html');
         return res.status(401).send(dynamicHtml);
     }
-    // Kill any in-flight sabotage timers so they can't keep writing
-    // to the freshly-reset game.json.
+
+    logDebug("Host initiated full reset of game state.");
     clearAllSabotageTimers();
     clearEmergencyMeetingTimer();
     meltdownCountdownSeconds = DEFAULT_SETTINGS.meltdownCountdown;
@@ -1141,9 +1305,7 @@ app.get("/reset", async (req, res) => {
     return res.send(dynamicHtml);
 })
 
-
 // Directory scan defence
-
 const chaoticStatuses = [100, 101, 102, 103, 200, 201, 202, 203, 204, 205, 206, 207, 208, 226, 300, 301, 302, 303, 304, 307, 308, 401, 403, 400, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 420, 421, 422, 423, 425, 426, 429, 431, 451, 500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511];
 const suspiciousKeywords = ['admin', '.env', '.git', 'wp-', 'backup', '.php', '.aspx', '.jsp'];
 
@@ -1159,7 +1321,7 @@ app.use((req, res, next) => {
 
     if (corporatePrankStore[clientIp].sessionLimited) {
         const randomStatus = chaoticStatuses[Math.floor(Math.random() * chaoticStatuses.length)];
-        console.log(`[PERMA-TROLL] IP ${clientIp} requested ${req.path} -> Sending status ${randomStatus}`);
+        logDebug(`[PERMA-TROLL] IP ${clientIp} requested ${req.path} -> Sending status ${randomStatus}`);
         const targetKb = Math.floor(Math.random() * (800 - 300 + 1)) + 300;
         const byteLength = targetKb * 1024;
         const randomDataString = crypto.randomBytes(byteLength).toString('hex').slice(0, byteLength);
@@ -1186,15 +1348,14 @@ app.use((req, res, next) => {
 
     if (isScannerPath) {
         corporatePrankStore[clientIp].strikes += 1;
-        console.log(`[WARN] Scanner hit from IP ${clientIp} on ${req.path}. Strikes: ${corporatePrankStore[clientIp].strikes}/${STRIKE_LIMIT}`);
+        logDebug(`[WARN] Scanner hit from IP ${clientIp} on ${req.path}. Strikes: ${corporatePrankStore[clientIp].strikes}/${STRIKE_LIMIT}`);
 
         if (corporatePrankStore[clientIp].strikes >= STRIKE_LIMIT) {
             corporatePrankStore[clientIp].sessionLimited = true;
-            console.log(`[LOCKDOWN] IP ${clientIp} is now session limited!`);
+            logDebug(`[LOCKDOWN] IP ${clientIp} is now session limited!`);
         }
 
         const randomStatus = chaoticStatuses[Math.floor(Math.random() * chaoticStatuses.length)];
-
         const targetKb = Math.floor(Math.random() * (800 - 300 + 1)) + 300;
         const byteLength = targetKb * 1024;
         const randomDataString = crypto.randomBytes(byteLength).toString('hex').slice(0, byteLength);

@@ -5,29 +5,31 @@
     "impostorsWon": false,
     "crewmatesWon": false,
     "emergencyMeeting": false,
+    "emergencyMeetingEndTime": 0,
     "totalTasks": 50,
     "completedTasks": 0,
-    "host": "amogus",
+    "host": "iMogUs",
     "aliveImpostors": 2,
     "playerCount": 10,
     "alivePlayers": 10
   },
   "servers": {
-    "ss": "o2",
-    "s1": "reactor"
+    "ad3bd7a3-a7a5-4ce6-9678-4984ce61be70": "o2",
+    "20fe9eb0-d46f-4c4a-be42-e9c0a2f474d9": "reactor",
+    "1d137d69-52c0-481b-8f06-fe05f0b46d6e": "emergency"
   },
   "players": {
-    "e85a1d39-4fca-4459-9bfa-daa27793fe10": {
-      "id": "e85a1d39-4fca-4459-9bfa-daa27793fe10",
-      "username": "amogus",
-      "alive": false,
+    "06d165e4-7c2c-477e-80b3-e1d68169748d": {
+      "id": "06d165e4-7c2c-477e-80b3-e1d68169748d",
+      "username": "iMogUs",
+      "alive": true,
       "tasksCompleted": 0,
       "totalTasks": 5,
-      "impostor": false,
-      "role": "crewmate"
+      "impostor": true,
+      "role": "impostor"
     },
-    "dummy_1785264521222_1": {
-      "id": "4e440a6d-61d2-4937-a180-2f4aed295bb4",
+    "dummy_1785318150877_1": {
+      "id": "5d876f03-eb22-490c-82e8-c76b6432ba15",
       "username": "dummy_2",
       "role": "crewmate",
       "alive": true,
@@ -35,8 +37,8 @@
       "totalTasks": 5,
       "impostor": false
     },
-    "dummy_1785264521222_2": {
-      "id": "d4794d60-3eed-44d6-99d8-8e9790787757",
+    "dummy_1785318150877_2": {
+      "id": "6c6c6604-56fc-4e71-b810-307346c3e9cd",
       "username": "dummy_3",
       "role": "crewmate",
       "alive": true,
@@ -44,8 +46,8 @@
       "totalTasks": 5,
       "impostor": false
     },
-    "dummy_1785264521222_3": {
-      "id": "46893257-da99-4971-8778-7e322e6cb1a2",
+    "dummy_1785318150877_3": {
+      "id": "6900e1ac-2148-4de4-9a2e-4163a2e06b9a",
       "username": "dummy_4",
       "role": "crewmate",
       "alive": true,
@@ -53,8 +55,8 @@
       "totalTasks": 5,
       "impostor": false
     },
-    "dummy_1785264521222_4": {
-      "id": "10acc1d1-e9a4-44d3-8e14-cb46a1b3b264",
+    "dummy_1785318150877_4": {
+      "id": "4c9e61ff-4929-481b-8637-8806fa37ee1f",
       "username": "dummy_5",
       "role": "crewmate",
       "alive": true,
@@ -62,17 +64,17 @@
       "totalTasks": 5,
       "impostor": false
     },
-    "dummy_1785264521222_5": {
-      "id": "137adee5-4b66-473d-aa5b-77cecf6fb3e5",
+    "dummy_1785318150877_5": {
+      "id": "6201601f-4859-4cdf-a986-06d6f1eca786",
       "username": "dummy_6",
-      "role": "crewmate",
+      "role": "impostor",
       "alive": true,
       "tasksCompleted": 0,
       "totalTasks": 5,
-      "impostor": false
+      "impostor": true
     },
-    "dummy_1785264521222_6": {
-      "id": "a211903f-ee67-4e99-b4ef-27f00b41aff9",
+    "dummy_1785318150877_6": {
+      "id": "3838d282-b116-49e7-a7e5-9fbdcb618669",
       "username": "dummy_7",
       "role": "crewmate",
       "alive": true,
@@ -80,26 +82,26 @@
       "totalTasks": 5,
       "impostor": false
     },
-    "dummy_1785264521222_7": {
-      "id": "ed50bd79-36ee-4093-8dc6-630cee7886c1",
+    "dummy_1785318150877_7": {
+      "id": "522faff9-6c93-4d35-96c4-a02c5f5af674",
       "username": "dummy_8",
-      "role": "impostor",
+      "role": "crewmate",
       "alive": true,
       "tasksCompleted": 0,
       "totalTasks": 5,
-      "impostor": true
+      "impostor": false
     },
-    "dummy_1785264521222_8": {
-      "id": "747a700c-8611-42a5-a129-e852c553f12d",
+    "dummy_1785318150877_8": {
+      "id": "d1303bc3-0256-4b51-90a4-34c7ac5e7284",
       "username": "dummy_9",
-      "role": "impostor",
+      "role": "crewmate",
       "alive": true,
       "tasksCompleted": 0,
       "totalTasks": 5,
-      "impostor": true
+      "impostor": false
     },
-    "dummy_1785264521222_9": {
-      "id": "c42bcfcd-4025-4aa0-a94f-3838e0a93e3e",
+    "dummy_1785318150877_9": {
+      "id": "9b7a56cc-4385-4e77-b338-73319b20819d",
       "username": "dummy_10",
       "role": "crewmate",
       "alive": true,
@@ -123,6 +125,7 @@
   "settings": {
     "impostors": 2,
     "meltdownCountdown": 30,
-    "tasks": 5
+    "tasks": 5,
+    "emergencyCountdown": 30
   }
 }
