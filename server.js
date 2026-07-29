@@ -530,7 +530,11 @@ app.get("/o2", async (req, res) => {
     const data = await loadGame();
     if (!validateServer(data.servers, req.cookies.session)) {
         return res.status(401).json({ err: "401 unauthorised" })
+        
     }
+    if(data.servers[req.cookies.session] != "o2"){
+            return res.status(400).redirect(data.servers[req.cookies.session])
+        }
     return res.status(200).sendFile(publicPath("o2"));
 })
 
@@ -539,6 +543,9 @@ app.get("/reactor", async (req, res) => {
     if (!validateServer(data.servers, req.cookies.session)) {
         return res.status(401).json({ err: "401 unauthorised" })
     }
+    if(data.servers[req.cookies.session] != "reactor"){
+            return res.status(400).redirect(data.servers[req.cookies.session])
+        }
     return res.status(200).sendFile(publicPath("reactor"));
 })
 
@@ -546,7 +553,11 @@ app.get("/control%20panel", async (req, res) => {
     const data = await loadGame();
     if (!validateServer(data.servers, req.cookies.session)) {
         return res.status(401).json({ err: "401 unauthorised" })
+        
     }
+    if(data.servers[req.cookies.session] != "control panel"){
+            return res.status(400).redirect(data.servers[req.cookies.session])
+        }
     return res.status(200).sendFile(publicPath("control panel"));
 })
 
@@ -554,7 +565,11 @@ app.get("/emergency", async (req, res) => {
     const data = await loadGame();
     if (!validateServer(data.servers, req.cookies.session)) {
         return res.status(401).json({ err: "401 unauthorised" })
+        
     }
+    if(data.servers[req.cookies.session] != "emergency"){
+            return res.status(400).redirect(data.servers[req.cookies.session])
+        }
     return res.status(200).sendFile(publicPath("emergency"));
 })
 
@@ -758,44 +773,55 @@ async function startEmergencyMeeting() {
 
 async function resolveEmergencyMeeting(resultData) {
     const data = await loadGame();
- 
+
     if (!data.gameState.emergencyMeeting) {
-        // No meeting in progress (already resolved, or none was ever called) - ignore.
         return;
     }
- 
+
     clearEmergencyMeetingTimer();
- 
+
     data.gameState.emergencyMeeting = false;
     data.gameState.emergencyMeetingEndTime = 0;
     emergencyVotes = {};
- 
+
     const votes = (resultData && typeof resultData.votes === 'object' && resultData.votes) ? resultData.votes : {};
     const entries = Object.entries(votes).filter(([, count]) => typeof count === 'number' && count > 0);
- 
+
     let ejectedId = null;
- 
+    let _result = "tie"; // Default result if votes are empty or tied
+
     if (entries.length > 0) {
         const topCount = Math.max(...entries.map(([, count]) => count));
         const topEntries = entries.filter(([, count]) => count === topCount);
- 
-        // Only eject if there's a single, unambiguous top vote-getter who isn't "skip".
-        if (topEntries.length === 1 && topEntries[0][0] !== 'skip') {
-            ejectedId = topEntries[0][0];
+
+        // If there's a single winner
+        if (topEntries.length === 1) {
+            const winner = topEntries[0][0];
+            
+            if (winner === 'skip') {
+                _result = "skip";
+            } else {
+                _result = "ejection";
+                ejectedId = winner;
+            }
+        } else {
+            // Multiple top vote-getters = Tie
+            _result = "tie";
         }
     }
- 
+
+    // Process ejection if valid player
     if (ejectedId && data.players[ejectedId] && data.players[ejectedId].alive) {
         data.players[ejectedId].alive = false;
         data.gameState.alivePlayers = Math.max(0, data.gameState.alivePlayers - 1);
         if (data.players[ejectedId].impostor) {
             data.gameState.aliveImpostors = Math.max(0, data.gameState.aliveImpostors - 1);
         }
- 
-        // Check win conditions now that someone's been ejected.
+
+        // Check win conditions
         const aliveImpostors = data.gameState.aliveImpostors;
         const aliveCrew = Math.max(0, data.gameState.alivePlayers - aliveImpostors);
- 
+
         if (aliveImpostors <= 0) {
             data.gameState.crewmatesWon = true;
             data.gameState.impostorsWon = false;
@@ -807,24 +833,22 @@ async function resolveEmergencyMeeting(resultData) {
             data.gameState.started = false;
             data.gameState.winCondition = "THE IMPOSTORS OVERWHELMED THE CREW";
         }
- 
+
         if (!data.gameState.started) {
-            // The round just ended - kill any leftover sabotage timers so
-            // they can't flip the result again after the fact.
             clearAllSabotageTimers();
         }
     }
- 
+
     await saveGame(data);
- 
+
     io.emit('emergency_result', {
         ejected: ejectedId,
         players: data.players,
-        gameState: data.gameState
+        gameState: data.gameState,
+        result: _result
     });
- 
+
     if (!data.gameState.started && (data.gameState.crewmatesWon || data.gameState.impostorsWon)) {
-        // Push the final gameState to everyone, then announce the win.
         io.emit('game_data_request', data.gameState);
         io.emit('game_over', {
             winner: data.gameState.crewmatesWon ? 'crewmates' : 'impostors',
@@ -835,6 +859,180 @@ async function resolveEmergencyMeeting(resultData) {
 
 app.post(`/env`, (req, res) => {
     return res.json({ip:IP, port:PORT});
+})
+
+function ejectHtml(textToType) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Text Reveal</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: #000000;
+    overflow: hidden;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+  
+  .stage {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000000;
+  }
+
+  /* -------------------- Starfield -------------------- */
+  .particles { 
+    position: absolute; 
+    inset: 0; 
+    overflow: hidden; 
+    pointer-events: none; 
+    z-index: 1; 
+  }
+  
+  .particle {
+    position: absolute;
+    width: 2px; 
+    height: 2px;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 50%;
+    animation: drift linear infinite;
+    opacity: 0;
+  }
+  
+  @keyframes drift {
+    0% { opacity: 0; transform: translateY(0); }
+    10% { opacity: 0.7; }
+    90% { opacity: 0.35; }
+    100% { opacity: 0; transform: translateY(-40px); }
+  }
+
+  .vignette {
+    position: absolute; 
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.85) 100%);
+    pointer-events: none;
+    z-index: 3;
+  }
+
+  /* -------------------- Text & Cursor -------------------- */
+  .scene {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    width: 90vw;
+    font-size: clamp(1.6rem, 5vw, 3rem);
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 300;
+    letter-spacing: 0.05em;
+    white-space: pre-wrap;
+  }
+
+  .cursor {
+    display: inline-block;
+    width: 3px;
+    height: 1em;
+    margin-left: 4px;
+    vertical-align: text-bottom;
+    background: rgba(255, 255, 255, 0.85);
+    animation: blink 0.9s steps(1) infinite;
+  }
+  
+  @keyframes blink {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+  }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="particles" id="particles"></div>
+    
+    <div class="scene">
+      <span id="text-container"></span>
+    </div>
+    
+    <div class="vignette"></div>
+  </div>
+<script>
+  // Passed from server/generator
+  const TEXT_TO_TYPE = \`${textToType.replace(/`/g, '\\`')}\`;
+
+  // ---------------- Starfield ----------------
+  const particleContainer = document.getElementById('particles');
+  const starCount = 90;
+  
+  for (let i = 0; i < starCount; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random() * 2 + 1;
+    p.style.width = size + 'px';
+    p.style.height = size + 'px';
+    p.style.left = Math.random() * 100 + 'vw';
+    p.style.top = Math.random() * 100 + 'vh';
+    p.style.animationDuration = (6 + Math.random() * 10) + 's';
+    p.style.animationDelay = (Math.random() * 8) + 's';
+    particleContainer.appendChild(p);
+  }
+
+  // ---------------- Text Writing Logic ----------------
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  function typeText(el, text, speed) {
+    return new Promise((resolve) => {
+      el.textContent = '';
+      const cursor = document.createElement('span');
+      cursor.className = 'cursor';
+      let i = 0;
+
+      function step() {
+        if (i < text.length) {
+          el.textContent = text.slice(0, i + 1);
+          el.appendChild(cursor);
+          i++;
+          // Slight randomness to typing speed makes it feel more organic
+          const variableSpeed = speed + (Math.random() * 30 - 15);
+          setTimeout(step, variableSpeed);
+        } else {
+          // Leave the cursor blinking after typing finishes
+          setTimeout(resolve, 400);
+        }
+      }
+      step();
+    });
+  }
+
+  // ---------------- Initialization ----------------
+  async function runSequence() {
+    const textContainer = document.getElementById('text-container');
+    
+    // Wait a brief moment for the stars to settle in before typing begins
+    await sleep(2000);
+    
+    // Type the text at 65ms per character (adjust as needed)
+    await typeText(textContainer, TEXT_TO_TYPE, 65);
+
+    await sleep(2000);
+    window.location.href = "/emergency"
+  }
+
+  runSequence();
+</script>
+</body>
+</html>`;
+}
+
+app.get("/revealResults", async (req, res) => {
+    const data = await loadGame();
+    return ejectHtml()
 })
 
 app.post("/addDummyPlayers", async (req, res) => {
@@ -884,6 +1082,7 @@ app.post("/addDummyPlayers", async (req, res) => {
     logDebug(`Host successfully added ${toAdd} dummy players.`);
     res.status(200).json({ message: `Successfully added ${toAdd} dummy players.` });
 });
+
 
 function parseSocketCookies(cookieHeader) {
     const cookies = {};
@@ -936,6 +1135,11 @@ io.on("connection", async (socket) => {
             logDebug(`Socket connection rejected: username not found for session ${cookies.session}`);
             socket.emit("Err", { error: "username not found." });
         }
+
+        socket.on("unstable", (payload) => {
+            logDebug("Recieved unstable signal, Rebrodcasting for emergency Server.")
+            socket.emit("unstable", {active:true});
+        })
         
         socket.on("sabotage", async (sabdata) => {
             logDebug(`Client (${cookies.session}) requested sabotage: ${sabdata ? sabdata.type : 'unknown'}`);
@@ -965,6 +1169,7 @@ io.on("connection", async (socket) => {
                     await resolveEmergencyMeeting(payload);
                     return;
                 }
+                socket.emit("fix_ack", {ok: true})
                 await startEmergencyMeeting();
             } catch (e) {
                 logError("Emergency error:", e);
@@ -1229,7 +1434,9 @@ app.post("/start", async (req, res) => {
 
         await saveGame(data);
         logDebug("Game successfully started.");
-
+        io.on("connection", (scoket) => {
+            socket.emit("start", {started:true})
+        })
         return res.status(200).json({ message: "May a fine game take place, among us!", failed: false });
     });
 });

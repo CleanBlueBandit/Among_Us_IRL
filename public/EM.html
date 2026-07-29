@@ -537,9 +537,14 @@
       ? payload.players[payload.ejected].username
       : null;
 
-    banner.textContent = ejectedName
-      ? `${ejectedName} was ejected.`
-      : 'No one was ejected.';
+
+    let tx;
+    if(payload.result = "ejection"){
+      banner.textContent = `${ejectedName} ${payload.players[payload.ejected].impostor ? "was" : "was not"} An impostor`;
+    }
+    else{
+      banner.textContent = `No one was ejected (${paylaod.result == "skip" ? "Skipped" : "Tie"})`;
+    }
     banner.classList.add('show');
     document.getElementById('playerGrid').style.display = 'none';
     document.getElementById('footer').style.display = 'none';

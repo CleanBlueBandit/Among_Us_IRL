@@ -217,3 +217,1996 @@
 [DEBUG] [2026-07-29T09:45:23.279Z] data loaded
 [DEBUG] [2026-07-29T09:45:23.279Z] Client connected via socket (session: 06d165e4-7c2c-477e-80b3-e1d68169748d)
 [DEBUG] [2026-07-29T09:45:23.279Z] client requested sabotage data (sent via connect for 06d165e4-7c2c-477e-80b3-e1d68169748d)
+[DEBUG] [2026-07-29T10:46:18.665Z] All .env variables present.
+[DEBUG] [2026-07-29T10:46:18.674Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T10:46:59.478Z] data loaded
+[DEBUG] [2026-07-29T10:46:59.479Z] Client connected via socket (session: unknown)
+[DEBUG] [2026-07-29T10:46:59.479Z] Socket connection rejected: username not found for session undefined
+[DEBUG] [2026-07-29T10:47:11.108Z] data loaded
+[DEBUG] [2026-07-29T10:47:11.214Z] Host login denied: Host is already in the game.
+[DEBUG] [2026-07-29T10:47:11.236Z] data loaded
+[DEBUG] [2026-07-29T10:47:11.236Z] Unauthorised access attempt to /waiting.
+[DEBUG] [2026-07-29T10:47:11.262Z] Client disconnected (session: unknown).
+[DEBUG] [2026-07-29T10:47:13.419Z] Client connected via socket (session: unknown)
+[DEBUG] [2026-07-29T10:47:13.418Z] data loaded
+[DEBUG] [2026-07-29T10:47:13.419Z] Socket connection rejected: username not found for session undefined
+[DEBUG] [2026-07-29T10:47:39.481Z] data loaded
+[DEBUG] [2026-07-29T10:47:39.543Z] data saved
+[DEBUG] [2026-07-29T10:47:39.544Z] Host successfully joined: I with ID 56369984-7f23-4fd4-89c1-099bd81f7fea
+[DEBUG] [2026-07-29T10:47:39.562Z] data loaded
+[DEBUG] [2026-07-29T10:47:39.606Z] Client disconnected (session: unknown).
+[DEBUG] [2026-07-29T10:47:39.618Z] data loaded
+[DEBUG] [2026-07-29T10:47:39.618Z] Client connected via socket (session: 56369984-7f23-4fd4-89c1-099bd81f7fea)
+[DEBUG] [2026-07-29T10:47:39.619Z] client requested sabotage data (sent via connect for 56369984-7f23-4fd4-89c1-099bd81f7fea)
+[DEBUG] [2026-07-29T10:47:39.639Z] data loaded
+[DEBUG] [2026-07-29T10:47:39.685Z] Client disconnected (session: 56369984-7f23-4fd4-89c1-099bd81f7fea).
+[DEBUG] [2026-07-29T10:47:39.695Z] data loaded
+[DEBUG] [2026-07-29T10:47:39.696Z] Client connected via socket (session: 56369984-7f23-4fd4-89c1-099bd81f7fea)
+[DEBUG] [2026-07-29T10:47:39.696Z] client requested sabotage data (sent via connect for 56369984-7f23-4fd4-89c1-099bd81f7fea)
+[DEBUG] [2026-07-29T10:48:02.207Z] data loaded
+[DEBUG] [2026-07-29T10:48:02.210Z] data saved
+[DEBUG] [2026-07-29T10:48:02.210Z] New player joined: amogus with ID 1465cca3-1279-4219-8f7a-d4edd0da0c5a
+[DEBUG] [2026-07-29T10:48:02.236Z] data loaded
+[DEBUG] [2026-07-29T10:48:02.237Z] Server tried to log in, denied access for session 1465cca3-1279-4219-8f7a-d4edd0da0c5a
+[DEBUG] [2026-07-29T10:48:02.312Z] data loaded
+[DEBUG] [2026-07-29T10:48:02.312Z] Client connected via socket (session: 1465cca3-1279-4219-8f7a-d4edd0da0c5a)
+[DEBUG] [2026-07-29T10:48:02.313Z] client requested sabotage data (sent via connect for 1465cca3-1279-4219-8f7a-d4edd0da0c5a)
+[DEBUG] [2026-07-29T10:48:02.336Z] data loaded
+[DEBUG] [2026-07-29T10:48:02.336Z] Client (1465cca3-1279-4219-8f7a-d4edd0da0c5a) fetched role reveal. Role: Crewmate
+[DEBUG] [2026-07-29T10:48:02.377Z] Client disconnected (session: 1465cca3-1279-4219-8f7a-d4edd0da0c5a).
+[DEBUG] [2026-07-29T10:48:21.635Z] data loaded
+[DEBUG] [2026-07-29T10:48:21.716Z] data loaded
+[DEBUG] [2026-07-29T10:48:21.717Z] Client connected via socket (session: 1465cca3-1279-4219-8f7a-d4edd0da0c5a)
+[DEBUG] [2026-07-29T10:48:21.717Z] client requested sabotage data (sent via connect for 1465cca3-1279-4219-8f7a-d4edd0da0c5a)
+[DEBUG] [2026-07-29T10:48:36.955Z] data loaded
+[DEBUG] [2026-07-29T10:48:36.955Z] client requested sabotage data (sent via connect for 56369984-7f23-4fd4-89c1-099bd81f7fea)
+[DEBUG] [2026-07-29T10:48:36.955Z] Client connected via socket (session: 56369984-7f23-4fd4-89c1-099bd81f7fea)
+[DEBUG] [2026-07-29T10:48:40.644Z] data loaded
+[DEBUG] [2026-07-29T10:48:40.765Z] data saved
+[DEBUG] [2026-07-29T10:48:40.766Z] New server joined with ID 4e054c57-1c75-4097-87b5-9cd3186bb690
+[DEBUG] [2026-07-29T10:48:40.785Z] data loaded
+[DEBUG] [2026-07-29T10:48:40.821Z] Client disconnected (session: 56369984-7f23-4fd4-89c1-099bd81f7fea).
+[DEBUG] [2026-07-29T10:48:40.848Z] data loaded
+[DEBUG] [2026-07-29T10:48:40.848Z] Client connected via socket (session: 4e054c57-1c75-4097-87b5-9cd3186bb690)
+[DEBUG] [2026-07-29T10:48:40.848Z] Socket connection rejected: username not found for session 4e054c57-1c75-4097-87b5-9cd3186bb690
+[DEBUG] [2026-07-29T10:48:45.010Z] data loaded
+[DEBUG] [2026-07-29T10:48:45.011Z] emergency server is now online and registered to session 4e054c57-1c75-4097-87b5-9cd3186bb690
+[DEBUG] [2026-07-29T10:48:45.015Z] data saved
+[DEBUG] [2026-07-29T10:48:45.037Z] data loaded
+[DEBUG] [2026-07-29T10:48:45.059Z] Client disconnected (session: 4e054c57-1c75-4097-87b5-9cd3186bb690).
+[DEBUG] [2026-07-29T10:48:45.373Z] data loaded
+[DEBUG] [2026-07-29T10:48:45.373Z] Client connected via socket (session: 4e054c57-1c75-4097-87b5-9cd3186bb690)
+[DEBUG] [2026-07-29T10:48:45.373Z] Socket connection rejected: username not found for session 4e054c57-1c75-4097-87b5-9cd3186bb690
+[DEBUG] [2026-07-29T10:48:48.575Z] Client (4e054c57-1c75-4097-87b5-9cd3186bb690) triggered emergency event.
+[DEBUG] [2026-07-29T10:48:48.579Z] data loaded
+[DEBUG] [2026-07-29T10:48:48.582Z] Emergency meeting started.
+[DEBUG] [2026-07-29T10:48:48.585Z] data saved
+[DEBUG] [2026-07-29T10:48:48.632Z] data loaded
+[DEBUG] [2026-07-29T10:48:48.634Z] data loaded
+[DEBUG] [2026-07-29T10:48:48.655Z] Client disconnected (session: 1465cca3-1279-4219-8f7a-d4edd0da0c5a).
+[DEBUG] [2026-07-29T10:48:48.691Z] Client disconnected (session: 56369984-7f23-4fd4-89c1-099bd81f7fea).
+[DEBUG] [2026-07-29T10:48:49.082Z] data loaded
+[DEBUG] [2026-07-29T10:48:49.082Z] Client connected via socket (session: 1465cca3-1279-4219-8f7a-d4edd0da0c5a)
+[DEBUG] [2026-07-29T10:48:49.083Z] client requested sabotage data (sent via connect for 1465cca3-1279-4219-8f7a-d4edd0da0c5a)
+[DEBUG] [2026-07-29T10:49:00.810Z] data loaded
+[DEBUG] [2026-07-29T10:49:00.810Z] 1465cca3-1279-4219-8f7a-d4edd0da0c5a cast a vote for 56369984-7f23-4fd4-89c1-099bd81f7fea
+[DEBUG] [2026-07-29T10:49:18.593Z] Emergency meeting timer concluded.
+[DEBUG] [2026-07-29T10:49:18.597Z] data loaded
+[DEBUG] [2026-07-29T10:49:18.599Z] Clearing all sabotage timers.
+[DEBUG] [2026-07-29T10:49:18.603Z] data saved
+[DEBUG] [2026-07-29T10:49:18.654Z] data loaded
+[DEBUG] [2026-07-29T10:49:18.654Z] Client (1465cca3-1279-4219-8f7a-d4edd0da0c5a) fetching win screen.
+[DEBUG] [2026-07-29T10:49:18.656Z] data loaded
+[DEBUG] [2026-07-29T10:49:18.656Z] Client (4e054c57-1c75-4097-87b5-9cd3186bb690) fetching win screen.
+[DEBUG] [2026-07-29T10:49:18.678Z] Client disconnected (session: 1465cca3-1279-4219-8f7a-d4edd0da0c5a).
+[DEBUG] [2026-07-29T10:49:18.694Z] Client disconnected (session: 4e054c57-1c75-4097-87b5-9cd3186bb690).
+[DEBUG] [2026-07-29T10:49:18.716Z] data loaded
+[DEBUG] [2026-07-29T10:49:18.717Z] Client connected via socket (session: 1465cca3-1279-4219-8f7a-d4edd0da0c5a)
+[DEBUG] [2026-07-29T10:49:18.717Z] client requested sabotage data (sent via connect for 1465cca3-1279-4219-8f7a-d4edd0da0c5a)
+[DEBUG] [2026-07-29T10:49:18.732Z] data loaded
+[DEBUG] [2026-07-29T10:49:18.732Z] Client connected via socket (session: 4e054c57-1c75-4097-87b5-9cd3186bb690)
+[DEBUG] [2026-07-29T10:49:18.733Z] Socket connection rejected: username not found for session 4e054c57-1c75-4097-87b5-9cd3186bb690
+[DEBUG] [2026-07-29T10:49:39.480Z] Client disconnected (session: 4e054c57-1c75-4097-87b5-9cd3186bb690).
+[DEBUG] [2026-07-29T10:49:39.501Z] data loaded
+[DEBUG] [2026-07-29T10:49:39.501Z] Client connected via socket (session: 4e054c57-1c75-4097-87b5-9cd3186bb690)
+[DEBUG] [2026-07-29T10:49:39.501Z] Socket connection rejected: username not found for session 4e054c57-1c75-4097-87b5-9cd3186bb690
+[DEBUG] [2026-07-29T10:49:52.074Z] data loaded
+[DEBUG] [2026-07-29T10:49:52.074Z] Unauthorised reset attempt: No valid session.
+[DEBUG] [2026-07-29T10:50:17.810Z] All .env variables present.
+[DEBUG] [2026-07-29T10:50:17.816Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T10:50:18.625Z] data loaded
+[DEBUG] [2026-07-29T10:50:18.625Z] Client connected via socket (session: 4e054c57-1c75-4097-87b5-9cd3186bb690)
+[DEBUG] [2026-07-29T10:50:18.626Z] data loaded
+[DEBUG] [2026-07-29T10:50:18.625Z] Socket connection rejected: username not found for session 4e054c57-1c75-4097-87b5-9cd3186bb690
+[DEBUG] [2026-07-29T10:50:18.626Z] Client connected via socket (session: 1465cca3-1279-4219-8f7a-d4edd0da0c5a)
+[DEBUG] [2026-07-29T10:50:18.626Z] Socket connection rejected: username not found for session 1465cca3-1279-4219-8f7a-d4edd0da0c5a
+[DEBUG] [2026-07-29T10:50:22.017Z] data loaded
+[DEBUG] [2026-07-29T10:50:22.017Z] Client connected via socket (session: 4e054c57-1c75-4097-87b5-9cd3186bb690)
+[DEBUG] [2026-07-29T10:50:22.017Z] Socket connection rejected: username not found for session 4e054c57-1c75-4097-87b5-9cd3186bb690
+[DEBUG] [2026-07-29T10:50:29.047Z] data loaded
+[DEBUG] [2026-07-29T10:50:29.107Z] data saved
+[DEBUG] [2026-07-29T10:50:29.108Z] Host successfully joined: I with ID 5e31b3d0-a400-4e35-a04d-2cbbec306f09
+[DEBUG] [2026-07-29T10:50:29.128Z] data loaded
+[DEBUG] [2026-07-29T10:50:29.175Z] Client disconnected (session: 4e054c57-1c75-4097-87b5-9cd3186bb690).
+[DEBUG] [2026-07-29T10:50:29.190Z] data loaded
+[DEBUG] [2026-07-29T10:50:29.191Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T10:50:29.191Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T10:50:35.249Z] data loaded
+[DEBUG] [2026-07-29T10:50:35.252Z] data saved
+[DEBUG] [2026-07-29T10:50:35.252Z] Host successfully added 9 dummy players.
+[DEBUG] [2026-07-29T10:50:51.773Z] Client disconnected (session: 1465cca3-1279-4219-8f7a-d4edd0da0c5a).
+[DEBUG] [2026-07-29T10:50:53.652Z] data loaded
+[DEBUG] [2026-07-29T10:50:53.653Z] Socket connection rejected: username not found for session 1465cca3-1279-4219-8f7a-d4edd0da0c5a
+[DEBUG] [2026-07-29T10:50:53.653Z] Client connected via socket (session: 1465cca3-1279-4219-8f7a-d4edd0da0c5a)
+[DEBUG] [2026-07-29T10:50:57.597Z] data loaded
+[DEBUG] [2026-07-29T10:50:57.656Z] data saved
+[DEBUG] [2026-07-29T10:50:57.656Z] New server joined with ID bd760493-4c97-4b3a-8426-0b3c28fc6d2a
+[DEBUG] [2026-07-29T10:50:57.671Z] data loaded
+[DEBUG] [2026-07-29T10:50:57.689Z] Client disconnected (session: 1465cca3-1279-4219-8f7a-d4edd0da0c5a).
+[DEBUG] [2026-07-29T10:50:57.709Z] data loaded
+[DEBUG] [2026-07-29T10:50:57.709Z] Socket connection rejected: username not found for session bd760493-4c97-4b3a-8426-0b3c28fc6d2a
+[DEBUG] [2026-07-29T10:50:57.709Z] Client connected via socket (session: bd760493-4c97-4b3a-8426-0b3c28fc6d2a)
+[DEBUG] [2026-07-29T10:51:00.984Z] data loaded
+[DEBUG] [2026-07-29T10:51:00.984Z] emergency server is now online and registered to session bd760493-4c97-4b3a-8426-0b3c28fc6d2a
+[DEBUG] [2026-07-29T10:51:00.986Z] data saved
+[DEBUG] [2026-07-29T10:51:01.007Z] data loaded
+[DEBUG] [2026-07-29T10:51:01.036Z] Client disconnected (session: bd760493-4c97-4b3a-8426-0b3c28fc6d2a).
+[DEBUG] [2026-07-29T10:51:01.059Z] data loaded
+[DEBUG] [2026-07-29T10:51:01.059Z] Client connected via socket (session: bd760493-4c97-4b3a-8426-0b3c28fc6d2a)
+[DEBUG] [2026-07-29T10:51:01.060Z] Socket connection rejected: username not found for session bd760493-4c97-4b3a-8426-0b3c28fc6d2a
+[DEBUG] [2026-07-29T10:51:15.210Z] Client disconnected (session: 4e054c57-1c75-4097-87b5-9cd3186bb690).
+[DEBUG] [2026-07-29T10:51:21.107Z] data loaded
+[DEBUG] [2026-07-29T10:51:21.107Z] Player re-entered with existing session: amogus
+[DEBUG] [2026-07-29T10:51:21.124Z] data loaded
+[DEBUG] [2026-07-29T10:51:21.166Z] data loaded
+[DEBUG] [2026-07-29T10:51:21.166Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T10:51:21.166Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T10:51:27.319Z] data loaded
+[DEBUG] [2026-07-29T10:51:27.325Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T10:51:27.364Z] data loaded
+[DEBUG] [2026-07-29T10:51:27.365Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T10:51:27.365Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T10:51:47.265Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T10:51:53.502Z] data loaded
+[DEBUG] [2026-07-29T10:51:53.503Z] data saved
+[DEBUG] [2026-07-29T10:51:53.506Z] New player joined: imogus with ID d7cb2be9-0ad6-4208-986c-8596c9cf9f20
+[DEBUG] [2026-07-29T10:51:53.526Z] data loaded
+[DEBUG] [2026-07-29T10:51:53.526Z] Server tried to log in, denied access for session d7cb2be9-0ad6-4208-986c-8596c9cf9f20
+[DEBUG] [2026-07-29T10:51:53.567Z] data loaded
+[DEBUG] [2026-07-29T10:51:53.568Z] Client connected via socket (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:51:53.569Z] client requested sabotage data (sent via connect for d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:51:57.883Z] data loaded
+[DEBUG] [2026-07-29T10:51:57.897Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T10:51:57.939Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T10:51:57.938Z] data loaded
+[DEBUG] [2026-07-29T10:51:57.939Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T10:52:03.421Z] Client (bd760493-4c97-4b3a-8426-0b3c28fc6d2a) triggered emergency event.
+[DEBUG] [2026-07-29T10:52:03.424Z] data loaded
+[DEBUG] [2026-07-29T10:52:03.425Z] Emergency meeting rejected: Game not actively running.
+[DEBUG] [2026-07-29T10:52:10.756Z] data loaded
+[DEBUG] [2026-07-29T10:52:10.757Z] Starting game with 11 players.
+[DEBUG] [2026-07-29T10:52:10.758Z] Clearing all sabotage timers.
+[DEBUG] [2026-07-29T10:52:10.758Z] 5e31b3d0-a400-4e35-a04d-2cbbec306f09 is now crewmate
+[DEBUG] [2026-07-29T10:52:10.759Z] dummy_1785322235249_1 is now crewmate
+[DEBUG] [2026-07-29T10:52:10.759Z] dummy_1785322235249_2 is now crewmate
+[DEBUG] [2026-07-29T10:52:10.760Z] dummy_1785322235249_3 is now crewmate
+[DEBUG] [2026-07-29T10:52:10.760Z] dummy_1785322235249_4 is now crewmate
+[DEBUG] [2026-07-29T10:52:10.761Z] dummy_1785322235249_5 is now crewmate
+[DEBUG] [2026-07-29T10:52:10.761Z] dummy_1785322235249_6 is now crewmate
+[DEBUG] [2026-07-29T10:52:10.762Z] dummy_1785322235249_7 is now crewmate
+[DEBUG] [2026-07-29T10:52:10.764Z] d7cb2be9-0ad6-4208-986c-8596c9cf9f20 is now crewmate
+[DEBUG] [2026-07-29T10:52:10.763Z] dummy_1785322235249_9 is now impostor
+[DEBUG] [2026-07-29T10:52:10.762Z] dummy_1785322235249_8 is now impostor
+[DEBUG] [2026-07-29T10:52:10.774Z] data saved
+[DEBUG] [2026-07-29T10:52:10.774Z] Game successfully started.
+[DEBUG] [2026-07-29T10:52:10.801Z] data loaded
+[DEBUG] [2026-07-29T10:52:10.801Z] Client (5e31b3d0-a400-4e35-a04d-2cbbec306f09) fetched role reveal. Role: Crewmate
+[DEBUG] [2026-07-29T10:52:10.832Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T10:52:29.054Z] data loaded
+[DEBUG] [2026-07-29T10:52:29.111Z] data loaded
+[DEBUG] [2026-07-29T10:52:29.111Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T10:52:29.112Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T10:53:50.389Z] data loaded
+[DEBUG] [2026-07-29T10:53:50.390Z] Server tried to log in, denied access for session d7cb2be9-0ad6-4208-986c-8596c9cf9f20
+[DEBUG] [2026-07-29T10:53:50.403Z] Client disconnected (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20).
+[DEBUG] [2026-07-29T10:53:50.438Z] data loaded
+[DEBUG] [2026-07-29T10:53:50.438Z] Client connected via socket (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:53:50.438Z] client requested sabotage data (sent via connect for d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:53:52.027Z] data loaded
+[DEBUG] [2026-07-29T10:53:52.028Z] Server tried to log in, denied access for session d7cb2be9-0ad6-4208-986c-8596c9cf9f20
+[DEBUG] [2026-07-29T10:53:52.039Z] Client disconnected (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20).
+[DEBUG] [2026-07-29T10:53:52.075Z] data loaded
+[DEBUG] [2026-07-29T10:53:52.075Z] Client connected via socket (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:53:52.075Z] client requested sabotage data (sent via connect for d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:53:52.430Z] data loaded
+[DEBUG] [2026-07-29T10:53:52.431Z] Server tried to log in, denied access for session d7cb2be9-0ad6-4208-986c-8596c9cf9f20
+[DEBUG] [2026-07-29T10:53:52.440Z] Client disconnected (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20).
+[DEBUG] [2026-07-29T10:53:52.471Z] Client connected via socket (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:53:52.471Z] data loaded
+[DEBUG] [2026-07-29T10:53:52.471Z] client requested sabotage data (sent via connect for d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:53:52.849Z] data loaded
+[DEBUG] [2026-07-29T10:53:52.850Z] Server tried to log in, denied access for session d7cb2be9-0ad6-4208-986c-8596c9cf9f20
+[DEBUG] [2026-07-29T10:53:52.856Z] Client disconnected (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20).
+[DEBUG] [2026-07-29T10:53:52.889Z] data loaded
+[DEBUG] [2026-07-29T10:53:52.889Z] Client connected via socket (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:53:52.889Z] client requested sabotage data (sent via connect for d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:53:53.058Z] data loaded
+[DEBUG] [2026-07-29T10:53:53.058Z] Server tried to log in, denied access for session d7cb2be9-0ad6-4208-986c-8596c9cf9f20
+[DEBUG] [2026-07-29T10:53:53.067Z] Client disconnected (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20).
+[DEBUG] [2026-07-29T10:53:53.104Z] data loaded
+[DEBUG] [2026-07-29T10:53:53.104Z] Client connected via socket (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:53:53.104Z] client requested sabotage data (sent via connect for d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:53:59.153Z] data loaded
+[DEBUG] [2026-07-29T10:53:59.153Z] Client (d7cb2be9-0ad6-4208-986c-8596c9cf9f20) fetched role reveal. Role: Crewmate
+[DEBUG] [2026-07-29T10:53:59.176Z] Client disconnected (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20).
+[DEBUG] [2026-07-29T10:54:17.400Z] data loaded
+[DEBUG] [2026-07-29T10:54:17.449Z] data loaded
+[DEBUG] [2026-07-29T10:54:17.449Z] Client connected via socket (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:54:17.450Z] client requested sabotage data (sent via connect for d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:54:21.015Z] Client (bd760493-4c97-4b3a-8426-0b3c28fc6d2a) triggered emergency event.
+[DEBUG] [2026-07-29T10:54:21.016Z] data loaded
+[DEBUG] [2026-07-29T10:54:21.016Z] Emergency meeting started.
+[DEBUG] [2026-07-29T10:54:21.018Z] data saved
+[DEBUG] [2026-07-29T10:54:21.047Z] data loaded
+[DEBUG] [2026-07-29T10:54:21.049Z] data loaded
+[DEBUG] [2026-07-29T10:54:21.088Z] Client disconnected (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20).
+[DEBUG] [2026-07-29T10:54:21.104Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T10:54:21.165Z] data loaded
+[DEBUG] [2026-07-29T10:54:21.165Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T10:54:21.166Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T10:54:21.172Z] data loaded
+[DEBUG] [2026-07-29T10:54:21.172Z] Client connected via socket (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:54:21.173Z] client requested sabotage data (sent via connect for d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:54:29.092Z] data loaded
+[DEBUG] [2026-07-29T10:54:29.093Z] d7cb2be9-0ad6-4208-986c-8596c9cf9f20 cast a vote for 5e31b3d0-a400-4e35-a04d-2cbbec306f09
+[DEBUG] [2026-07-29T10:54:31.879Z] data loaded
+[DEBUG] [2026-07-29T10:54:31.880Z] 5e31b3d0-a400-4e35-a04d-2cbbec306f09 cast a vote for skip
+[DEBUG] [2026-07-29T10:54:51.029Z] Emergency meeting timer concluded.
+[DEBUG] [2026-07-29T10:54:51.036Z] data loaded
+[DEBUG] [2026-07-29T10:54:51.039Z] data saved
+[DEBUG] [2026-07-29T10:56:19.441Z] Host restarted the game.
+[DEBUG] [2026-07-29T10:56:19.440Z] data loaded
+[DEBUG] [2026-07-29T10:56:19.441Z] Clearing all sabotage timers.
+[DEBUG] [2026-07-29T10:56:19.443Z] data saved
+[DEBUG] [2026-07-29T10:56:19.450Z] data loaded
+[DEBUG] [2026-07-29T10:56:19.478Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T10:56:19.510Z] data loaded
+[DEBUG] [2026-07-29T10:56:19.510Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T10:56:19.510Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T10:56:30.168Z] data loaded
+[DEBUG] [2026-07-29T10:56:30.169Z] Server tried to log in, denied access for session d7cb2be9-0ad6-4208-986c-8596c9cf9f20
+[DEBUG] [2026-07-29T10:56:30.194Z] Client disconnected (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20).
+[DEBUG] [2026-07-29T10:56:30.212Z] data loaded
+[DEBUG] [2026-07-29T10:56:30.213Z] Client connected via socket (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:56:30.213Z] client requested sabotage data (sent via connect for d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:58:48.330Z] data loaded
+[DEBUG] [2026-07-29T10:58:48.330Z] Clearing all sabotage timers.
+[DEBUG] [2026-07-29T10:58:48.330Z] Starting game with 11 players.
+[DEBUG] [2026-07-29T10:58:48.331Z] dummy_1785322235249_2 is now crewmate
+[DEBUG] [2026-07-29T10:58:48.330Z] dummy_1785322235249_1 is now crewmate
+[DEBUG] [2026-07-29T10:58:48.330Z] 5e31b3d0-a400-4e35-a04d-2cbbec306f09 is now crewmate
+[DEBUG] [2026-07-29T10:58:48.331Z] dummy_1785322235249_3 is now crewmate
+[DEBUG] [2026-07-29T10:58:48.331Z] dummy_1785322235249_4 is now crewmate
+[DEBUG] [2026-07-29T10:58:48.331Z] dummy_1785322235249_5 is now crewmate
+[DEBUG] [2026-07-29T10:58:48.331Z] dummy_1785322235249_6 is now crewmate
+[DEBUG] [2026-07-29T10:58:48.331Z] dummy_1785322235249_7 is now crewmate
+[DEBUG] [2026-07-29T10:58:48.331Z] dummy_1785322235249_8 is now impostor
+[DEBUG] [2026-07-29T10:58:48.332Z] dummy_1785322235249_9 is now crewmate
+[DEBUG] [2026-07-29T10:58:48.332Z] d7cb2be9-0ad6-4208-986c-8596c9cf9f20 is now impostor
+[DEBUG] [2026-07-29T10:58:48.334Z] data saved
+[DEBUG] [2026-07-29T10:58:48.335Z] Game successfully started.
+[DEBUG] [2026-07-29T10:58:48.357Z] data loaded
+[DEBUG] [2026-07-29T10:58:48.357Z] Client (5e31b3d0-a400-4e35-a04d-2cbbec306f09) fetched role reveal. Role: Crewmate
+[DEBUG] [2026-07-29T10:58:48.396Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T10:58:55.887Z] data loaded
+[DEBUG] [2026-07-29T10:58:55.888Z] Server tried to log in, denied access for session d7cb2be9-0ad6-4208-986c-8596c9cf9f20
+[DEBUG] [2026-07-29T10:58:55.898Z] Client disconnected (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20).
+[DEBUG] [2026-07-29T10:58:55.932Z] data loaded
+[DEBUG] [2026-07-29T10:58:55.933Z] Client connected via socket (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:58:55.933Z] client requested sabotage data (sent via connect for d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:58:59.834Z] data loaded
+[DEBUG] [2026-07-29T10:58:59.834Z] Client (d7cb2be9-0ad6-4208-986c-8596c9cf9f20) fetched role reveal. Role: Impostor
+[DEBUG] [2026-07-29T10:58:59.850Z] Client disconnected (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20).
+[DEBUG] [2026-07-29T10:59:06.609Z] data loaded
+[DEBUG] [2026-07-29T10:59:06.667Z] data loaded
+[DEBUG] [2026-07-29T10:59:06.667Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T10:59:06.667Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T10:59:18.078Z] data loaded
+[DEBUG] [2026-07-29T10:59:18.121Z] data loaded
+[DEBUG] [2026-07-29T10:59:18.121Z] Client connected via socket (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:59:18.121Z] client requested sabotage data (sent via connect for d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:59:25.178Z] Client (bd760493-4c97-4b3a-8426-0b3c28fc6d2a) triggered emergency event.
+[DEBUG] [2026-07-29T10:59:25.179Z] data loaded
+[DEBUG] [2026-07-29T10:59:25.179Z] Emergency meeting started.
+[DEBUG] [2026-07-29T10:59:25.181Z] data saved
+[DEBUG] [2026-07-29T10:59:26.445Z] data loaded
+[DEBUG] [2026-07-29T10:59:26.470Z] Client disconnected (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20).
+[DEBUG] [2026-07-29T10:59:26.479Z] data loaded
+[DEBUG] [2026-07-29T10:59:26.512Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T10:59:26.523Z] data loaded
+[DEBUG] [2026-07-29T10:59:26.524Z] Client connected via socket (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:59:26.524Z] client requested sabotage data (sent via connect for d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:59:26.540Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T10:59:26.540Z] data loaded
+[DEBUG] [2026-07-29T10:59:26.541Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T10:59:34.616Z] data loaded
+[DEBUG] [2026-07-29T10:59:34.617Z] d7cb2be9-0ad6-4208-986c-8596c9cf9f20 cast a vote for 5e31b3d0-a400-4e35-a04d-2cbbec306f09
+[DEBUG] [2026-07-29T10:59:55.192Z] Emergency meeting timer concluded.
+[DEBUG] [2026-07-29T10:59:55.197Z] data loaded
+[DEBUG] [2026-07-29T10:59:55.203Z] data saved
+[DEBUG] [2026-07-29T10:59:59.238Z] data loaded
+[DEBUG] [2026-07-29T10:59:59.241Z] data loaded
+[DEBUG] [2026-07-29T10:59:59.258Z] Client disconnected (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20).
+[DEBUG] [2026-07-29T10:59:59.283Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T10:59:59.320Z] data loaded
+[DEBUG] [2026-07-29T10:59:59.320Z] Client connected via socket (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:59:59.321Z] client requested sabotage data (sent via connect for d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T10:59:59.332Z] data loaded
+[DEBUG] [2026-07-29T10:59:59.332Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T10:59:59.332Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:01:17.738Z] data loaded
+[DEBUG] [2026-07-29T11:01:17.748Z] Client disconnected (session: bd760493-4c97-4b3a-8426-0b3c28fc6d2a).
+[DEBUG] [2026-07-29T11:01:19.279Z] data loaded
+[DEBUG] [2026-07-29T11:01:19.691Z] data loaded
+[DEBUG] [2026-07-29T11:01:19.878Z] data loaded
+[DEBUG] [2026-07-29T11:01:20.051Z] data loaded
+[DEBUG] [2026-07-29T11:01:20.232Z] data loaded
+[DEBUG] [2026-07-29T11:01:20.413Z] data loaded
+[DEBUG] [2026-07-29T11:01:20.583Z] data loaded
+[DEBUG] [2026-07-29T11:01:32.276Z] Host restarted the game.
+[DEBUG] [2026-07-29T11:01:32.276Z] data loaded
+[DEBUG] [2026-07-29T11:01:32.276Z] Clearing all sabotage timers.
+[DEBUG] [2026-07-29T11:01:32.278Z] data saved
+[DEBUG] [2026-07-29T11:01:32.283Z] data loaded
+[DEBUG] [2026-07-29T11:01:32.310Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T11:01:32.348Z] data loaded
+[DEBUG] [2026-07-29T11:01:32.349Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:01:32.349Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:01:41.303Z] data loaded
+[DEBUG] [2026-07-29T11:01:41.304Z] Server tried to log in, denied access for session d7cb2be9-0ad6-4208-986c-8596c9cf9f20
+[DEBUG] [2026-07-29T11:01:41.322Z] Client disconnected (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20).
+[DEBUG] [2026-07-29T11:01:41.349Z] data loaded
+[DEBUG] [2026-07-29T11:01:41.349Z] Client connected via socket (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T11:01:41.349Z] client requested sabotage data (sent via connect for d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T11:02:07.317Z] Client connected via socket (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T11:02:07.315Z] data loaded
+[DEBUG] [2026-07-29T11:02:07.317Z] client requested sabotage data (sent via connect for d7cb2be9-0ad6-4208-986c-8596c9cf9f20)
+[DEBUG] [2026-07-29T11:02:12.669Z] data loaded
+[DEBUG] [2026-07-29T11:02:12.729Z] data saved
+[DEBUG] [2026-07-29T11:02:12.729Z] New server joined with ID 376932db-0271-49e3-bf47-84ddf752b364
+[DEBUG] [2026-07-29T11:02:12.742Z] data loaded
+[DEBUG] [2026-07-29T11:02:12.764Z] Client disconnected (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20).
+[DEBUG] [2026-07-29T11:02:12.781Z] data loaded
+[DEBUG] [2026-07-29T11:02:12.781Z] Client connected via socket (session: 376932db-0271-49e3-bf47-84ddf752b364)
+[DEBUG] [2026-07-29T11:02:12.781Z] Socket connection rejected: username not found for session 376932db-0271-49e3-bf47-84ddf752b364
+[DEBUG] [2026-07-29T11:02:15.980Z] data loaded
+[DEBUG] [2026-07-29T11:02:15.980Z] emergency server is now online and registered to session 376932db-0271-49e3-bf47-84ddf752b364
+[DEBUG] [2026-07-29T11:02:15.982Z] data saved
+[DEBUG] [2026-07-29T11:02:15.999Z] data loaded
+[DEBUG] [2026-07-29T11:02:16.021Z] Client disconnected (session: 376932db-0271-49e3-bf47-84ddf752b364).
+[DEBUG] [2026-07-29T11:02:16.043Z] data loaded
+[DEBUG] [2026-07-29T11:02:16.043Z] Client connected via socket (session: 376932db-0271-49e3-bf47-84ddf752b364)
+[DEBUG] [2026-07-29T11:02:16.044Z] Socket connection rejected: username not found for session 376932db-0271-49e3-bf47-84ddf752b364
+[DEBUG] [2026-07-29T11:02:31.233Z] Starting game with 11 players.
+[DEBUG] [2026-07-29T11:02:31.233Z] 5e31b3d0-a400-4e35-a04d-2cbbec306f09 is now crewmate
+[DEBUG] [2026-07-29T11:02:31.233Z] Clearing all sabotage timers.
+[DEBUG] [2026-07-29T11:02:31.233Z] dummy_1785322235249_1 is now crewmate
+[DEBUG] [2026-07-29T11:02:31.231Z] data loaded
+[DEBUG] [2026-07-29T11:02:31.234Z] dummy_1785322235249_3 is now crewmate
+[DEBUG] [2026-07-29T11:02:31.233Z] dummy_1785322235249_2 is now crewmate
+[DEBUG] [2026-07-29T11:02:31.234Z] dummy_1785322235249_4 is now impostor
+[DEBUG] [2026-07-29T11:02:31.234Z] dummy_1785322235249_7 is now crewmate
+[DEBUG] [2026-07-29T11:02:31.234Z] dummy_1785322235249_5 is now crewmate
+[DEBUG] [2026-07-29T11:02:31.234Z] dummy_1785322235249_6 is now crewmate
+[DEBUG] [2026-07-29T11:02:31.234Z] dummy_1785322235249_8 is now crewmate
+[DEBUG] [2026-07-29T11:02:31.234Z] dummy_1785322235249_9 is now impostor
+[DEBUG] [2026-07-29T11:02:31.234Z] d7cb2be9-0ad6-4208-986c-8596c9cf9f20 is now crewmate
+[DEBUG] [2026-07-29T11:02:31.236Z] data saved
+[DEBUG] [2026-07-29T11:02:31.238Z] Game successfully started.
+[DEBUG] [2026-07-29T11:02:31.257Z] data loaded
+[DEBUG] [2026-07-29T11:02:31.258Z] Client (5e31b3d0-a400-4e35-a04d-2cbbec306f09) fetched role reveal. Role: Crewmate
+[DEBUG] [2026-07-29T11:02:31.291Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T11:02:42.317Z] data loaded
+[DEBUG] [2026-07-29T11:02:42.343Z] Client disconnected (session: d7cb2be9-0ad6-4208-986c-8596c9cf9f20).
+[DEBUG] [2026-07-29T11:02:49.502Z] data loaded
+[DEBUG] [2026-07-29T11:02:49.549Z] data loaded
+[DEBUG] [2026-07-29T11:02:49.549Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:02:49.550Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:02:59.313Z] Client (376932db-0271-49e3-bf47-84ddf752b364) triggered emergency event.
+[DEBUG] [2026-07-29T11:02:59.314Z] data loaded
+[DEBUG] [2026-07-29T11:02:59.314Z] Emergency meeting started.
+[DEBUG] [2026-07-29T11:02:59.316Z] data saved
+[DEBUG] [2026-07-29T11:02:59.339Z] data loaded
+[DEBUG] [2026-07-29T11:02:59.364Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T11:02:59.382Z] data loaded
+[DEBUG] [2026-07-29T11:02:59.383Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:02:59.383Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:03:15.470Z] data loaded
+[DEBUG] [2026-07-29T11:03:15.470Z] 5e31b3d0-a400-4e35-a04d-2cbbec306f09 cast a vote for dummy_1785322235249_4
+[DEBUG] [2026-07-29T11:03:29.329Z] Emergency meeting timer concluded.
+[DEBUG] [2026-07-29T11:03:29.335Z] data loaded
+[DEBUG] [2026-07-29T11:03:29.341Z] data saved
+[DEBUG] [2026-07-29T11:03:33.367Z] data loaded
+[DEBUG] [2026-07-29T11:03:33.401Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T11:03:33.426Z] data loaded
+[DEBUG] [2026-07-29T11:03:33.426Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:03:33.426Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:07:04.555Z] All .env variables present.
+[DEBUG] [2026-07-29T11:07:04.562Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T11:07:04.586Z] data loaded
+[DEBUG] [2026-07-29T11:07:04.586Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:07:04.587Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:07:04.651Z] Client connected via socket (session: 376932db-0271-49e3-bf47-84ddf752b364)
+[DEBUG] [2026-07-29T11:07:04.651Z] Socket connection rejected: username not found for session 376932db-0271-49e3-bf47-84ddf752b364
+[DEBUG] [2026-07-29T11:07:04.650Z] data loaded
+[DEBUG] [2026-07-29T11:07:36.056Z] All .env variables present.
+[DEBUG] [2026-07-29T11:07:36.063Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T11:07:36.600Z] data loaded
+[DEBUG] [2026-07-29T11:07:36.600Z] Client connected via socket (session: 376932db-0271-49e3-bf47-84ddf752b364)
+[DEBUG] [2026-07-29T11:07:36.600Z] Socket connection rejected: username not found for session 376932db-0271-49e3-bf47-84ddf752b364
+[DEBUG] [2026-07-29T11:07:37.310Z] data loaded
+[DEBUG] [2026-07-29T11:07:37.310Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:07:37.311Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:07:45.426Z] All .env variables present.
+[DEBUG] [2026-07-29T11:07:45.433Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T11:07:45.928Z] data loaded
+[DEBUG] [2026-07-29T11:07:45.928Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:07:45.928Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:07:46.119Z] data loaded
+[DEBUG] [2026-07-29T11:07:46.119Z] Client connected via socket (session: 376932db-0271-49e3-bf47-84ddf752b364)
+[DEBUG] [2026-07-29T11:07:46.120Z] Socket connection rejected: username not found for session 376932db-0271-49e3-bf47-84ddf752b364
+[DEBUG] [2026-07-29T11:07:47.467Z] All .env variables present.
+[DEBUG] [2026-07-29T11:07:47.475Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T11:07:47.761Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:07:47.760Z] data loaded
+[DEBUG] [2026-07-29T11:07:47.761Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:07:48.446Z] data loaded
+[DEBUG] [2026-07-29T11:07:48.446Z] Client connected via socket (session: 376932db-0271-49e3-bf47-84ddf752b364)
+[DEBUG] [2026-07-29T11:07:48.446Z] Socket connection rejected: username not found for session 376932db-0271-49e3-bf47-84ddf752b364
+[DEBUG] [2026-07-29T11:08:16.469Z] All .env variables present.
+[DEBUG] [2026-07-29T11:08:16.475Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T11:08:16.949Z] data loaded
+[DEBUG] [2026-07-29T11:08:16.950Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:08:16.951Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:08:17.033Z] data loaded
+[DEBUG] [2026-07-29T11:08:17.033Z] Client connected via socket (session: 376932db-0271-49e3-bf47-84ddf752b364)
+[DEBUG] [2026-07-29T11:08:17.034Z] Socket connection rejected: username not found for session 376932db-0271-49e3-bf47-84ddf752b364
+[DEBUG] [2026-07-29T11:09:20.134Z] All .env variables present.
+[DEBUG] [2026-07-29T11:09:20.141Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T11:09:21.014Z] data loaded
+[DEBUG] [2026-07-29T11:09:21.014Z] Client connected via socket (session: 376932db-0271-49e3-bf47-84ddf752b364)
+[DEBUG] [2026-07-29T11:09:21.014Z] Socket connection rejected: username not found for session 376932db-0271-49e3-bf47-84ddf752b364
+[DEBUG] [2026-07-29T11:09:21.131Z] data loaded
+[DEBUG] [2026-07-29T11:09:21.132Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:09:21.132Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:09:26.736Z] All .env variables present.
+[DEBUG] [2026-07-29T11:09:26.742Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T11:09:27.218Z] data loaded
+[DEBUG] [2026-07-29T11:09:27.219Z] Socket connection rejected: username not found for session 376932db-0271-49e3-bf47-84ddf752b364
+[DEBUG] [2026-07-29T11:09:27.219Z] Client connected via socket (session: 376932db-0271-49e3-bf47-84ddf752b364)
+[DEBUG] [2026-07-29T11:09:27.220Z] data loaded
+[DEBUG] [2026-07-29T11:09:27.220Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:09:27.220Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:15:20.806Z] data loaded
+[DEBUG] [2026-07-29T11:15:20.806Z] Host restarted the game.
+[DEBUG] [2026-07-29T11:15:20.807Z] Clearing all sabotage timers.
+[DEBUG] [2026-07-29T11:15:20.808Z] data saved
+[DEBUG] [2026-07-29T11:15:20.824Z] data loaded
+[DEBUG] [2026-07-29T11:15:20.866Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T11:15:20.898Z] data loaded
+[DEBUG] [2026-07-29T11:15:20.899Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:15:20.900Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:15:39.140Z] data loaded
+[DEBUG] [2026-07-29T11:15:39.150Z] Client disconnected (session: 376932db-0271-49e3-bf47-84ddf752b364).
+[DEBUG] [2026-07-29T11:15:39.190Z] data loaded
+[DEBUG] [2026-07-29T11:15:39.190Z] Client connected via socket (session: 376932db-0271-49e3-bf47-84ddf752b364)
+[DEBUG] [2026-07-29T11:15:39.190Z] Socket connection rejected: username not found for session 376932db-0271-49e3-bf47-84ddf752b364
+[DEBUG] [2026-07-29T11:15:46.705Z] Client disconnected (session: 376932db-0271-49e3-bf47-84ddf752b364).
+[DEBUG] [2026-07-29T11:16:41.619Z] data loaded
+[DEBUG] [2026-07-29T11:16:41.621Z] data saved
+[DEBUG] [2026-07-29T11:16:41.622Z] New player joined: amogus with ID fa57657a-625f-43da-be47-fd3afe2ca2b5
+[DEBUG] [2026-07-29T11:16:41.641Z] data loaded
+[DEBUG] [2026-07-29T11:16:41.642Z] Server tried to log in, denied access for session fa57657a-625f-43da-be47-fd3afe2ca2b5
+[DEBUG] [2026-07-29T11:16:41.681Z] data loaded
+[DEBUG] [2026-07-29T11:16:41.681Z] Client connected via socket (session: fa57657a-625f-43da-be47-fd3afe2ca2b5)
+[DEBUG] [2026-07-29T11:16:41.682Z] client requested sabotage data (sent via connect for fa57657a-625f-43da-be47-fd3afe2ca2b5)
+[DEBUG] [2026-07-29T11:16:48.607Z] data loaded
+[DEBUG] [2026-07-29T11:16:48.607Z] Player logged out: amogus (fa57657a-625f-43da-be47-fd3afe2ca2b5)
+[DEBUG] [2026-07-29T11:16:48.609Z] data saved
+[DEBUG] [2026-07-29T11:16:48.632Z] Client disconnected (session: fa57657a-625f-43da-be47-fd3afe2ca2b5).
+[DEBUG] [2026-07-29T11:16:50.960Z] Client connected via socket (session: unknown)
+[DEBUG] [2026-07-29T11:16:50.960Z] Socket connection rejected: username not found for session undefined
+[DEBUG] [2026-07-29T11:16:50.959Z] data loaded
+[DEBUG] [2026-07-29T11:16:54.500Z] data loaded
+[DEBUG] [2026-07-29T11:16:54.559Z] data saved
+[DEBUG] [2026-07-29T11:16:54.559Z] New server joined with ID 1ac1c3ed-5305-4c7f-acb1-eb068d96a324
+[DEBUG] [2026-07-29T11:16:54.575Z] data loaded
+[DEBUG] [2026-07-29T11:16:54.592Z] Client disconnected (session: unknown).
+[DEBUG] [2026-07-29T11:16:54.613Z] data loaded
+[DEBUG] [2026-07-29T11:16:54.613Z] Client connected via socket (session: 1ac1c3ed-5305-4c7f-acb1-eb068d96a324)
+[DEBUG] [2026-07-29T11:16:54.613Z] Socket connection rejected: username not found for session 1ac1c3ed-5305-4c7f-acb1-eb068d96a324
+[DEBUG] [2026-07-29T11:17:01.250Z] data loaded
+[DEBUG] [2026-07-29T11:17:01.250Z] emergency server is now online and registered to session 1ac1c3ed-5305-4c7f-acb1-eb068d96a324
+[DEBUG] [2026-07-29T11:17:01.251Z] data saved
+[DEBUG] [2026-07-29T11:17:01.267Z] data loaded
+[DEBUG] [2026-07-29T11:17:01.290Z] Client disconnected (session: 1ac1c3ed-5305-4c7f-acb1-eb068d96a324).
+[DEBUG] [2026-07-29T11:17:01.308Z] data loaded
+[DEBUG] [2026-07-29T11:17:01.308Z] Client connected via socket (session: 1ac1c3ed-5305-4c7f-acb1-eb068d96a324)
+[DEBUG] [2026-07-29T11:17:01.308Z] Socket connection rejected: username not found for session 1ac1c3ed-5305-4c7f-acb1-eb068d96a324
+[DEBUG] [2026-07-29T11:17:08.420Z] data loaded
+[DEBUG] [2026-07-29T11:17:08.424Z] data saved
+[DEBUG] [2026-07-29T11:17:08.426Z] New player joined: amogus with ID 77e73774-ab59-4855-8ca1-b3e0a994e9f9
+[DEBUG] [2026-07-29T11:17:08.445Z] data loaded
+[DEBUG] [2026-07-29T11:17:08.445Z] Server tried to log in, denied access for session 77e73774-ab59-4855-8ca1-b3e0a994e9f9
+[DEBUG] [2026-07-29T11:17:08.498Z] data loaded
+[DEBUG] [2026-07-29T11:17:08.499Z] client requested sabotage data (sent via connect for 77e73774-ab59-4855-8ca1-b3e0a994e9f9)
+[DEBUG] [2026-07-29T11:17:08.499Z] Client connected via socket (session: 77e73774-ab59-4855-8ca1-b3e0a994e9f9)
+[DEBUG] [2026-07-29T11:17:18.159Z] data loaded
+[DEBUG] [2026-07-29T11:17:18.160Z] Starting game with 12 players.
+[DEBUG] [2026-07-29T11:17:18.161Z] Clearing all sabotage timers.
+[DEBUG] [2026-07-29T11:17:18.163Z] 5e31b3d0-a400-4e35-a04d-2cbbec306f09 is now crewmate
+[DEBUG] [2026-07-29T11:17:18.164Z] dummy_1785322235249_1 is now crewmate
+[DEBUG] [2026-07-29T11:17:18.166Z] dummy_1785322235249_2 is now crewmate
+[DEBUG] [2026-07-29T11:17:18.182Z] dummy_1785322235249_3 is now crewmate
+[DEBUG] [2026-07-29T11:17:18.183Z] dummy_1785322235249_4 is now impostor
+[DEBUG] [2026-07-29T11:17:18.184Z] dummy_1785322235249_5 is now crewmate
+[DEBUG] [2026-07-29T11:17:18.185Z] dummy_1785322235249_6 is now crewmate
+[DEBUG] [2026-07-29T11:17:18.186Z] dummy_1785322235249_7 is now impostor
+[DEBUG] [2026-07-29T11:17:18.188Z] dummy_1785322235249_8 is now crewmate
+[DEBUG] [2026-07-29T11:17:18.189Z] dummy_1785322235249_9 is now crewmate
+[DEBUG] [2026-07-29T11:17:18.190Z] d7cb2be9-0ad6-4208-986c-8596c9cf9f20 is now crewmate
+[DEBUG] [2026-07-29T11:17:18.190Z] 77e73774-ab59-4855-8ca1-b3e0a994e9f9 is now crewmate
+[DEBUG] [2026-07-29T11:17:18.205Z] data saved
+[DEBUG] [2026-07-29T11:17:18.205Z] Game successfully started.
+[DEBUG] [2026-07-29T11:17:18.226Z] data loaded
+[DEBUG] [2026-07-29T11:17:18.226Z] Client (5e31b3d0-a400-4e35-a04d-2cbbec306f09) fetched role reveal. Role: Crewmate
+[DEBUG] [2026-07-29T11:17:18.262Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T11:17:24.222Z] data loaded
+[DEBUG] [2026-07-29T11:17:24.222Z] Server tried to log in, denied access for session 77e73774-ab59-4855-8ca1-b3e0a994e9f9
+[DEBUG] [2026-07-29T11:17:24.230Z] Client disconnected (session: 77e73774-ab59-4855-8ca1-b3e0a994e9f9).
+[DEBUG] [2026-07-29T11:17:24.266Z] data loaded
+[DEBUG] [2026-07-29T11:17:24.267Z] Client connected via socket (session: 77e73774-ab59-4855-8ca1-b3e0a994e9f9)
+[DEBUG] [2026-07-29T11:17:24.267Z] client requested sabotage data (sent via connect for 77e73774-ab59-4855-8ca1-b3e0a994e9f9)
+[DEBUG] [2026-07-29T11:17:28.836Z] data loaded
+[DEBUG] [2026-07-29T11:17:28.837Z] Client (77e73774-ab59-4855-8ca1-b3e0a994e9f9) fetched role reveal. Role: Crewmate
+[DEBUG] [2026-07-29T11:17:28.858Z] Client disconnected (session: 77e73774-ab59-4855-8ca1-b3e0a994e9f9).
+[DEBUG] [2026-07-29T11:17:36.512Z] data loaded
+[DEBUG] [2026-07-29T11:17:36.573Z] data loaded
+[DEBUG] [2026-07-29T11:17:36.575Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:17:36.575Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:17:47.079Z] data loaded
+[DEBUG] [2026-07-29T11:17:47.123Z] data loaded
+[DEBUG] [2026-07-29T11:17:47.123Z] Client connected via socket (session: 77e73774-ab59-4855-8ca1-b3e0a994e9f9)
+[DEBUG] [2026-07-29T11:17:47.124Z] client requested sabotage data (sent via connect for 77e73774-ab59-4855-8ca1-b3e0a994e9f9)
+[DEBUG] [2026-07-29T11:17:56.025Z] Client (1ac1c3ed-5305-4c7f-acb1-eb068d96a324) triggered emergency event.
+[DEBUG] [2026-07-29T11:17:56.028Z] data loaded
+[DEBUG] [2026-07-29T11:17:56.031Z] Emergency meeting started.
+[DEBUG] [2026-07-29T11:17:56.033Z] data saved
+[DEBUG] [2026-07-29T11:17:56.065Z] data loaded
+[DEBUG] [2026-07-29T11:17:56.068Z] data loaded
+[DEBUG] [2026-07-29T11:17:56.097Z] Client disconnected (session: 77e73774-ab59-4855-8ca1-b3e0a994e9f9).
+[DEBUG] [2026-07-29T11:17:56.108Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T11:17:56.137Z] data loaded
+[DEBUG] [2026-07-29T11:17:56.138Z] Client connected via socket (session: 77e73774-ab59-4855-8ca1-b3e0a994e9f9)
+[DEBUG] [2026-07-29T11:17:56.138Z] client requested sabotage data (sent via connect for 77e73774-ab59-4855-8ca1-b3e0a994e9f9)
+[DEBUG] [2026-07-29T11:17:56.143Z] data loaded
+[DEBUG] [2026-07-29T11:17:56.144Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:17:56.144Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:18:07.981Z] data loaded
+[DEBUG] [2026-07-29T11:18:07.982Z] 77e73774-ab59-4855-8ca1-b3e0a994e9f9 cast a vote for 5e31b3d0-a400-4e35-a04d-2cbbec306f09
+[DEBUG] [2026-07-29T11:18:26.040Z] Emergency meeting timer concluded.
+[DEBUG] [2026-07-29T11:18:26.047Z] data loaded
+[DEBUG] [2026-07-29T11:18:26.051Z] data saved
+[DEBUG] [2026-07-29T11:18:30.092Z] data loaded
+[DEBUG] [2026-07-29T11:18:30.093Z] data loaded
+[DEBUG] [2026-07-29T11:18:30.111Z] Client disconnected (session: 77e73774-ab59-4855-8ca1-b3e0a994e9f9).
+[DEBUG] [2026-07-29T11:18:30.139Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T11:18:30.180Z] data loaded
+[DEBUG] [2026-07-29T11:18:30.180Z] Client connected via socket (session: 77e73774-ab59-4855-8ca1-b3e0a994e9f9)
+[DEBUG] [2026-07-29T11:18:30.181Z] client requested sabotage data (sent via connect for 77e73774-ab59-4855-8ca1-b3e0a994e9f9)
+[DEBUG] [2026-07-29T11:18:30.183Z] data loaded
+[DEBUG] [2026-07-29T11:18:30.183Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:18:30.183Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:32:10.550Z] Clearing all sabotage timers.
+[DEBUG] [2026-07-29T11:32:10.550Z] Host restarted the game.
+[DEBUG] [2026-07-29T11:32:10.550Z] data loaded
+[DEBUG] [2026-07-29T11:32:10.551Z] data saved
+[DEBUG] [2026-07-29T11:32:10.558Z] data loaded
+[DEBUG] [2026-07-29T11:32:10.586Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T11:32:10.633Z] data loaded
+[DEBUG] [2026-07-29T11:32:10.633Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:32:10.633Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:32:13.814Z] Client disconnected (session: 1ac1c3ed-5305-4c7f-acb1-eb068d96a324).
+[DEBUG] [2026-07-29T11:32:15.294Z] data loaded
+[DEBUG] [2026-07-29T11:32:15.295Z] Client connected via socket (session: 77e73774-ab59-4855-8ca1-b3e0a994e9f9)
+[DEBUG] [2026-07-29T11:32:15.295Z] client requested sabotage data (sent via connect for 77e73774-ab59-4855-8ca1-b3e0a994e9f9)
+[DEBUG] [2026-07-29T11:32:19.062Z] data loaded
+[DEBUG] [2026-07-29T11:32:19.122Z] New server joined with ID 4802c5a4-4f4a-4e30-bf29-0a2b1ea2a538
+[DEBUG] [2026-07-29T11:32:19.122Z] data saved
+[DEBUG] [2026-07-29T11:32:19.141Z] data loaded
+[DEBUG] [2026-07-29T11:32:19.162Z] Client disconnected (session: 77e73774-ab59-4855-8ca1-b3e0a994e9f9).
+[DEBUG] [2026-07-29T11:32:19.176Z] data loaded
+[DEBUG] [2026-07-29T11:32:19.176Z] Client connected via socket (session: 4802c5a4-4f4a-4e30-bf29-0a2b1ea2a538)
+[DEBUG] [2026-07-29T11:32:19.176Z] Socket connection rejected: username not found for session 4802c5a4-4f4a-4e30-bf29-0a2b1ea2a538
+[DEBUG] [2026-07-29T11:32:20.603Z] data loaded
+[DEBUG] [2026-07-29T11:32:20.603Z] emergency server is now online and registered to session 4802c5a4-4f4a-4e30-bf29-0a2b1ea2a538
+[DEBUG] [2026-07-29T11:32:20.605Z] data saved
+[DEBUG] [2026-07-29T11:32:20.623Z] data loaded
+[DEBUG] [2026-07-29T11:32:20.641Z] Client disconnected (session: 4802c5a4-4f4a-4e30-bf29-0a2b1ea2a538).
+[DEBUG] [2026-07-29T11:32:20.661Z] data loaded
+[DEBUG] [2026-07-29T11:32:20.662Z] Socket connection rejected: username not found for session 4802c5a4-4f4a-4e30-bf29-0a2b1ea2a538
+[DEBUG] [2026-07-29T11:32:20.662Z] Client connected via socket (session: 4802c5a4-4f4a-4e30-bf29-0a2b1ea2a538)
+[DEBUG] [2026-07-29T11:32:33.665Z] data loaded
+[DEBUG] [2026-07-29T11:32:33.684Z] Client disconnected (session: 77e73774-ab59-4855-8ca1-b3e0a994e9f9).
+[DEBUG] [2026-07-29T11:32:33.703Z] data loaded
+[DEBUG] [2026-07-29T11:32:33.703Z] Client connected via socket (session: 4802c5a4-4f4a-4e30-bf29-0a2b1ea2a538)
+[DEBUG] [2026-07-29T11:32:33.703Z] Socket connection rejected: username not found for session 4802c5a4-4f4a-4e30-bf29-0a2b1ea2a538
+[DEBUG] [2026-07-29T11:32:39.221Z] data loaded
+[DEBUG] [2026-07-29T11:32:39.233Z] Client disconnected (session: 4802c5a4-4f4a-4e30-bf29-0a2b1ea2a538).
+[DEBUG] [2026-07-29T11:32:39.267Z] data loaded
+[DEBUG] [2026-07-29T11:32:39.267Z] Client connected via socket (session: 4802c5a4-4f4a-4e30-bf29-0a2b1ea2a538)
+[DEBUG] [2026-07-29T11:32:39.267Z] Socket connection rejected: username not found for session 4802c5a4-4f4a-4e30-bf29-0a2b1ea2a538
+[DEBUG] [2026-07-29T11:32:41.654Z] Client disconnected (session: 4802c5a4-4f4a-4e30-bf29-0a2b1ea2a538).
+[DEBUG] [2026-07-29T11:32:45.946Z] data loaded
+[DEBUG] [2026-07-29T11:32:45.948Z] data saved
+[DEBUG] [2026-07-29T11:32:45.949Z] New player joined: amogus with ID 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf
+[DEBUG] [2026-07-29T11:32:45.966Z] data loaded
+[DEBUG] [2026-07-29T11:32:45.969Z] Server tried to log in, denied access for session 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf
+[DEBUG] [2026-07-29T11:32:46.023Z] data loaded
+[DEBUG] [2026-07-29T11:32:46.023Z] Client connected via socket (session: 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf)
+[DEBUG] [2026-07-29T11:32:46.024Z] client requested sabotage data (sent via connect for 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf)
+[DEBUG] [2026-07-29T11:32:56.117Z] data loaded
+[DEBUG] [2026-07-29T11:32:56.117Z] Starting game with 13 players.
+[DEBUG] [2026-07-29T11:32:56.117Z] Clearing all sabotage timers.
+[DEBUG] [2026-07-29T11:32:56.117Z] 5e31b3d0-a400-4e35-a04d-2cbbec306f09 is now impostor
+[DEBUG] [2026-07-29T11:32:56.117Z] dummy_1785322235249_1 is now impostor
+[DEBUG] [2026-07-29T11:32:56.117Z] dummy_1785322235249_2 is now crewmate
+[DEBUG] [2026-07-29T11:32:56.118Z] dummy_1785322235249_3 is now crewmate
+[DEBUG] [2026-07-29T11:32:56.118Z] dummy_1785322235249_6 is now crewmate
+[DEBUG] [2026-07-29T11:32:56.118Z] dummy_1785322235249_4 is now crewmate
+[DEBUG] [2026-07-29T11:32:56.118Z] dummy_1785322235249_5 is now crewmate
+[DEBUG] [2026-07-29T11:32:56.118Z] dummy_1785322235249_7 is now crewmate
+[DEBUG] [2026-07-29T11:32:56.119Z] dummy_1785322235249_9 is now crewmate
+[DEBUG] [2026-07-29T11:32:56.118Z] dummy_1785322235249_8 is now crewmate
+[DEBUG] [2026-07-29T11:32:56.119Z] d7cb2be9-0ad6-4208-986c-8596c9cf9f20 is now crewmate
+[DEBUG] [2026-07-29T11:32:56.119Z] 77e73774-ab59-4855-8ca1-b3e0a994e9f9 is now crewmate
+[DEBUG] [2026-07-29T11:32:56.119Z] 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf is now crewmate
+[DEBUG] [2026-07-29T11:32:56.122Z] data saved
+[DEBUG] [2026-07-29T11:32:56.123Z] Game successfully started.
+[DEBUG] [2026-07-29T11:32:56.143Z] data loaded
+[DEBUG] [2026-07-29T11:32:56.143Z] Client (5e31b3d0-a400-4e35-a04d-2cbbec306f09) fetched role reveal. Role: Impostor
+[DEBUG] [2026-07-29T11:32:56.178Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T11:33:02.631Z] data loaded
+[DEBUG] [2026-07-29T11:33:02.631Z] Client (9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf) fetched role reveal. Role: Crewmate
+[DEBUG] [2026-07-29T11:33:02.663Z] Client disconnected (session: 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf).
+[DEBUG] [2026-07-29T11:33:17.632Z] data loaded
+[DEBUG] [2026-07-29T11:33:17.693Z] data loaded
+[DEBUG] [2026-07-29T11:33:17.694Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:33:17.694Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:33:20.888Z] data loaded
+[DEBUG] [2026-07-29T11:33:20.930Z] data loaded
+[DEBUG] [2026-07-29T11:33:20.930Z] Client connected via socket (session: 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf)
+[DEBUG] [2026-07-29T11:33:20.930Z] client requested sabotage data (sent via connect for 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf)
+[DEBUG] [2026-07-29T11:33:24.201Z] Client (4802c5a4-4f4a-4e30-bf29-0a2b1ea2a538) triggered emergency event.
+[DEBUG] [2026-07-29T11:33:24.202Z] data loaded
+[DEBUG] [2026-07-29T11:33:24.202Z] Emergency meeting started.
+[DEBUG] [2026-07-29T11:33:24.205Z] data saved
+[DEBUG] [2026-07-29T11:33:24.229Z] data loaded
+[DEBUG] [2026-07-29T11:33:24.231Z] data loaded
+[DEBUG] [2026-07-29T11:33:24.260Z] Client disconnected (session: 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf).
+[DEBUG] [2026-07-29T11:33:24.262Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T11:33:24.293Z] data loaded
+[DEBUG] [2026-07-29T11:33:24.293Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:33:24.293Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:33:24.303Z] Client connected via socket (session: 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf)
+[DEBUG] [2026-07-29T11:33:24.304Z] client requested sabotage data (sent via connect for 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf)
+[DEBUG] [2026-07-29T11:33:24.303Z] data loaded
+[DEBUG] [2026-07-29T11:33:33.992Z] data loaded
+[DEBUG] [2026-07-29T11:33:33.992Z] 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf cast a vote for 5e31b3d0-a400-4e35-a04d-2cbbec306f09
+[DEBUG] [2026-07-29T11:33:54.211Z] Emergency meeting timer concluded.
+[DEBUG] [2026-07-29T11:33:54.213Z] data loaded
+[DEBUG] [2026-07-29T11:33:54.216Z] data saved
+[DEBUG] [2026-07-29T11:33:58.638Z] data loaded
+[DEBUG] [2026-07-29T11:33:58.639Z] data loaded
+[DEBUG] [2026-07-29T11:33:58.656Z] Client disconnected (session: 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf).
+[DEBUG] [2026-07-29T11:33:58.677Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T11:33:58.709Z] data loaded
+[DEBUG] [2026-07-29T11:33:58.709Z] Client connected via socket (session: 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf)
+[DEBUG] [2026-07-29T11:33:58.709Z] client requested sabotage data (sent via connect for 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf)
+[DEBUG] [2026-07-29T11:33:58.712Z] data loaded
+[DEBUG] [2026-07-29T11:33:58.713Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:33:58.713Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:34:57.984Z] All .env variables present.
+[DEBUG] [2026-07-29T11:34:57.991Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T11:34:58.632Z] data loaded
+[DEBUG] [2026-07-29T11:34:58.633Z] Client connected via socket (session: 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf)
+[DEBUG] [2026-07-29T11:34:58.633Z] client requested sabotage data (sent via connect for 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf)
+[DEBUG] [2026-07-29T11:34:58.634Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:34:58.634Z] data loaded
+[DEBUG] [2026-07-29T11:34:58.635Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:34:59.623Z] data loaded
+[DEBUG] [2026-07-29T11:34:59.623Z] Client connected via socket (session: 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf)
+[DEBUG] [2026-07-29T11:34:59.623Z] client requested sabotage data (sent via connect for 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf)
+[DEBUG] [2026-07-29T11:35:43.912Z] All .env variables present.
+[DEBUG] [2026-07-29T11:35:43.920Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T11:35:44.648Z] data loaded
+[DEBUG] [2026-07-29T11:35:44.648Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:35:44.649Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:35:44.649Z] client requested sabotage data (sent via connect for 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf)
+[DEBUG] [2026-07-29T11:35:44.649Z] data loaded
+[DEBUG] [2026-07-29T11:35:44.649Z] Client connected via socket (session: 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf)
+[DEBUG] [2026-07-29T11:35:45.622Z] data loaded
+[DEBUG] [2026-07-29T11:35:45.622Z] Client connected via socket (session: 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf)
+[DEBUG] [2026-07-29T11:35:45.622Z] client requested sabotage data (sent via connect for 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf)
+[DEBUG] [2026-07-29T11:52:04.986Z] data loaded
+[DEBUG] [2026-07-29T11:52:04.986Z] Host restarted the game.
+[DEBUG] [2026-07-29T11:52:04.987Z] Clearing all sabotage timers.
+[DEBUG] [2026-07-29T11:52:04.990Z] data saved
+[DEBUG] [2026-07-29T11:52:05.003Z] data loaded
+[DEBUG] [2026-07-29T11:52:05.040Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T11:52:05.056Z] data loaded
+[DEBUG] [2026-07-29T11:52:05.056Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:52:05.056Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:52:56.155Z] Client disconnected (session: 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf).
+[DEBUG] [2026-07-29T11:53:00.725Z] data loaded
+[DEBUG] [2026-07-29T11:53:00.729Z] data saved
+[DEBUG] [2026-07-29T11:53:00.730Z] New player joined: imogus with ID 78d92c48-18dc-40c7-b153-b2833da01c53
+[DEBUG] [2026-07-29T11:53:00.750Z] data loaded
+[DEBUG] [2026-07-29T11:53:00.751Z] Server tried to log in, denied access for session 78d92c48-18dc-40c7-b153-b2833da01c53
+[DEBUG] [2026-07-29T11:53:00.784Z] data loaded
+[DEBUG] [2026-07-29T11:53:00.785Z] Client connected via socket (session: 78d92c48-18dc-40c7-b153-b2833da01c53)
+[DEBUG] [2026-07-29T11:53:00.786Z] client requested sabotage data (sent via connect for 78d92c48-18dc-40c7-b153-b2833da01c53)
+[DEBUG] [2026-07-29T11:53:07.235Z] data loaded
+[DEBUG] [2026-07-29T11:53:07.236Z] Game start blocked: Operational servers are missing.
+[DEBUG] [2026-07-29T11:53:14.763Z] Client disconnected (session: 9b0bfb37-bd6a-4a45-a1e8-993b31e6d5bf).
+[DEBUG] [2026-07-29T11:53:16.008Z] data loaded
+[DEBUG] [2026-07-29T11:53:16.009Z] Client connected via socket (session: 78d92c48-18dc-40c7-b153-b2833da01c53)
+[DEBUG] [2026-07-29T11:53:16.009Z] client requested sabotage data (sent via connect for 78d92c48-18dc-40c7-b153-b2833da01c53)
+[DEBUG] [2026-07-29T11:53:24.065Z] data loaded
+[DEBUG] [2026-07-29T11:53:24.179Z] data saved
+[DEBUG] [2026-07-29T11:53:24.180Z] New server joined with ID 2f60a3c1-fc9d-4d60-8d15-5774d0edce2d
+[DEBUG] [2026-07-29T11:53:24.206Z] data loaded
+[DEBUG] [2026-07-29T11:53:24.230Z] Client disconnected (session: 78d92c48-18dc-40c7-b153-b2833da01c53).
+[DEBUG] [2026-07-29T11:53:24.249Z] data loaded
+[DEBUG] [2026-07-29T11:53:24.249Z] Client connected via socket (session: 2f60a3c1-fc9d-4d60-8d15-5774d0edce2d)
+[DEBUG] [2026-07-29T11:53:24.250Z] Socket connection rejected: username not found for session 2f60a3c1-fc9d-4d60-8d15-5774d0edce2d
+[DEBUG] [2026-07-29T11:53:26.470Z] data loaded
+[DEBUG] [2026-07-29T11:53:26.471Z] emergency server is now online and registered to session 2f60a3c1-fc9d-4d60-8d15-5774d0edce2d
+[DEBUG] [2026-07-29T11:53:26.474Z] data saved
+[DEBUG] [2026-07-29T11:53:26.492Z] data loaded
+[DEBUG] [2026-07-29T11:53:26.512Z] Client disconnected (session: 2f60a3c1-fc9d-4d60-8d15-5774d0edce2d).
+[DEBUG] [2026-07-29T11:53:26.528Z] data loaded
+[DEBUG] [2026-07-29T11:53:26.529Z] Client connected via socket (session: 2f60a3c1-fc9d-4d60-8d15-5774d0edce2d)
+[DEBUG] [2026-07-29T11:53:26.529Z] Socket connection rejected: username not found for session 2f60a3c1-fc9d-4d60-8d15-5774d0edce2d
+[DEBUG] [2026-07-29T11:53:29.979Z] Client (2f60a3c1-fc9d-4d60-8d15-5774d0edce2d) triggered emergency event.
+[DEBUG] [2026-07-29T11:53:29.980Z] data loaded
+[DEBUG] [2026-07-29T11:53:29.980Z] Emergency meeting rejected: Game not actively running.
+[DEBUG] [2026-07-29T11:53:40.398Z] data loaded
+[DEBUG] [2026-07-29T11:53:40.399Z] Starting game with 11 players.
+[DEBUG] [2026-07-29T11:53:40.399Z] Clearing all sabotage timers.
+[DEBUG] [2026-07-29T11:53:40.400Z] 5e31b3d0-a400-4e35-a04d-2cbbec306f09 is now crewmate
+[DEBUG] [2026-07-29T11:53:40.401Z] dummy_1785322235249_1 is now impostor
+[DEBUG] [2026-07-29T11:53:40.401Z] dummy_1785322235249_2 is now crewmate
+[DEBUG] [2026-07-29T11:53:40.402Z] dummy_1785322235249_3 is now crewmate
+[DEBUG] [2026-07-29T11:53:40.404Z] dummy_1785322235249_4 is now crewmate
+[DEBUG] [2026-07-29T11:53:40.404Z] dummy_1785322235249_5 is now crewmate
+[DEBUG] [2026-07-29T11:53:40.407Z] dummy_1785322235249_6 is now crewmate
+[DEBUG] [2026-07-29T11:53:40.410Z] dummy_1785322235249_7 is now crewmate
+[DEBUG] [2026-07-29T11:53:40.415Z] dummy_1785322235249_8 is now crewmate
+[DEBUG] [2026-07-29T11:53:40.416Z] dummy_1785322235249_9 is now crewmate
+[DEBUG] [2026-07-29T11:53:40.418Z] 78d92c48-18dc-40c7-b153-b2833da01c53 is now impostor
+[DEBUG] [2026-07-29T11:53:40.425Z] data saved
+[DEBUG] [2026-07-29T11:53:40.426Z] Game successfully started.
+[DEBUG] [2026-07-29T11:53:55.094Z] data loaded
+[DEBUG] [2026-07-29T11:53:55.095Z] Starting game with 11 players.
+[DEBUG] [2026-07-29T11:53:55.096Z] Clearing all sabotage timers.
+[DEBUG] [2026-07-29T11:53:55.097Z] 5e31b3d0-a400-4e35-a04d-2cbbec306f09 is now crewmate
+[DEBUG] [2026-07-29T11:53:55.098Z] dummy_1785322235249_1 is now impostor
+[DEBUG] [2026-07-29T11:53:55.098Z] dummy_1785322235249_2 is now crewmate
+[DEBUG] [2026-07-29T11:53:55.099Z] dummy_1785322235249_3 is now crewmate
+[DEBUG] [2026-07-29T11:53:55.099Z] dummy_1785322235249_4 is now impostor
+[DEBUG] [2026-07-29T11:53:55.099Z] dummy_1785322235249_5 is now crewmate
+[DEBUG] [2026-07-29T11:53:55.101Z] dummy_1785322235249_6 is now crewmate
+[DEBUG] [2026-07-29T11:53:55.102Z] dummy_1785322235249_7 is now crewmate
+[DEBUG] [2026-07-29T11:53:55.105Z] dummy_1785322235249_8 is now crewmate
+[DEBUG] [2026-07-29T11:53:55.106Z] dummy_1785322235249_9 is now crewmate
+[DEBUG] [2026-07-29T11:53:55.106Z] 78d92c48-18dc-40c7-b153-b2833da01c53 is now crewmate
+[DEBUG] [2026-07-29T11:53:55.120Z] data saved
+[DEBUG] [2026-07-29T11:53:55.122Z] Game successfully started.
+[DEBUG] [2026-07-29T11:53:56.567Z] data loaded
+[DEBUG] [2026-07-29T11:53:56.577Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T11:53:56.627Z] data loaded
+[DEBUG] [2026-07-29T11:53:56.628Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:53:56.628Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:53:56.648Z] data loaded
+[DEBUG] [2026-07-29T11:53:56.671Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T11:53:56.697Z] data loaded
+[DEBUG] [2026-07-29T11:53:56.697Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:53:56.698Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:54:07.144Z] data loaded
+[DEBUG] [2026-07-29T11:54:07.168Z] Client disconnected (session: 78d92c48-18dc-40c7-b153-b2833da01c53).
+[DEBUG] [2026-07-29T11:54:29.081Z] 5e31b3d0-a400-4e35-a04d-2cbbec306f09 requested death
+[DEBUG] [2026-07-29T11:54:29.082Z] 5e31b3d0-a400-4e35-a04d-2cbbec306f09 death confirmed
+[DEBUG] [2026-07-29T11:54:29.086Z] data saved
+[DEBUG] [2026-07-29T11:54:32.981Z] data loaded
+[DEBUG] [2026-07-29T11:54:32.990Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T11:54:33.035Z] data loaded
+[DEBUG] [2026-07-29T11:54:33.035Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:54:33.035Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:54:45.925Z] data loaded
+[DEBUG] [2026-07-29T11:54:45.933Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T11:54:45.973Z] data loaded
+[DEBUG] [2026-07-29T11:54:45.974Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:54:45.974Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:54:47.900Z] 5e31b3d0-a400-4e35-a04d-2cbbec306f09 requested death
+[DEBUG] [2026-07-29T11:54:47.901Z] 5e31b3d0-a400-4e35-a04d-2cbbec306f09 death confirmed
+[DEBUG] [2026-07-29T11:54:47.905Z] data saved
+[DEBUG] [2026-07-29T11:54:49.561Z] data loaded
+[DEBUG] [2026-07-29T11:54:49.567Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T11:54:49.609Z] data loaded
+[DEBUG] [2026-07-29T11:54:49.609Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:54:49.609Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:55:03.560Z] data loaded
+[DEBUG] [2026-07-29T11:55:03.565Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T11:55:03.603Z] data loaded
+[DEBUG] [2026-07-29T11:55:03.603Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:55:03.603Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:55:05.991Z] data loaded
+[DEBUG] [2026-07-29T11:55:05.999Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T11:55:06.040Z] data loaded
+[DEBUG] [2026-07-29T11:55:06.041Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:55:06.041Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:55:07.259Z] data loaded
+[DEBUG] [2026-07-29T11:55:07.312Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T11:55:07.329Z] data loaded
+[DEBUG] [2026-07-29T11:55:07.329Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:55:07.330Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:55:12.537Z] Client (5e31b3d0-a400-4e35-a04d-2cbbec306f09) requested sabotage: o2
+[DEBUG] [2026-07-29T11:55:12.538Z] data loaded
+[DEBUG] [2026-07-29T11:55:12.539Z] Sabotage started: o2 with initial delay of 5 seconds.
+[DEBUG] [2026-07-29T11:55:12.542Z] data saved
+[DEBUG] [2026-07-29T11:55:13.558Z] data loaded
+[DEBUG] [2026-07-29T11:55:13.564Z] data saved
+[DEBUG] [2026-07-29T11:55:14.568Z] data loaded
+[DEBUG] [2026-07-29T11:55:14.571Z] data saved
+[DEBUG] [2026-07-29T11:55:15.583Z] data loaded
+[DEBUG] [2026-07-29T11:55:15.587Z] data saved
+[DEBUG] [2026-07-29T11:55:16.595Z] data loaded
+[DEBUG] [2026-07-29T11:55:16.601Z] data saved
+[DEBUG] [2026-07-29T11:55:17.595Z] data loaded
+[DEBUG] [2026-07-29T11:55:17.600Z] data saved
+[DEBUG] [2026-07-29T11:55:17.601Z] Sabotage o2 reached crisis phase!
+[DEBUG] [2026-07-29T11:55:17.604Z] data saved
+[DEBUG] [2026-07-29T11:55:17.918Z] Client (2f60a3c1-fc9d-4d60-8d15-5774d0edce2d) triggered emergency event.
+[DEBUG] [2026-07-29T11:55:17.920Z] data loaded
+[DEBUG] [2026-07-29T11:55:17.921Z] Emergency meeting started.
+[DEBUG] [2026-07-29T11:55:17.924Z] data saved
+[DEBUG] [2026-07-29T11:55:18.608Z] data loaded
+[DEBUG] [2026-07-29T11:55:18.613Z] data saved
+[DEBUG] [2026-07-29T11:55:19.623Z] data loaded
+[DEBUG] [2026-07-29T11:55:19.627Z] data saved
+[DEBUG] [2026-07-29T11:55:20.640Z] data loaded
+[DEBUG] [2026-07-29T11:55:20.647Z] data saved
+[DEBUG] [2026-07-29T11:55:21.654Z] data loaded
+[DEBUG] [2026-07-29T11:55:21.659Z] data saved
+[DEBUG] [2026-07-29T11:55:22.668Z] data loaded
+[DEBUG] [2026-07-29T11:55:22.673Z] data saved
+[DEBUG] [2026-07-29T11:55:23.668Z] data loaded
+[DEBUG] [2026-07-29T11:55:23.673Z] data saved
+[DEBUG] [2026-07-29T11:55:24.680Z] data loaded
+[DEBUG] [2026-07-29T11:55:24.687Z] data saved
+[DEBUG] [2026-07-29T11:55:25.680Z] data loaded
+[DEBUG] [2026-07-29T11:55:25.685Z] data saved
+[DEBUG] [2026-07-29T11:55:26.683Z] data loaded
+[DEBUG] [2026-07-29T11:55:26.689Z] data saved
+[DEBUG] [2026-07-29T11:55:27.701Z] data loaded
+[DEBUG] [2026-07-29T11:55:27.708Z] data saved
+[DEBUG] [2026-07-29T11:55:28.709Z] data loaded
+[DEBUG] [2026-07-29T11:55:28.717Z] data saved
+[DEBUG] [2026-07-29T11:55:29.720Z] data loaded
+[DEBUG] [2026-07-29T11:55:29.729Z] data saved
+[DEBUG] [2026-07-29T11:55:30.751Z] data loaded
+[DEBUG] [2026-07-29T11:55:30.756Z] data saved
+[DEBUG] [2026-07-29T11:55:31.760Z] data loaded
+[DEBUG] [2026-07-29T11:55:31.767Z] data saved
+[DEBUG] [2026-07-29T11:55:32.783Z] data loaded
+[DEBUG] [2026-07-29T11:55:32.785Z] data saved
+[DEBUG] [2026-07-29T11:55:33.788Z] data loaded
+[DEBUG] [2026-07-29T11:55:33.793Z] data saved
+[DEBUG] [2026-07-29T11:55:34.801Z] data loaded
+[DEBUG] [2026-07-29T11:55:34.807Z] data saved
+[DEBUG] [2026-07-29T11:55:35.813Z] data loaded
+[DEBUG] [2026-07-29T11:55:35.819Z] data saved
+[DEBUG] [2026-07-29T11:55:36.827Z] data loaded
+[DEBUG] [2026-07-29T11:55:36.833Z] data saved
+[DEBUG] [2026-07-29T11:55:37.842Z] data loaded
+[DEBUG] [2026-07-29T11:55:37.847Z] data saved
+[DEBUG] [2026-07-29T11:55:37.907Z] Client disconnected (session: 2f60a3c1-fc9d-4d60-8d15-5774d0edce2d).
+[DEBUG] [2026-07-29T11:55:38.855Z] data loaded
+[DEBUG] [2026-07-29T11:55:38.858Z] data saved
+[DEBUG] [2026-07-29T11:55:39.869Z] data loaded
+[DEBUG] [2026-07-29T11:55:39.873Z] data saved
+[DEBUG] [2026-07-29T11:55:40.881Z] data loaded
+[DEBUG] [2026-07-29T11:55:40.887Z] data saved
+[DEBUG] [2026-07-29T11:55:41.894Z] data loaded
+[DEBUG] [2026-07-29T11:55:41.903Z] data saved
+[DEBUG] [2026-07-29T11:55:42.906Z] data loaded
+[DEBUG] [2026-07-29T11:55:42.908Z] data saved
+[DEBUG] [2026-07-29T11:55:43.949Z] data loaded
+[DEBUG] [2026-07-29T11:55:43.953Z] data saved
+[DEBUG] [2026-07-29T11:55:44.959Z] data loaded
+[DEBUG] [2026-07-29T11:55:44.967Z] data saved
+[DEBUG] [2026-07-29T11:55:45.970Z] data loaded
+[DEBUG] [2026-07-29T11:55:45.976Z] data saved
+[DEBUG] [2026-07-29T11:55:46.984Z] data loaded
+[DEBUG] [2026-07-29T11:55:46.988Z] data saved
+[DEBUG] [2026-07-29T11:55:47.929Z] Emergency meeting timer concluded.
+[DEBUG] [2026-07-29T11:55:47.936Z] data loaded
+[DEBUG] [2026-07-29T11:55:47.941Z] data saved
+[DEBUG] [2026-07-29T11:55:47.996Z] data loaded
+[DEBUG] [2026-07-29T11:55:48.000Z] data saved
+[DEBUG] [2026-07-29T11:55:48.002Z] Sabotage o2 failed to be fixed. Impostors win!
+[DEBUG] [2026-07-29T11:55:48.005Z] data saved
+[DEBUG] [2026-07-29T11:55:48.025Z] data loaded
+[DEBUG] [2026-07-29T11:55:48.025Z] Client (5e31b3d0-a400-4e35-a04d-2cbbec306f09) fetching win screen.
+[DEBUG] [2026-07-29T11:55:48.059Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T11:55:48.085Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:55:48.086Z] client requested sabotage data (sent via connect for 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T11:55:48.085Z] data loaded
+[DEBUG] [2026-07-29T11:56:02.350Z] data loaded
+[DEBUG] [2026-07-29T11:56:02.350Z] Host initiated full reset of game state.
+[DEBUG] [2026-07-29T11:56:02.350Z] Clearing all sabotage timers.
+[DEBUG] [2026-07-29T11:56:02.352Z] data saved
+[DEBUG] [2026-07-29T11:56:02.407Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T12:55:04.105Z] Socket connection rejected: username not found for session 5e31b3d0-a400-4e35-a04d-2cbbec306f09
+[DEBUG] [2026-07-29T12:55:04.104Z] data loaded
+[DEBUG] [2026-07-29T12:55:04.105Z] Client connected via socket (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09)
+[DEBUG] [2026-07-29T12:55:10.815Z] data loaded
+[DEBUG] [2026-07-29T12:55:10.924Z] data saved
+[DEBUG] [2026-07-29T12:55:10.924Z] Host successfully joined: I with ID 25f9a477-da26-4b4f-aabe-93e90cdc186f
+[DEBUG] [2026-07-29T12:55:10.945Z] data loaded
+[DEBUG] [2026-07-29T12:55:10.989Z] Client disconnected (session: 5e31b3d0-a400-4e35-a04d-2cbbec306f09).
+[DEBUG] [2026-07-29T12:55:11.005Z] data loaded
+[DEBUG] [2026-07-29T12:55:11.005Z] Client connected via socket (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T12:55:11.006Z] client requested sabotage data (sent via connect for 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T12:55:18.626Z] data loaded
+[DEBUG] [2026-07-29T12:55:18.633Z] data saved
+[DEBUG] [2026-07-29T12:55:18.633Z] Host successfully added 10 dummy players.
+[DEBUG] [2026-07-29T12:55:25.372Z] data loaded
+[DEBUG] [2026-07-29T12:55:25.376Z] data saved
+[DEBUG] [2026-07-29T12:55:25.376Z] New player joined: imogus with ID 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1
+[DEBUG] [2026-07-29T12:55:25.399Z] data loaded
+[DEBUG] [2026-07-29T12:55:25.403Z] Server tried to log in, denied access for session 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1
+[DEBUG] [2026-07-29T12:55:25.457Z] data loaded
+[DEBUG] [2026-07-29T12:55:25.457Z] Client connected via socket (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T12:55:25.458Z] client requested sabotage data (sent via connect for 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T12:55:30.497Z] Unauthorised access attempt to /waiting.
+[DEBUG] [2026-07-29T12:55:30.497Z] data loaded
+[DEBUG] [2026-07-29T12:55:38.548Z] data loaded
+[DEBUG] [2026-07-29T12:55:38.550Z] Unauthorised access attempt to /waiting.
+[DEBUG] [2026-07-29T12:55:44.174Z] data loaded
+[DEBUG] [2026-07-29T12:55:44.175Z] Client connected via socket (session: unknown)
+[DEBUG] [2026-07-29T12:55:44.175Z] Socket connection rejected: username not found for session undefined
+[DEBUG] [2026-07-29T12:55:48.306Z] data loaded
+[DEBUG] [2026-07-29T12:55:48.412Z] data saved
+[DEBUG] [2026-07-29T12:55:48.413Z] New server joined with ID 8076826f-0e3e-4fe2-9354-36e4c366c67e
+[DEBUG] [2026-07-29T12:55:48.428Z] data loaded
+[DEBUG] [2026-07-29T12:55:48.458Z] Client disconnected (session: unknown).
+[DEBUG] [2026-07-29T12:55:48.481Z] data loaded
+[DEBUG] [2026-07-29T12:55:48.481Z] Client connected via socket (session: 8076826f-0e3e-4fe2-9354-36e4c366c67e)
+[DEBUG] [2026-07-29T12:55:48.481Z] Socket connection rejected: username not found for session 8076826f-0e3e-4fe2-9354-36e4c366c67e
+[DEBUG] [2026-07-29T12:55:49.539Z] data loaded
+[DEBUG] [2026-07-29T12:55:49.540Z] o2 server is now online and registered to session 8076826f-0e3e-4fe2-9354-36e4c366c67e
+[DEBUG] [2026-07-29T12:55:49.543Z] data saved
+[DEBUG] [2026-07-29T12:55:49.563Z] data loaded
+[DEBUG] [2026-07-29T12:55:49.589Z] Client disconnected (session: 8076826f-0e3e-4fe2-9354-36e4c366c67e).
+[DEBUG] [2026-07-29T12:55:51.197Z] data loaded
+[DEBUG] [2026-07-29T12:55:51.197Z] Client connected via socket (session: 8076826f-0e3e-4fe2-9354-36e4c366c67e)
+[DEBUG] [2026-07-29T12:55:51.197Z] Socket connection rejected: username not found for session 8076826f-0e3e-4fe2-9354-36e4c366c67e
+[DEBUG] [2026-07-29T12:55:56.200Z] data loaded
+[DEBUG] [2026-07-29T12:55:56.200Z] Client connected via socket (session: unknown)
+[DEBUG] [2026-07-29T12:55:56.201Z] Socket connection rejected: username not found for session undefined
+[DEBUG] [2026-07-29T12:55:59.273Z] Client disconnected (session: unknown).
+[DEBUG] [2026-07-29T12:56:00.287Z] data loaded
+[DEBUG] [2026-07-29T12:56:00.287Z] Socket connection rejected: username not found for session undefined
+[DEBUG] [2026-07-29T12:56:00.287Z] Client connected via socket (session: unknown)
+[DEBUG] [2026-07-29T12:56:03.013Z] data loaded
+[DEBUG] [2026-07-29T12:56:03.126Z] data saved
+[DEBUG] [2026-07-29T12:56:03.127Z] New server joined with ID 7524a8dc-8be4-4d0e-b1ad-53b580710628
+[DEBUG] [2026-07-29T12:56:03.145Z] data loaded
+[DEBUG] [2026-07-29T12:56:03.169Z] Client disconnected (session: unknown).
+[DEBUG] [2026-07-29T12:56:03.197Z] data loaded
+[DEBUG] [2026-07-29T12:56:03.198Z] Client connected via socket (session: 7524a8dc-8be4-4d0e-b1ad-53b580710628)
+[DEBUG] [2026-07-29T12:56:03.198Z] Socket connection rejected: username not found for session 7524a8dc-8be4-4d0e-b1ad-53b580710628
+[DEBUG] [2026-07-29T12:56:06.615Z] data loaded
+[DEBUG] [2026-07-29T12:56:06.616Z] emergency server is now online and registered to session 7524a8dc-8be4-4d0e-b1ad-53b580710628
+[DEBUG] [2026-07-29T12:56:06.618Z] data saved
+[DEBUG] [2026-07-29T12:56:06.638Z] data loaded
+[DEBUG] [2026-07-29T12:56:06.664Z] Client disconnected (session: 7524a8dc-8be4-4d0e-b1ad-53b580710628).
+[DEBUG] [2026-07-29T12:56:07.063Z] data loaded
+[DEBUG] [2026-07-29T12:56:07.063Z] Client connected via socket (session: 7524a8dc-8be4-4d0e-b1ad-53b580710628)
+[DEBUG] [2026-07-29T12:56:07.063Z] Socket connection rejected: username not found for session 7524a8dc-8be4-4d0e-b1ad-53b580710628
+[DEBUG] [2026-07-29T12:56:09.749Z] data loaded
+[DEBUG] [2026-07-29T12:56:09.749Z] Client connected via socket (session: unknown)
+[DEBUG] [2026-07-29T12:56:09.750Z] Socket connection rejected: username not found for session undefined
+[DEBUG] [2026-07-29T12:56:15.493Z] data loaded
+[DEBUG] [2026-07-29T12:56:15.596Z] data saved
+[DEBUG] [2026-07-29T12:56:15.597Z] New server joined with ID 7cb36482-b2cb-46be-80e9-ac3f13cdee15
+[DEBUG] [2026-07-29T12:56:15.615Z] data loaded
+[DEBUG] [2026-07-29T12:56:15.647Z] Client disconnected (session: unknown).
+[DEBUG] [2026-07-29T12:56:15.662Z] data loaded
+[DEBUG] [2026-07-29T12:56:15.662Z] Client connected via socket (session: 7cb36482-b2cb-46be-80e9-ac3f13cdee15)
+[DEBUG] [2026-07-29T12:56:15.662Z] Socket connection rejected: username not found for session 7cb36482-b2cb-46be-80e9-ac3f13cdee15
+[DEBUG] [2026-07-29T12:56:18.533Z] data loaded
+[DEBUG] [2026-07-29T12:56:18.534Z] reactor server is now online and registered to session 7cb36482-b2cb-46be-80e9-ac3f13cdee15
+[DEBUG] [2026-07-29T12:56:18.537Z] data saved
+[DEBUG] [2026-07-29T12:56:18.559Z] data loaded
+[DEBUG] [2026-07-29T12:56:18.585Z] Client disconnected (session: 7cb36482-b2cb-46be-80e9-ac3f13cdee15).
+[DEBUG] [2026-07-29T12:56:21.460Z] data loaded
+[DEBUG] [2026-07-29T12:56:21.460Z] Client connected via socket (session: 7cb36482-b2cb-46be-80e9-ac3f13cdee15)
+[DEBUG] [2026-07-29T12:56:21.460Z] Socket connection rejected: username not found for session 7cb36482-b2cb-46be-80e9-ac3f13cdee15
+[DEBUG] [2026-07-29T12:56:31.039Z] data loaded
+[DEBUG] [2026-07-29T12:56:31.040Z] Starting game with 12 players.
+[DEBUG] [2026-07-29T12:56:31.040Z] Clearing all sabotage timers.
+[DEBUG] [2026-07-29T12:56:31.040Z] 25f9a477-da26-4b4f-aabe-93e90cdc186f is now crewmate
+[DEBUG] [2026-07-29T12:56:31.040Z] dummy_1785329718632_1 is now crewmate
+[DEBUG] [2026-07-29T12:56:31.041Z] dummy_1785329718632_2 is now crewmate
+[DEBUG] [2026-07-29T12:56:31.041Z] dummy_1785329718632_3 is now crewmate
+[DEBUG] [2026-07-29T12:56:31.041Z] dummy_1785329718632_4 is now crewmate
+[DEBUG] [2026-07-29T12:56:31.041Z] dummy_1785329718632_5 is now crewmate
+[DEBUG] [2026-07-29T12:56:31.041Z] dummy_1785329718632_6 is now impostor
+[DEBUG] [2026-07-29T12:56:31.041Z] dummy_1785329718632_7 is now crewmate
+[DEBUG] [2026-07-29T12:56:31.041Z] dummy_1785329718632_8 is now crewmate
+[DEBUG] [2026-07-29T12:56:31.042Z] dummy_1785329718632_9 is now crewmate
+[DEBUG] [2026-07-29T12:56:31.042Z] 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1 is now impostor
+[DEBUG] [2026-07-29T12:56:31.042Z] dummy_1785329718632_10 is now crewmate
+[DEBUG] [2026-07-29T12:56:31.045Z] data saved
+[DEBUG] [2026-07-29T12:56:31.045Z] Game successfully started.
+[DEBUG] [2026-07-29T12:56:35.214Z] data loaded
+[DEBUG] [2026-07-29T12:56:35.220Z] Client disconnected (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f).
+[DEBUG] [2026-07-29T12:56:35.262Z] data loaded
+[DEBUG] [2026-07-29T12:56:35.262Z] Client connected via socket (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T12:56:35.262Z] client requested sabotage data (sent via connect for 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T12:56:35.283Z] data loaded
+[DEBUG] [2026-07-29T12:56:35.326Z] Client disconnected (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f).
+[DEBUG] [2026-07-29T12:56:35.337Z] data loaded
+[DEBUG] [2026-07-29T12:56:35.337Z] Client connected via socket (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T12:56:35.338Z] client requested sabotage data (sent via connect for 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T12:58:02.665Z] data loaded
+[DEBUG] [2026-07-29T12:58:02.665Z] Server tried to log in, denied access for session 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1
+[DEBUG] [2026-07-29T12:58:02.674Z] Client disconnected (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1).
+[DEBUG] [2026-07-29T12:58:02.710Z] data loaded
+[DEBUG] [2026-07-29T12:58:02.710Z] Client connected via socket (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T12:58:02.711Z] client requested sabotage data (sent via connect for 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T12:58:09.588Z] data loaded
+[DEBUG] [2026-07-29T12:58:09.621Z] Client disconnected (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1).
+[DEBUG] [2026-07-29T12:58:09.663Z] data loaded
+[DEBUG] [2026-07-29T12:58:09.663Z] Client connected via socket (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T12:58:09.664Z] client requested sabotage data (sent via connect for 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T12:58:42.459Z] data loaded
+[DEBUG] [2026-07-29T12:58:42.507Z] Client disconnected (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1).
+[DEBUG] [2026-07-29T12:58:42.514Z] data loaded
+[DEBUG] [2026-07-29T12:58:42.514Z] Client connected via socket (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T12:58:42.514Z] client requested sabotage data (sent via connect for 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T12:58:46.245Z] Client (3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1) requested sabotage: o2
+[DEBUG] [2026-07-29T12:58:46.250Z] data loaded
+[DEBUG] [2026-07-29T12:58:46.252Z] Sabotage started: o2 with initial delay of 5 seconds.
+[DEBUG] [2026-07-29T12:58:46.255Z] data saved
+[DEBUG] [2026-07-29T12:58:47.263Z] data loaded
+[DEBUG] [2026-07-29T12:58:47.265Z] data saved
+[DEBUG] [2026-07-29T12:58:48.277Z] data loaded
+[DEBUG] [2026-07-29T12:58:48.283Z] data saved
+[DEBUG] [2026-07-29T12:58:48.569Z] Client (7524a8dc-8be4-4d0e-b1ad-53b580710628) triggered emergency event.
+[DEBUG] [2026-07-29T12:58:48.570Z] data loaded
+[DEBUG] [2026-07-29T12:58:48.570Z] Emergency meeting started.
+[DEBUG] [2026-07-29T12:58:48.572Z] data saved
+[DEBUG] [2026-07-29T12:58:48.592Z] data loaded
+[DEBUG] [2026-07-29T12:58:48.613Z] Client disconnected (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f).
+[DEBUG] [2026-07-29T12:58:48.632Z] data loaded
+[DEBUG] [2026-07-29T12:58:48.632Z] Client connected via socket (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T12:58:48.632Z] client requested sabotage data (sent via connect for 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T12:58:49.285Z] data loaded
+[DEBUG] [2026-07-29T12:58:49.292Z] data saved
+[DEBUG] [2026-07-29T12:58:50.293Z] data loaded
+[DEBUG] [2026-07-29T12:58:50.297Z] data saved
+[DEBUG] [2026-07-29T12:58:51.294Z] data loaded
+[DEBUG] [2026-07-29T12:58:51.297Z] data saved
+[DEBUG] [2026-07-29T12:58:51.298Z] Sabotage o2 reached crisis phase!
+[DEBUG] [2026-07-29T12:58:51.301Z] data saved
+[DEBUG] [2026-07-29T12:58:52.300Z] data loaded
+[DEBUG] [2026-07-29T12:58:52.303Z] data saved
+[DEBUG] [2026-07-29T12:58:53.314Z] data loaded
+[DEBUG] [2026-07-29T12:58:53.316Z] data saved
+[DEBUG] [2026-07-29T12:58:54.323Z] data loaded
+[DEBUG] [2026-07-29T12:58:54.328Z] data saved
+[DEBUG] [2026-07-29T12:58:55.324Z] data loaded
+[DEBUG] [2026-07-29T12:58:55.330Z] data saved
+[DEBUG] [2026-07-29T12:58:56.334Z] data loaded
+[DEBUG] [2026-07-29T12:58:56.344Z] data saved
+[DEBUG] [2026-07-29T12:58:57.350Z] data loaded
+[DEBUG] [2026-07-29T12:58:57.357Z] data saved
+[DEBUG] [2026-07-29T12:58:58.362Z] data loaded
+[DEBUG] [2026-07-29T12:58:58.367Z] data saved
+[DEBUG] [2026-07-29T12:58:58.822Z] Client (8076826f-0e3e-4fe2-9354-36e4c366c67e) requested to fix sabotage: o2
+[DEBUG] [2026-07-29T12:58:58.824Z] data loaded
+[DEBUG] [2026-07-29T12:58:58.825Z] Sabotage fixed by crew: o2
+[DEBUG] [2026-07-29T12:58:58.829Z] data saved
+[DEBUG] [2026-07-29T12:59:18.582Z] Emergency meeting timer concluded.
+[DEBUG] [2026-07-29T12:59:18.584Z] data loaded
+[DEBUG] [2026-07-29T12:59:18.586Z] data saved
+[DEBUG] [2026-07-29T13:01:30.933Z] All .env variables present.
+[DEBUG] [2026-07-29T13:01:30.939Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T13:01:32.623Z] data loaded
+[DEBUG] [2026-07-29T13:01:32.624Z] Client connected via socket (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:01:32.624Z] client requested sabotage data (sent via connect for 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:01:33.248Z] data loaded
+[DEBUG] [2026-07-29T13:01:33.248Z] Host restarted the game.
+[DEBUG] [2026-07-29T13:01:33.249Z] Clearing all sabotage timers.
+[DEBUG] [2026-07-29T13:01:33.252Z] data saved
+[DEBUG] [2026-07-29T13:01:33.260Z] data loaded
+[DEBUG] [2026-07-29T13:01:33.365Z] data loaded
+[DEBUG] [2026-07-29T13:01:33.366Z] Client connected via socket (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:01:33.366Z] client requested sabotage data (sent via connect for 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:01:34.622Z] data loaded
+[DEBUG] [2026-07-29T13:01:34.622Z] Client connected via socket (session: 8076826f-0e3e-4fe2-9354-36e4c366c67e)
+[DEBUG] [2026-07-29T13:01:34.623Z] Socket connection rejected: username not found for session 8076826f-0e3e-4fe2-9354-36e4c366c67e
+[DEBUG] [2026-07-29T13:01:34.626Z] Client connected via socket (session: 7524a8dc-8be4-4d0e-b1ad-53b580710628)
+[DEBUG] [2026-07-29T13:01:34.625Z] data loaded
+[DEBUG] [2026-07-29T13:01:34.627Z] Socket connection rejected: username not found for session 7524a8dc-8be4-4d0e-b1ad-53b580710628
+[DEBUG] [2026-07-29T13:01:35.613Z] data loaded
+[DEBUG] [2026-07-29T13:01:35.613Z] Client connected via socket (session: 7cb36482-b2cb-46be-80e9-ac3f13cdee15)
+[DEBUG] [2026-07-29T13:01:35.614Z] Socket connection rejected: username not found for session 7cb36482-b2cb-46be-80e9-ac3f13cdee15
+[DEBUG] [2026-07-29T13:01:42.924Z] data loaded
+[DEBUG] [2026-07-29T13:01:42.926Z] Server tried to log in, denied access for session 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1
+[DEBUG] [2026-07-29T13:01:42.958Z] Client disconnected (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1).
+[DEBUG] [2026-07-29T13:01:42.978Z] data loaded
+[DEBUG] [2026-07-29T13:01:42.978Z] Client connected via socket (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:01:42.978Z] client requested sabotage data (sent via connect for 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:01:47.492Z] Client disconnected (session: 8076826f-0e3e-4fe2-9354-36e4c366c67e).
+[DEBUG] [2026-07-29T13:01:50.824Z] data loaded
+[DEBUG] [2026-07-29T13:01:50.874Z] data loaded
+[DEBUG] [2026-07-29T13:01:50.874Z] Client connected via socket (session: 8076826f-0e3e-4fe2-9354-36e4c366c67e)
+[DEBUG] [2026-07-29T13:01:50.875Z] Socket connection rejected: username not found for session 8076826f-0e3e-4fe2-9354-36e4c366c67e
+[DEBUG] [2026-07-29T13:01:55.135Z] data loaded
+[DEBUG] [2026-07-29T13:01:55.164Z] Client disconnected (session: 7cb36482-b2cb-46be-80e9-ac3f13cdee15).
+[DEBUG] [2026-07-29T13:01:55.190Z] data loaded
+[DEBUG] [2026-07-29T13:01:55.190Z] Client connected via socket (session: 7cb36482-b2cb-46be-80e9-ac3f13cdee15)
+[DEBUG] [2026-07-29T13:01:55.190Z] Socket connection rejected: username not found for session 7cb36482-b2cb-46be-80e9-ac3f13cdee15
+[DEBUG] [2026-07-29T13:02:00.291Z] data loaded
+[DEBUG] [2026-07-29T13:02:00.323Z] Client disconnected (session: 7cb36482-b2cb-46be-80e9-ac3f13cdee15).
+[DEBUG] [2026-07-29T13:02:04.670Z] data loaded
+[DEBUG] [2026-07-29T13:02:04.694Z] Client disconnected (session: 8076826f-0e3e-4fe2-9354-36e4c366c67e).
+[DEBUG] [2026-07-29T13:03:26.351Z] All .env variables present.
+[DEBUG] [2026-07-29T13:03:26.359Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T13:03:27.623Z] data loaded
+[DEBUG] [2026-07-29T13:03:27.623Z] Client connected via socket (session: 7524a8dc-8be4-4d0e-b1ad-53b580710628)
+[DEBUG] [2026-07-29T13:03:27.624Z] Socket connection rejected: username not found for session 7524a8dc-8be4-4d0e-b1ad-53b580710628
+[DEBUG] [2026-07-29T13:03:27.632Z] data loaded
+[DEBUG] [2026-07-29T13:03:27.632Z] client requested sabotage data (sent via connect for 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:03:27.632Z] data loaded
+[DEBUG] [2026-07-29T13:03:27.632Z] Client connected via socket (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:03:27.633Z] Client connected via socket (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:03:27.633Z] client requested sabotage data (sent via connect for 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:03:44.488Z] All .env variables present.
+[DEBUG] [2026-07-29T13:03:44.495Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T13:03:45.992Z] Client connected via socket (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:03:45.991Z] data loaded
+[DEBUG] [2026-07-29T13:03:45.992Z] client requested sabotage data (sent via connect for 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:03:45.994Z] data loaded
+[DEBUG] [2026-07-29T13:03:45.994Z] Client connected via socket (session: 7524a8dc-8be4-4d0e-b1ad-53b580710628)
+[DEBUG] [2026-07-29T13:03:45.994Z] Socket connection rejected: username not found for session 7524a8dc-8be4-4d0e-b1ad-53b580710628
+[DEBUG] [2026-07-29T13:03:45.998Z] data loaded
+[DEBUG] [2026-07-29T13:03:45.998Z] Client connected via socket (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:03:45.998Z] client requested sabotage data (sent via connect for 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:03:51.621Z] data loaded
+[DEBUG] [2026-07-29T13:03:53.081Z] data loaded
+[DEBUG] [2026-07-29T13:03:54.294Z] data loaded
+[DEBUG] [2026-07-29T13:04:01.705Z] All .env variables present.
+[DEBUG] [2026-07-29T13:04:01.712Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T13:04:02.637Z] data loaded
+[DEBUG] [2026-07-29T13:04:02.637Z] Client connected via socket (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:04:02.638Z] client requested sabotage data (sent via connect for 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:04:02.638Z] data loaded
+[DEBUG] [2026-07-29T13:04:02.639Z] Client connected via socket (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:04:02.639Z] client requested sabotage data (sent via connect for 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:04:02.639Z] data loaded
+[DEBUG] [2026-07-29T13:04:02.640Z] Client connected via socket (session: 7524a8dc-8be4-4d0e-b1ad-53b580710628)
+[DEBUG] [2026-07-29T13:04:02.640Z] Socket connection rejected: username not found for session 7524a8dc-8be4-4d0e-b1ad-53b580710628
+[DEBUG] [2026-07-29T13:04:23.466Z] data loaded
+[DEBUG] [2026-07-29T13:04:28.719Z] data loaded
+[DEBUG] [2026-07-29T13:04:28.730Z] Client disconnected (session: 7524a8dc-8be4-4d0e-b1ad-53b580710628).
+[DEBUG] [2026-07-29T13:04:34.405Z] data loaded
+[DEBUG] [2026-07-29T13:04:34.405Z] Client connected via socket (session: 8076826f-0e3e-4fe2-9354-36e4c366c67e)
+[DEBUG] [2026-07-29T13:04:34.405Z] Socket connection rejected: username not found for session 8076826f-0e3e-4fe2-9354-36e4c366c67e
+[DEBUG] [2026-07-29T13:04:38.319Z] data loaded
+[DEBUG] [2026-07-29T13:04:38.415Z] data saved
+[DEBUG] [2026-07-29T13:04:38.418Z] New server joined with ID 11088138-5018-437a-ad75-19fe7ac533f5
+[DEBUG] [2026-07-29T13:04:38.437Z] data loaded
+[DEBUG] [2026-07-29T13:04:38.468Z] Client disconnected (session: 8076826f-0e3e-4fe2-9354-36e4c366c67e).
+[DEBUG] [2026-07-29T13:04:38.488Z] data loaded
+[DEBUG] [2026-07-29T13:04:38.488Z] Client connected via socket (session: 11088138-5018-437a-ad75-19fe7ac533f5)
+[DEBUG] [2026-07-29T13:04:38.489Z] Socket connection rejected: username not found for session 11088138-5018-437a-ad75-19fe7ac533f5
+[DEBUG] [2026-07-29T13:04:39.539Z] data loaded
+[DEBUG] [2026-07-29T13:04:39.539Z] o2 server is now online and registered to session 11088138-5018-437a-ad75-19fe7ac533f5
+[DEBUG] [2026-07-29T13:04:39.544Z] data saved
+[DEBUG] [2026-07-29T13:04:39.561Z] data loaded
+[DEBUG] [2026-07-29T13:04:39.585Z] Client disconnected (session: 11088138-5018-437a-ad75-19fe7ac533f5).
+[DEBUG] [2026-07-29T13:04:42.999Z] data loaded
+[DEBUG] [2026-07-29T13:05:20.283Z] All .env variables present.
+[DEBUG] [2026-07-29T13:05:20.292Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T13:05:20.429Z] data loaded
+[DEBUG] [2026-07-29T13:05:20.430Z] Client connected via socket (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:05:20.432Z] client requested sabotage data (sent via connect for 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:05:22.618Z] data loaded
+[DEBUG] [2026-07-29T13:05:22.618Z] Client connected via socket (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:05:22.618Z] client requested sabotage data (sent via connect for 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:05:28.875Z] All .env variables present.
+[DEBUG] [2026-07-29T13:05:28.882Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T13:05:30.645Z] data loaded
+[DEBUG] [2026-07-29T13:05:30.646Z] Client connected via socket (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:05:30.647Z] client requested sabotage data (sent via connect for 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:05:30.650Z] data loaded
+[DEBUG] [2026-07-29T13:05:30.650Z] Client connected via socket (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:05:30.651Z] client requested sabotage data (sent via connect for 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:06:14.675Z] All .env variables present.
+[DEBUG] [2026-07-29T13:06:14.682Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T13:06:15.637Z] data loaded
+[DEBUG] [2026-07-29T13:06:15.638Z] Client connected via socket (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:06:15.639Z] client requested sabotage data (sent via connect for 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:06:16.614Z] data loaded
+[DEBUG] [2026-07-29T13:06:16.614Z] client requested sabotage data (sent via connect for 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:06:16.614Z] Client connected via socket (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:06:19.957Z] data loaded
+[DEBUG] [2026-07-29T13:06:21.390Z] data loaded
+[DEBUG] [2026-07-29T13:06:26.207Z] All .env variables present.
+[DEBUG] [2026-07-29T13:06:26.213Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T13:06:27.627Z] data loaded
+[DEBUG] [2026-07-29T13:06:27.628Z] client requested sabotage data (sent via connect for 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:06:27.628Z] Client connected via socket (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:06:27.629Z] Client connected via socket (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:06:27.628Z] data loaded
+[DEBUG] [2026-07-29T13:06:27.629Z] client requested sabotage data (sent via connect for 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:06:30.106Z] All .env variables present.
+[DEBUG] [2026-07-29T13:06:30.112Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T13:06:30.631Z] Client connected via socket (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:06:30.630Z] data loaded
+[DEBUG] [2026-07-29T13:06:30.631Z] client requested sabotage data (sent via connect for 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:06:31.331Z] All .env variables present.
+[DEBUG] [2026-07-29T13:06:31.337Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T13:06:31.639Z] data loaded
+[DEBUG] [2026-07-29T13:06:31.639Z] Client connected via socket (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:06:31.640Z] client requested sabotage data (sent via connect for 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:06:32.621Z] data loaded
+[DEBUG] [2026-07-29T13:06:32.622Z] Client connected via socket (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:06:32.622Z] client requested sabotage data (sent via connect for 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:06:33.930Z] All .env variables present.
+[DEBUG] [2026-07-29T13:06:33.936Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T13:06:34.628Z] data loaded
+[DEBUG] [2026-07-29T13:06:34.628Z] Client connected via socket (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:06:34.629Z] client requested sabotage data (sent via connect for 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:06:35.627Z] data loaded
+[DEBUG] [2026-07-29T13:06:35.627Z] Client connected via socket (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:06:35.628Z] client requested sabotage data (sent via connect for 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:13:46.950Z] data loaded
+[DEBUG] [2026-07-29T13:13:51.986Z] data loaded
+[DEBUG] [2026-07-29T13:14:37.164Z] All .env variables present.
+[DEBUG] [2026-07-29T13:14:37.170Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T13:14:38.627Z] data loaded
+[DEBUG] [2026-07-29T13:14:38.627Z] Client connected via socket (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:14:38.628Z] client requested sabotage data (sent via connect for 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:14:38.628Z] data loaded
+[DEBUG] [2026-07-29T13:14:38.628Z] Client connected via socket (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:14:38.629Z] client requested sabotage data (sent via connect for 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:14:39.977Z] data loaded
+[DEBUG] [2026-07-29T13:14:39.986Z] data loaded
+[DEBUG] [2026-07-29T13:14:53.411Z] data loaded
+[DEBUG] [2026-07-29T13:14:53.412Z] Client connected via socket (session: 7cb36482-b2cb-46be-80e9-ac3f13cdee15)
+[DEBUG] [2026-07-29T13:14:53.412Z] Socket connection rejected: username not found for session 7cb36482-b2cb-46be-80e9-ac3f13cdee15
+[DEBUG] [2026-07-29T13:15:24.296Z] data loaded
+[DEBUG] [2026-07-29T13:15:24.391Z] New server joined with ID 419ff15c-ee2a-406c-90be-e41caf1fa2a6
+[DEBUG] [2026-07-29T13:15:24.391Z] data saved
+[DEBUG] [2026-07-29T13:15:24.415Z] data loaded
+[DEBUG] [2026-07-29T13:15:24.446Z] Client disconnected (session: 7cb36482-b2cb-46be-80e9-ac3f13cdee15).
+[DEBUG] [2026-07-29T13:15:24.463Z] data loaded
+[DEBUG] [2026-07-29T13:15:24.463Z] Client connected via socket (session: 419ff15c-ee2a-406c-90be-e41caf1fa2a6)
+[DEBUG] [2026-07-29T13:15:24.464Z] Socket connection rejected: username not found for session 419ff15c-ee2a-406c-90be-e41caf1fa2a6
+[DEBUG] [2026-07-29T13:15:27.571Z] data loaded
+[DEBUG] [2026-07-29T13:15:27.571Z] reactor server is now online and registered to session 419ff15c-ee2a-406c-90be-e41caf1fa2a6
+[DEBUG] [2026-07-29T13:15:27.574Z] data saved
+[DEBUG] [2026-07-29T13:15:27.603Z] data loaded
+[DEBUG] [2026-07-29T13:15:27.624Z] Client disconnected (session: 419ff15c-ee2a-406c-90be-e41caf1fa2a6).
+[DEBUG] [2026-07-29T13:15:29.279Z] data loaded
+[DEBUG] [2026-07-29T13:15:29.280Z] Client connected via socket (session: 419ff15c-ee2a-406c-90be-e41caf1fa2a6)
+[DEBUG] [2026-07-29T13:15:29.280Z] Socket connection rejected: username not found for session 419ff15c-ee2a-406c-90be-e41caf1fa2a6
+[DEBUG] [2026-07-29T13:15:30.779Z] data loaded
+[DEBUG] [2026-07-29T13:15:30.779Z] Client connected via socket (session: 11088138-5018-437a-ad75-19fe7ac533f5)
+[DEBUG] [2026-07-29T13:15:30.780Z] Socket connection rejected: username not found for session 11088138-5018-437a-ad75-19fe7ac533f5
+[DEBUG] [2026-07-29T13:15:35.006Z] data loaded
+[DEBUG] [2026-07-29T13:15:35.007Z] Client connected via socket (session: 7524a8dc-8be4-4d0e-b1ad-53b580710628)
+[DEBUG] [2026-07-29T13:15:35.007Z] Socket connection rejected: username not found for session 7524a8dc-8be4-4d0e-b1ad-53b580710628
+[DEBUG] [2026-07-29T13:15:44.342Z] data loaded
+[DEBUG] [2026-07-29T13:15:44.452Z] data saved
+[DEBUG] [2026-07-29T13:15:44.454Z] New server joined with ID 01da6f16-6a31-4caa-9f18-fc5f0b103297
+[DEBUG] [2026-07-29T13:15:44.479Z] data loaded
+[DEBUG] [2026-07-29T13:15:44.506Z] Client disconnected (session: 7524a8dc-8be4-4d0e-b1ad-53b580710628).
+[DEBUG] [2026-07-29T13:15:44.523Z] data loaded
+[DEBUG] [2026-07-29T13:15:44.523Z] Client connected via socket (session: 01da6f16-6a31-4caa-9f18-fc5f0b103297)
+[DEBUG] [2026-07-29T13:15:44.523Z] Socket connection rejected: username not found for session 01da6f16-6a31-4caa-9f18-fc5f0b103297
+[DEBUG] [2026-07-29T13:15:46.278Z] data loaded
+[DEBUG] [2026-07-29T13:15:46.279Z] emergency server is now online and registered to session 01da6f16-6a31-4caa-9f18-fc5f0b103297
+[DEBUG] [2026-07-29T13:15:46.282Z] data saved
+[DEBUG] [2026-07-29T13:15:46.301Z] data loaded
+[DEBUG] [2026-07-29T13:15:46.323Z] Client disconnected (session: 01da6f16-6a31-4caa-9f18-fc5f0b103297).
+[DEBUG] [2026-07-29T13:15:46.353Z] data loaded
+[DEBUG] [2026-07-29T13:15:46.354Z] Client connected via socket (session: 01da6f16-6a31-4caa-9f18-fc5f0b103297)
+[DEBUG] [2026-07-29T13:15:46.354Z] Socket connection rejected: username not found for session 01da6f16-6a31-4caa-9f18-fc5f0b103297
+[DEBUG] [2026-07-29T13:15:56.587Z] data loaded
+[DEBUG] [2026-07-29T13:15:56.588Z] Starting game with 12 players.
+[DEBUG] [2026-07-29T13:15:56.589Z] Clearing all sabotage timers.
+[DEBUG] [2026-07-29T13:15:56.589Z] 25f9a477-da26-4b4f-aabe-93e90cdc186f is now impostor
+[DEBUG] [2026-07-29T13:15:56.590Z] dummy_1785329718632_1 is now crewmate
+[DEBUG] [2026-07-29T13:15:56.591Z] dummy_1785329718632_2 is now crewmate
+[DEBUG] [2026-07-29T13:15:56.592Z] dummy_1785329718632_3 is now impostor
+[DEBUG] [2026-07-29T13:15:56.593Z] dummy_1785329718632_4 is now crewmate
+[DEBUG] [2026-07-29T13:15:56.594Z] dummy_1785329718632_5 is now crewmate
+[DEBUG] [2026-07-29T13:15:56.594Z] dummy_1785329718632_6 is now crewmate
+[DEBUG] [2026-07-29T13:15:56.595Z] dummy_1785329718632_7 is now crewmate
+[DEBUG] [2026-07-29T13:15:56.595Z] dummy_1785329718632_8 is now crewmate
+[DEBUG] [2026-07-29T13:15:56.596Z] dummy_1785329718632_9 is now crewmate
+[DEBUG] [2026-07-29T13:15:56.603Z] dummy_1785329718632_10 is now crewmate
+[DEBUG] [2026-07-29T13:15:56.608Z] 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1 is now crewmate
+[DEBUG] [2026-07-29T13:15:56.614Z] data saved
+[DEBUG] [2026-07-29T13:15:56.615Z] Game successfully started.
+[DEBUG] [2026-07-29T13:16:01.015Z] data loaded
+[DEBUG] [2026-07-29T13:16:01.027Z] Client disconnected (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f).
+[DEBUG] [2026-07-29T13:16:01.091Z] data loaded
+[DEBUG] [2026-07-29T13:16:01.091Z] Client connected via socket (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:16:01.091Z] client requested sabotage data (sent via connect for 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:16:01.114Z] data loaded
+[DEBUG] [2026-07-29T13:16:01.140Z] Client disconnected (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f).
+[DEBUG] [2026-07-29T13:16:01.182Z] data loaded
+[DEBUG] [2026-07-29T13:16:01.182Z] Client connected via socket (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:16:01.182Z] client requested sabotage data (sent via connect for 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:16:16.639Z] data loaded
+[DEBUG] [2026-07-29T13:16:16.667Z] Client disconnected (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1).
+[DEBUG] [2026-07-29T13:16:16.696Z] data loaded
+[DEBUG] [2026-07-29T13:16:16.696Z] Client connected via socket (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:16:16.697Z] client requested sabotage data (sent via connect for 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:16:34.790Z] data loaded
+[DEBUG] [2026-07-29T13:16:34.810Z] Client disconnected (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f).
+[DEBUG] [2026-07-29T13:16:34.855Z] data loaded
+[DEBUG] [2026-07-29T13:16:34.856Z] Client connected via socket (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:16:34.856Z] client requested sabotage data (sent via connect for 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:16:40.138Z] Client (25f9a477-da26-4b4f-aabe-93e90cdc186f) requested sabotage: o2
+[DEBUG] [2026-07-29T13:16:40.140Z] data loaded
+[DEBUG] [2026-07-29T13:16:40.140Z] Sabotage started: o2 with initial delay of 5 seconds.
+[DEBUG] [2026-07-29T13:16:40.143Z] data saved
+[DEBUG] [2026-07-29T13:16:41.152Z] data loaded
+[DEBUG] [2026-07-29T13:16:41.158Z] data saved
+[DEBUG] [2026-07-29T13:16:42.162Z] data loaded
+[DEBUG] [2026-07-29T13:16:42.170Z] data saved
+[DEBUG] [2026-07-29T13:16:43.175Z] data loaded
+[DEBUG] [2026-07-29T13:16:43.181Z] data saved
+[DEBUG] [2026-07-29T13:16:44.188Z] data loaded
+[DEBUG] [2026-07-29T13:16:44.193Z] data saved
+[DEBUG] [2026-07-29T13:16:45.190Z] data loaded
+[DEBUG] [2026-07-29T13:16:45.196Z] data saved
+[DEBUG] [2026-07-29T13:16:45.202Z] Sabotage o2 reached crisis phase!
+[DEBUG] [2026-07-29T13:16:45.207Z] data saved
+[DEBUG] [2026-07-29T13:16:46.205Z] data loaded
+[DEBUG] [2026-07-29T13:16:46.212Z] data saved
+[DEBUG] [2026-07-29T13:16:47.217Z] data loaded
+[DEBUG] [2026-07-29T13:16:47.223Z] data saved
+[DEBUG] [2026-07-29T13:16:48.230Z] data loaded
+[DEBUG] [2026-07-29T13:16:48.236Z] data saved
+[DEBUG] [2026-07-29T13:16:49.241Z] data loaded
+[DEBUG] [2026-07-29T13:16:49.247Z] data saved
+[DEBUG] [2026-07-29T13:16:50.256Z] data loaded
+[DEBUG] [2026-07-29T13:16:50.263Z] data saved
+[DEBUG] [2026-07-29T13:16:51.269Z] data loaded
+[DEBUG] [2026-07-29T13:16:51.271Z] data saved
+[DEBUG] [2026-07-29T13:16:52.272Z] data loaded
+[DEBUG] [2026-07-29T13:16:52.274Z] data saved
+[DEBUG] [2026-07-29T13:16:52.606Z] Client (01da6f16-6a31-4caa-9f18-fc5f0b103297) triggered emergency event.
+[DEBUG] [2026-07-29T13:16:52.608Z] data loaded
+[DEBUG] [2026-07-29T13:16:52.609Z] Emergency meeting started.
+[DEBUG] [2026-07-29T13:16:52.611Z] data saved
+[DEBUG] [2026-07-29T13:16:52.629Z] data loaded
+[DEBUG] [2026-07-29T13:16:52.655Z] Client disconnected (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1).
+[DEBUG] [2026-07-29T13:16:53.067Z] data loaded
+[DEBUG] [2026-07-29T13:16:53.068Z] Client connected via socket (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:16:53.069Z] client requested sabotage data (sent via connect for 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:16:53.285Z] data loaded
+[DEBUG] [2026-07-29T13:16:53.288Z] data saved
+[DEBUG] [2026-07-29T13:16:54.293Z] data loaded
+[DEBUG] [2026-07-29T13:16:54.297Z] data saved
+[DEBUG] [2026-07-29T13:16:55.296Z] data loaded
+[DEBUG] [2026-07-29T13:16:55.304Z] data saved
+[DEBUG] [2026-07-29T13:16:56.312Z] data loaded
+[DEBUG] [2026-07-29T13:16:56.317Z] data saved
+[DEBUG] [2026-07-29T13:16:57.310Z] data loaded
+[DEBUG] [2026-07-29T13:16:57.314Z] data saved
+[DEBUG] [2026-07-29T13:16:58.315Z] data loaded
+[DEBUG] [2026-07-29T13:16:58.320Z] data saved
+[DEBUG] [2026-07-29T13:16:59.328Z] data loaded
+[DEBUG] [2026-07-29T13:16:59.333Z] data saved
+[DEBUG] [2026-07-29T13:16:59.981Z] Client (11088138-5018-437a-ad75-19fe7ac533f5) requested to fix sabotage: o2
+[DEBUG] [2026-07-29T13:16:59.986Z] data loaded
+[DEBUG] [2026-07-29T13:16:59.987Z] Sabotage fixed by crew: o2
+[DEBUG] [2026-07-29T13:16:59.991Z] data saved
+[DEBUG] [2026-07-29T13:17:18.322Z] data loaded
+[DEBUG] [2026-07-29T13:17:18.347Z] Client disconnected (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f).
+[DEBUG] [2026-07-29T13:17:18.365Z] data loaded
+[DEBUG] [2026-07-29T13:17:18.366Z] Client connected via socket (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:17:18.366Z] client requested sabotage data (sent via connect for 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:17:18.386Z] data loaded
+[DEBUG] [2026-07-29T13:17:18.432Z] Client disconnected (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f).
+[DEBUG] [2026-07-29T13:17:18.446Z] data loaded
+[DEBUG] [2026-07-29T13:17:18.446Z] Client connected via socket (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:17:18.447Z] client requested sabotage data (sent via connect for 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:17:22.450Z] data loaded
+[DEBUG] [2026-07-29T13:17:22.451Z] 25f9a477-da26-4b4f-aabe-93e90cdc186f cast a vote for dummy_1785329718632_8
+[DEBUG] [2026-07-29T13:17:22.619Z] Emergency meeting timer concluded.
+[DEBUG] [2026-07-29T13:17:22.622Z] data loaded
+[DEBUG] [2026-07-29T13:17:22.625Z] data saved
+[DEBUG] [2026-07-29T13:17:26.664Z] data loaded
+[DEBUG] [2026-07-29T13:17:26.688Z] Client disconnected (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f).
+[DEBUG] [2026-07-29T13:17:26.709Z] data loaded
+[DEBUG] [2026-07-29T13:17:26.709Z] Client connected via socket (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:17:26.709Z] client requested sabotage data (sent via connect for 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:17:27.611Z] data loaded
+[DEBUG] [2026-07-29T13:17:27.633Z] Client disconnected (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1).
+[DEBUG] [2026-07-29T13:17:27.652Z] data loaded
+[DEBUG] [2026-07-29T13:17:27.653Z] Client connected via socket (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:17:27.653Z] client requested sabotage data (sent via connect for 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:27:15.196Z] All .env variables present.
+[DEBUG] [2026-07-29T13:27:15.203Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T13:27:15.642Z] data loaded
+[DEBUG] [2026-07-29T13:27:15.642Z] Client connected via socket (session: 419ff15c-ee2a-406c-90be-e41caf1fa2a6)
+[DEBUG] [2026-07-29T13:27:15.642Z] Socket connection rejected: username not found for session 419ff15c-ee2a-406c-90be-e41caf1fa2a6
+[DEBUG] [2026-07-29T13:27:15.643Z] data loaded
+[DEBUG] [2026-07-29T13:27:15.643Z] client requested sabotage data (sent via connect for 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:27:15.644Z] data loaded
+[DEBUG] [2026-07-29T13:27:15.643Z] Client connected via socket (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1)
+[DEBUG] [2026-07-29T13:27:15.644Z] Client connected via socket (session: 01da6f16-6a31-4caa-9f18-fc5f0b103297)
+[DEBUG] [2026-07-29T13:27:15.644Z] Socket connection rejected: username not found for session 01da6f16-6a31-4caa-9f18-fc5f0b103297
+[DEBUG] [2026-07-29T13:27:16.628Z] data loaded
+[DEBUG] [2026-07-29T13:27:16.628Z] Client connected via socket (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:27:16.629Z] client requested sabotage data (sent via connect for 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:27:16.631Z] data loaded
+[DEBUG] [2026-07-29T13:27:16.632Z] Client connected via socket (session: 11088138-5018-437a-ad75-19fe7ac533f5)
+[DEBUG] [2026-07-29T13:27:16.632Z] Socket connection rejected: username not found for session 11088138-5018-437a-ad75-19fe7ac533f5
+[DEBUG] [2026-07-29T13:27:27.458Z] data loaded
+[DEBUG] [2026-07-29T13:27:27.458Z] Host initiated full reset of game state.
+[DEBUG] [2026-07-29T13:27:27.458Z] Clearing all sabotage timers.
+[DEBUG] [2026-07-29T13:27:27.462Z] data saved
+[DEBUG] [2026-07-29T13:27:27.500Z] Client disconnected (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f).
+[DEBUG] [2026-07-29T13:27:30.571Z] data loaded
+[DEBUG] [2026-07-29T13:27:30.571Z] Client connected via socket (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f)
+[DEBUG] [2026-07-29T13:27:30.571Z] Socket connection rejected: username not found for session 25f9a477-da26-4b4f-aabe-93e90cdc186f
+[DEBUG] [2026-07-29T13:27:37.294Z] data loaded
+[DEBUG] [2026-07-29T13:27:37.400Z] Host successfully joined: I with ID 51d3aa5f-adee-46ea-818a-19eeace0234d
+[DEBUG] [2026-07-29T13:27:37.399Z] data saved
+[DEBUG] [2026-07-29T13:27:37.421Z] data loaded
+[DEBUG] [2026-07-29T13:27:37.450Z] Client disconnected (session: 25f9a477-da26-4b4f-aabe-93e90cdc186f).
+[DEBUG] [2026-07-29T13:27:37.473Z] data loaded
+[DEBUG] [2026-07-29T13:27:37.473Z] Client connected via socket (session: 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:27:37.473Z] client requested sabotage data (sent via connect for 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:27:41.468Z] Client disconnected (session: 3cc46a4c-668f-4f2d-b4b2-d9e2e3f1edf1).
+[DEBUG] [2026-07-29T13:27:44.332Z] data loaded
+[DEBUG] [2026-07-29T13:27:44.336Z] data saved
+[DEBUG] [2026-07-29T13:27:44.336Z] New player joined: amogus with ID 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a
+[DEBUG] [2026-07-29T13:27:44.357Z] data loaded
+[DEBUG] [2026-07-29T13:27:44.358Z] Server tried to log in, denied access for session 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a
+[DEBUG] [2026-07-29T13:27:44.400Z] data loaded
+[DEBUG] [2026-07-29T13:27:44.401Z] Client connected via socket (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:27:44.401Z] client requested sabotage data (sent via connect for 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:27:54.077Z] Client disconnected (session: 11088138-5018-437a-ad75-19fe7ac533f5).
+[DEBUG] [2026-07-29T13:27:55.937Z] data loaded
+[DEBUG] [2026-07-29T13:27:55.937Z] Client connected via socket (session: 11088138-5018-437a-ad75-19fe7ac533f5)
+[DEBUG] [2026-07-29T13:27:55.937Z] Socket connection rejected: username not found for session 11088138-5018-437a-ad75-19fe7ac533f5
+[DEBUG] [2026-07-29T13:27:59.312Z] data loaded
+[DEBUG] [2026-07-29T13:27:59.405Z] data saved
+[DEBUG] [2026-07-29T13:27:59.405Z] New server joined with ID 23a04774-c54f-45e6-bfcc-94abdf607018
+[DEBUG] [2026-07-29T13:27:59.429Z] data loaded
+[DEBUG] [2026-07-29T13:27:59.449Z] Client disconnected (session: 11088138-5018-437a-ad75-19fe7ac533f5).
+[DEBUG] [2026-07-29T13:27:59.486Z] data loaded
+[DEBUG] [2026-07-29T13:27:59.487Z] Client connected via socket (session: 23a04774-c54f-45e6-bfcc-94abdf607018)
+[DEBUG] [2026-07-29T13:27:59.487Z] Socket connection rejected: username not found for session 23a04774-c54f-45e6-bfcc-94abdf607018
+[DEBUG] [2026-07-29T13:28:11.792Z] Client disconnected (session: 419ff15c-ee2a-406c-90be-e41caf1fa2a6).
+[DEBUG] [2026-07-29T13:28:16.107Z] data loaded
+[DEBUG] [2026-07-29T13:28:16.107Z] Client connected via socket (session: 419ff15c-ee2a-406c-90be-e41caf1fa2a6)
+[DEBUG] [2026-07-29T13:28:16.108Z] Socket connection rejected: username not found for session 419ff15c-ee2a-406c-90be-e41caf1fa2a6
+[DEBUG] [2026-07-29T13:28:30.211Z] data loaded
+[DEBUG] [2026-07-29T13:28:30.212Z] o2 server is now online and registered to session 23a04774-c54f-45e6-bfcc-94abdf607018
+[DEBUG] [2026-07-29T13:28:30.216Z] data saved
+[DEBUG] [2026-07-29T13:28:30.232Z] data loaded
+[DEBUG] [2026-07-29T13:28:30.252Z] Client disconnected (session: 23a04774-c54f-45e6-bfcc-94abdf607018).
+[DEBUG] [2026-07-29T13:28:32.273Z] data loaded
+[DEBUG] [2026-07-29T13:28:32.274Z] Client connected via socket (session: 23a04774-c54f-45e6-bfcc-94abdf607018)
+[DEBUG] [2026-07-29T13:28:32.275Z] Socket connection rejected: username not found for session 23a04774-c54f-45e6-bfcc-94abdf607018
+[DEBUG] [2026-07-29T13:28:36.886Z] data loaded
+[DEBUG] [2026-07-29T13:28:36.990Z] data saved
+[DEBUG] [2026-07-29T13:28:36.992Z] New server joined with ID 1ffdd930-46ad-49d5-9bbd-202c369d1479
+[DEBUG] [2026-07-29T13:28:37.011Z] data loaded
+[DEBUG] [2026-07-29T13:28:37.034Z] Client disconnected (session: 419ff15c-ee2a-406c-90be-e41caf1fa2a6).
+[DEBUG] [2026-07-29T13:28:37.056Z] Client connected via socket (session: 1ffdd930-46ad-49d5-9bbd-202c369d1479)
+[DEBUG] [2026-07-29T13:28:37.056Z] Socket connection rejected: username not found for session 1ffdd930-46ad-49d5-9bbd-202c369d1479
+[DEBUG] [2026-07-29T13:28:37.056Z] data loaded
+[DEBUG] [2026-07-29T13:28:39.388Z] data loaded
+[DEBUG] [2026-07-29T13:28:39.388Z] control panel server is now online and registered to session 1ffdd930-46ad-49d5-9bbd-202c369d1479
+[DEBUG] [2026-07-29T13:28:39.390Z] data saved
+[DEBUG] [2026-07-29T13:28:39.410Z] data loaded
+[DEBUG] [2026-07-29T13:28:39.434Z] Client disconnected (session: 1ffdd930-46ad-49d5-9bbd-202c369d1479).
+[DEBUG] [2026-07-29T13:28:55.114Z] data loaded
+[DEBUG] [2026-07-29T13:28:55.124Z] data loaded
+[DEBUG] [2026-07-29T13:28:56.332Z] data loaded
+[DEBUG] [2026-07-29T13:28:56.333Z] Socket connection rejected: username not found for session 1ffdd930-46ad-49d5-9bbd-202c369d1479
+[DEBUG] [2026-07-29T13:28:56.332Z] Client connected via socket (session: 1ffdd930-46ad-49d5-9bbd-202c369d1479)
+[DEBUG] [2026-07-29T13:29:00.197Z] Client disconnected (session: 01da6f16-6a31-4caa-9f18-fc5f0b103297).
+[DEBUG] [2026-07-29T13:29:01.792Z] data loaded
+[DEBUG] [2026-07-29T13:29:01.792Z] Client connected via socket (session: 01da6f16-6a31-4caa-9f18-fc5f0b103297)
+[DEBUG] [2026-07-29T13:29:01.792Z] Socket connection rejected: username not found for session 01da6f16-6a31-4caa-9f18-fc5f0b103297
+[DEBUG] [2026-07-29T13:29:07.476Z] data loaded
+[DEBUG] [2026-07-29T13:29:07.580Z] data saved
+[DEBUG] [2026-07-29T13:29:07.582Z] New server joined with ID ba98ed55-66c7-46d4-83e3-b10c0e9fef74
+[DEBUG] [2026-07-29T13:29:07.601Z] data loaded
+[DEBUG] [2026-07-29T13:29:07.622Z] Client disconnected (session: 01da6f16-6a31-4caa-9f18-fc5f0b103297).
+[DEBUG] [2026-07-29T13:29:07.644Z] data loaded
+[DEBUG] [2026-07-29T13:29:07.645Z] Client connected via socket (session: ba98ed55-66c7-46d4-83e3-b10c0e9fef74)
+[DEBUG] [2026-07-29T13:29:07.645Z] Socket connection rejected: username not found for session ba98ed55-66c7-46d4-83e3-b10c0e9fef74
+[DEBUG] [2026-07-29T13:29:10.036Z] data loaded
+[DEBUG] [2026-07-29T13:29:10.036Z] emergency server is now online and registered to session ba98ed55-66c7-46d4-83e3-b10c0e9fef74
+[DEBUG] [2026-07-29T13:29:10.039Z] data saved
+[DEBUG] [2026-07-29T13:29:10.064Z] data loaded
+[DEBUG] [2026-07-29T13:29:10.085Z] Client disconnected (session: ba98ed55-66c7-46d4-83e3-b10c0e9fef74).
+[DEBUG] [2026-07-29T13:29:10.110Z] data loaded
+[DEBUG] [2026-07-29T13:29:10.111Z] Client connected via socket (session: ba98ed55-66c7-46d4-83e3-b10c0e9fef74)
+[DEBUG] [2026-07-29T13:29:10.111Z] Socket connection rejected: username not found for session ba98ed55-66c7-46d4-83e3-b10c0e9fef74
+[DEBUG] [2026-07-29T13:30:12.611Z] data loaded
+[DEBUG] [2026-07-29T13:30:12.613Z] data saved
+[DEBUG] [2026-07-29T13:30:12.616Z] Host successfully added 8 dummy players.
+[DEBUG] [2026-07-29T13:30:13.835Z] data loaded
+[DEBUG] [2026-07-29T13:30:13.836Z] Starting game with 10 players.
+[DEBUG] [2026-07-29T13:30:13.836Z] Clearing all sabotage timers.
+[DEBUG] [2026-07-29T13:30:13.837Z] 51d3aa5f-adee-46ea-818a-19eeace0234d is now impostor
+[DEBUG] [2026-07-29T13:30:13.838Z] 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a is now crewmate
+[DEBUG] [2026-07-29T13:30:13.839Z] dummy_1785331812611_1 is now impostor
+[DEBUG] [2026-07-29T13:30:13.839Z] dummy_1785331812611_2 is now crewmate
+[DEBUG] [2026-07-29T13:30:13.840Z] dummy_1785331812611_3 is now crewmate
+[DEBUG] [2026-07-29T13:30:13.840Z] dummy_1785331812611_4 is now crewmate
+[DEBUG] [2026-07-29T13:30:13.841Z] dummy_1785331812611_5 is now crewmate
+[DEBUG] [2026-07-29T13:30:13.841Z] dummy_1785331812611_6 is now crewmate
+[DEBUG] [2026-07-29T13:30:13.842Z] dummy_1785331812611_7 is now crewmate
+[DEBUG] [2026-07-29T13:30:13.843Z] dummy_1785331812611_8 is now crewmate
+[DEBUG] [2026-07-29T13:30:13.852Z] data saved
+[DEBUG] [2026-07-29T13:30:13.853Z] Game successfully started.
+[DEBUG] [2026-07-29T13:31:35.678Z] All .env variables present.
+[DEBUG] [2026-07-29T13:31:35.684Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T13:31:36.635Z] data loaded
+[DEBUG] [2026-07-29T13:31:36.636Z] Client connected via socket (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:31:36.636Z] client requested sabotage data (sent via connect for 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:31:36.638Z] Client connected via socket (session: 1ffdd930-46ad-49d5-9bbd-202c369d1479)
+[DEBUG] [2026-07-29T13:31:36.637Z] data loaded
+[DEBUG] [2026-07-29T13:31:36.638Z] Socket connection rejected: username not found for session 1ffdd930-46ad-49d5-9bbd-202c369d1479
+[DEBUG] [2026-07-29T13:31:36.639Z] data loaded
+[DEBUG] [2026-07-29T13:31:36.639Z] Client connected via socket (session: ba98ed55-66c7-46d4-83e3-b10c0e9fef74)
+[DEBUG] [2026-07-29T13:31:36.640Z] Socket connection rejected: username not found for session ba98ed55-66c7-46d4-83e3-b10c0e9fef74
+[DEBUG] [2026-07-29T13:31:36.657Z] data loaded
+[DEBUG] [2026-07-29T13:31:36.658Z] Client connected via socket (session: 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:31:36.658Z] client requested sabotage data (sent via connect for 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:31:36.717Z] data loaded
+[DEBUG] [2026-07-29T13:31:36.847Z] Client disconnected (session: 51d3aa5f-adee-46ea-818a-19eeace0234d).
+[DEBUG] [2026-07-29T13:31:36.895Z] data loaded
+[DEBUG] [2026-07-29T13:31:36.895Z] Client connected via socket (session: 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:31:36.895Z] client requested sabotage data (sent via connect for 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:31:37.626Z] Socket connection rejected: username not found for session 23a04774-c54f-45e6-bfcc-94abdf607018
+[DEBUG] [2026-07-29T13:31:37.626Z] Client connected via socket (session: 23a04774-c54f-45e6-bfcc-94abdf607018)
+[DEBUG] [2026-07-29T13:31:37.625Z] data loaded
+[DEBUG] [2026-07-29T13:31:48.214Z] data loaded
+[DEBUG] [2026-07-29T13:31:48.215Z] Client (48d460f7-1cc1-4528-a8ed-c91f8ff6d13a) fetched role reveal. Role: Crewmate
+[DEBUG] [2026-07-29T13:31:48.247Z] Client disconnected (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a).
+[DEBUG] [2026-07-29T13:32:03.132Z] All .env variables present.
+[DEBUG] [2026-07-29T13:32:03.138Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T13:32:03.643Z] data loaded
+[DEBUG] [2026-07-29T13:32:03.644Z] Client connected via socket (session: ba98ed55-66c7-46d4-83e3-b10c0e9fef74)
+[DEBUG] [2026-07-29T13:32:03.645Z] Socket connection rejected: username not found for session ba98ed55-66c7-46d4-83e3-b10c0e9fef74
+[DEBUG] [2026-07-29T13:32:03.648Z] data loaded
+[DEBUG] [2026-07-29T13:32:03.649Z] Client connected via socket (session: 1ffdd930-46ad-49d5-9bbd-202c369d1479)
+[DEBUG] [2026-07-29T13:32:03.649Z] Socket connection rejected: username not found for session 1ffdd930-46ad-49d5-9bbd-202c369d1479
+[DEBUG] [2026-07-29T13:32:04.637Z] data loaded
+[DEBUG] [2026-07-29T13:32:04.638Z] Client connected via socket (session: 23a04774-c54f-45e6-bfcc-94abdf607018)
+[DEBUG] [2026-07-29T13:32:04.638Z] Socket connection rejected: username not found for session 23a04774-c54f-45e6-bfcc-94abdf607018
+[DEBUG] [2026-07-29T13:32:04.641Z] data loaded
+[DEBUG] [2026-07-29T13:32:04.641Z] Client connected via socket (session: 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:32:04.643Z] client requested sabotage data (sent via connect for 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:32:17.214Z] data loaded
+[DEBUG] [2026-07-29T13:32:17.263Z] data loaded
+[DEBUG] [2026-07-29T13:32:17.263Z] Client connected via socket (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:32:17.263Z] client requested sabotage data (sent via connect for 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:32:51.538Z] data loaded
+[DEBUG] [2026-07-29T13:32:51.594Z] Client disconnected (session: 51d3aa5f-adee-46ea-818a-19eeace0234d).
+[DEBUG] [2026-07-29T13:32:51.634Z] data loaded
+[DEBUG] [2026-07-29T13:32:51.634Z] Client connected via socket (session: 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:32:51.635Z] client requested sabotage data (sent via connect for 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:32:54.933Z] Client (51d3aa5f-adee-46ea-818a-19eeace0234d) requested sabotage: o2
+[DEBUG] [2026-07-29T13:32:54.935Z] data loaded
+[DEBUG] [2026-07-29T13:32:54.937Z] Sabotage started: o2 with initial delay of 5 seconds.
+[DEBUG] [2026-07-29T13:32:54.938Z] data saved
+[DEBUG] [2026-07-29T13:32:55.946Z] data loaded
+[DEBUG] [2026-07-29T13:32:55.949Z] data saved
+[DEBUG] [2026-07-29T13:32:56.949Z] data loaded
+[DEBUG] [2026-07-29T13:32:56.956Z] data saved
+[DEBUG] [2026-07-29T13:32:57.953Z] data loaded
+[DEBUG] [2026-07-29T13:32:57.957Z] data saved
+[DEBUG] [2026-07-29T13:32:58.959Z] data loaded
+[DEBUG] [2026-07-29T13:32:58.967Z] data saved
+[DEBUG] [2026-07-29T13:32:59.975Z] data loaded
+[DEBUG] [2026-07-29T13:32:59.982Z] data saved
+[DEBUG] [2026-07-29T13:32:59.986Z] Sabotage o2 reached crisis phase!
+[DEBUG] [2026-07-29T13:32:59.989Z] data saved
+[DEBUG] [2026-07-29T13:32:59.991Z] Recieved unstable signal, Rebrodcasting for emergency Server.
+[DEBUG] [2026-07-29T13:33:00.987Z] data loaded
+[DEBUG] [2026-07-29T13:33:00.991Z] data saved
+[DEBUG] [2026-07-29T13:33:02.003Z] data loaded
+[DEBUG] [2026-07-29T13:33:02.007Z] data saved
+[DEBUG] [2026-07-29T13:33:03.003Z] data loaded
+[DEBUG] [2026-07-29T13:33:03.010Z] data saved
+[DEBUG] [2026-07-29T13:33:03.355Z] data loaded
+[DEBUG] [2026-07-29T13:33:03.361Z] Client disconnected (session: ba98ed55-66c7-46d4-83e3-b10c0e9fef74).
+[DEBUG] [2026-07-29T13:33:03.404Z] data loaded
+[DEBUG] [2026-07-29T13:33:03.404Z] Client connected via socket (session: ba98ed55-66c7-46d4-83e3-b10c0e9fef74)
+[DEBUG] [2026-07-29T13:33:03.404Z] Socket connection rejected: username not found for session ba98ed55-66c7-46d4-83e3-b10c0e9fef74
+[DEBUG] [2026-07-29T13:33:04.016Z] data loaded
+[DEBUG] [2026-07-29T13:33:04.022Z] data saved
+[DEBUG] [2026-07-29T13:33:04.855Z] Client (ba98ed55-66c7-46d4-83e3-b10c0e9fef74) triggered emergency event.
+[DEBUG] [2026-07-29T13:33:04.858Z] data loaded
+[DEBUG] [2026-07-29T13:33:04.858Z] Emergency meeting started.
+[DEBUG] [2026-07-29T13:33:04.862Z] data saved
+[DEBUG] [2026-07-29T13:33:04.878Z] data loaded
+[DEBUG] [2026-07-29T13:33:04.895Z] Client disconnected (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a).
+[DEBUG] [2026-07-29T13:33:04.914Z] data loaded
+[DEBUG] [2026-07-29T13:33:04.915Z] Client connected via socket (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:33:04.915Z] client requested sabotage data (sent via connect for 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:33:05.027Z] data loaded
+[DEBUG] [2026-07-29T13:33:05.032Z] data saved
+[DEBUG] [2026-07-29T13:33:06.028Z] data loaded
+[DEBUG] [2026-07-29T13:33:06.040Z] data saved
+[DEBUG] [2026-07-29T13:33:07.041Z] data loaded
+[DEBUG] [2026-07-29T13:33:07.047Z] data saved
+[DEBUG] [2026-07-29T13:33:08.057Z] data loaded
+[DEBUG] [2026-07-29T13:33:08.062Z] data saved
+[DEBUG] [2026-07-29T13:33:09.063Z] data loaded
+[DEBUG] [2026-07-29T13:33:09.069Z] data saved
+[DEBUG] [2026-07-29T13:33:09.202Z] data loaded
+[DEBUG] [2026-07-29T13:33:09.250Z] Client disconnected (session: 51d3aa5f-adee-46ea-818a-19eeace0234d).
+[DEBUG] [2026-07-29T13:33:09.300Z] data loaded
+[DEBUG] [2026-07-29T13:33:09.301Z] Client connected via socket (session: 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:33:09.301Z] client requested sabotage data (sent via connect for 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:33:09.329Z] data loaded
+[DEBUG] [2026-07-29T13:33:09.383Z] Client disconnected (session: 51d3aa5f-adee-46ea-818a-19eeace0234d).
+[DEBUG] [2026-07-29T13:33:09.986Z] data loaded
+[DEBUG] [2026-07-29T13:33:09.986Z] Client connected via socket (session: 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:33:09.987Z] client requested sabotage data (sent via connect for 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:33:10.079Z] data loaded
+[DEBUG] [2026-07-29T13:33:10.084Z] data saved
+[DEBUG] [2026-07-29T13:33:11.093Z] data loaded
+[DEBUG] [2026-07-29T13:33:11.100Z] data saved
+[DEBUG] [2026-07-29T13:33:12.120Z] data loaded
+[DEBUG] [2026-07-29T13:33:12.122Z] data saved
+[DEBUG] [2026-07-29T13:33:13.123Z] data loaded
+[DEBUG] [2026-07-29T13:33:13.144Z] data saved
+[DEBUG] [2026-07-29T13:33:14.133Z] data loaded
+[DEBUG] [2026-07-29T13:33:14.143Z] data saved
+[DEBUG] [2026-07-29T13:33:14.596Z] Client (23a04774-c54f-45e6-bfcc-94abdf607018) requested to fix sabotage: o2
+[DEBUG] [2026-07-29T13:33:14.598Z] data loaded
+[DEBUG] [2026-07-29T13:33:14.598Z] Sabotage fixed by crew: o2
+[DEBUG] [2026-07-29T13:33:14.601Z] data saved
+[DEBUG] [2026-07-29T13:33:29.012Z] data loaded
+[DEBUG] [2026-07-29T13:33:29.012Z] 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a cast a vote for 51d3aa5f-adee-46ea-818a-19eeace0234d
+[DEBUG] [2026-07-29T13:33:34.875Z] Emergency meeting timer concluded.
+[DEBUG] [2026-07-29T13:33:34.882Z] data loaded
+[DEBUG] [2026-07-29T13:33:34.888Z] data saved
+[DEBUG] [2026-07-29T13:33:39.631Z] data loaded
+[DEBUG] [2026-07-29T13:33:39.634Z] data loaded
+[DEBUG] [2026-07-29T13:33:39.650Z] Client disconnected (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a).
+[DEBUG] [2026-07-29T13:33:39.688Z] Client disconnected (session: 51d3aa5f-adee-46ea-818a-19eeace0234d).
+[DEBUG] [2026-07-29T13:33:39.693Z] data loaded
+[DEBUG] [2026-07-29T13:33:39.694Z] Client connected via socket (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:33:39.694Z] client requested sabotage data (sent via connect for 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:33:39.720Z] data loaded
+[DEBUG] [2026-07-29T13:33:39.720Z] Client connected via socket (session: 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:33:39.720Z] client requested sabotage data (sent via connect for 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:38:39.110Z] data loaded
+[DEBUG] [2026-07-29T13:38:39.110Z] Host restarted the game.
+[DEBUG] [2026-07-29T13:38:39.111Z] Clearing all sabotage timers.
+[DEBUG] [2026-07-29T13:38:39.113Z] data saved
+[DEBUG] [2026-07-29T13:38:39.124Z] data loaded
+[DEBUG] [2026-07-29T13:38:39.167Z] Client disconnected (session: 51d3aa5f-adee-46ea-818a-19eeace0234d).
+[DEBUG] [2026-07-29T13:38:39.219Z] data loaded
+[DEBUG] [2026-07-29T13:38:39.220Z] Client connected via socket (session: 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:38:39.220Z] client requested sabotage data (sent via connect for 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:38:41.353Z] data loaded
+[DEBUG] [2026-07-29T13:38:41.354Z] Starting game with 10 players.
+[DEBUG] [2026-07-29T13:38:41.354Z] Clearing all sabotage timers.
+[DEBUG] [2026-07-29T13:38:41.355Z] 51d3aa5f-adee-46ea-818a-19eeace0234d is now crewmate
+[DEBUG] [2026-07-29T13:38:41.356Z] 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a is now impostor
+[DEBUG] [2026-07-29T13:38:41.357Z] dummy_1785331812611_1 is now crewmate
+[DEBUG] [2026-07-29T13:38:41.357Z] dummy_1785331812611_2 is now crewmate
+[DEBUG] [2026-07-29T13:38:41.365Z] dummy_1785331812611_3 is now impostor
+[DEBUG] [2026-07-29T13:38:41.365Z] dummy_1785331812611_4 is now crewmate
+[DEBUG] [2026-07-29T13:38:41.366Z] dummy_1785331812611_5 is now crewmate
+[DEBUG] [2026-07-29T13:38:41.366Z] dummy_1785331812611_6 is now crewmate
+[DEBUG] [2026-07-29T13:38:41.366Z] dummy_1785331812611_7 is now crewmate
+[DEBUG] [2026-07-29T13:38:41.368Z] dummy_1785331812611_8 is now crewmate
+[DEBUG] [2026-07-29T13:38:41.389Z] data saved
+[DEBUG] [2026-07-29T13:38:41.389Z] Game successfully started.
+[DEBUG] [2026-07-29T13:40:36.344Z] All .env variables present.
+[DEBUG] [2026-07-29T13:40:36.350Z] Server connected. Express server running on http://10.0.0.119:7553
+[DEBUG] [2026-07-29T13:40:37.654Z] Client connected via socket (session: 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:40:37.653Z] data loaded
+[DEBUG] [2026-07-29T13:40:37.654Z] client requested sabotage data (sent via connect for 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:40:37.654Z] data loaded
+[DEBUG] [2026-07-29T13:40:37.655Z] Client connected via socket (session: 1ffdd930-46ad-49d5-9bbd-202c369d1479)
+[DEBUG] [2026-07-29T13:40:37.655Z] Socket connection rejected: username not found for session 1ffdd930-46ad-49d5-9bbd-202c369d1479
+[DEBUG] [2026-07-29T13:40:37.658Z] data loaded
+[DEBUG] [2026-07-29T13:40:37.658Z] Client connected via socket (session: 23a04774-c54f-45e6-bfcc-94abdf607018)
+[DEBUG] [2026-07-29T13:40:37.658Z] Socket connection rejected: username not found for session 23a04774-c54f-45e6-bfcc-94abdf607018
+[DEBUG] [2026-07-29T13:40:37.664Z] data loaded
+[DEBUG] [2026-07-29T13:40:37.664Z] Socket connection rejected: username not found for session ba98ed55-66c7-46d4-83e3-b10c0e9fef74
+[DEBUG] [2026-07-29T13:40:37.664Z] Client connected via socket (session: ba98ed55-66c7-46d4-83e3-b10c0e9fef74)
+[DEBUG] [2026-07-29T13:40:37.665Z] data loaded
+[DEBUG] [2026-07-29T13:40:37.666Z] Client connected via socket (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:40:37.666Z] client requested sabotage data (sent via connect for 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:40:37.723Z] data loaded
+[DEBUG] [2026-07-29T13:40:37.841Z] Client disconnected (session: 51d3aa5f-adee-46ea-818a-19eeace0234d).
+[DEBUG] [2026-07-29T13:40:37.953Z] data loaded
+[DEBUG] [2026-07-29T13:40:37.953Z] Client connected via socket (session: 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:40:37.954Z] client requested sabotage data (sent via connect for 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:41:25.790Z] data loaded
+[DEBUG] [2026-07-29T13:41:25.822Z] Client disconnected (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a).
+[DEBUG] [2026-07-29T13:41:25.851Z] data loaded
+[DEBUG] [2026-07-29T13:41:25.851Z] Client connected via socket (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:41:25.852Z] client requested sabotage data (sent via connect for 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:41:28.892Z] Client (48d460f7-1cc1-4528-a8ed-c91f8ff6d13a) requested sabotage: o2
+[DEBUG] [2026-07-29T13:41:28.911Z] data loaded
+[DEBUG] [2026-07-29T13:41:28.913Z] Sabotage started: o2 with initial delay of 5 seconds.
+[DEBUG] [2026-07-29T13:41:28.914Z] data saved
+[DEBUG] [2026-07-29T13:41:29.918Z] data loaded
+[DEBUG] [2026-07-29T13:41:29.925Z] data saved
+[DEBUG] [2026-07-29T13:41:30.919Z] data loaded
+[DEBUG] [2026-07-29T13:41:30.923Z] data saved
+[DEBUG] [2026-07-29T13:41:31.920Z] data loaded
+[DEBUG] [2026-07-29T13:41:31.928Z] data saved
+[DEBUG] [2026-07-29T13:41:32.935Z] data loaded
+[DEBUG] [2026-07-29T13:41:32.946Z] data saved
+[DEBUG] [2026-07-29T13:41:33.950Z] data loaded
+[DEBUG] [2026-07-29T13:41:33.957Z] data saved
+[DEBUG] [2026-07-29T13:41:33.961Z] Sabotage o2 reached crisis phase!
+[DEBUG] [2026-07-29T13:41:33.964Z] data saved
+[DEBUG] [2026-07-29T13:41:33.967Z] Recieved unstable signal, Rebrodcasting for emergency Server.
+[DEBUG] [2026-07-29T13:41:34.949Z] data loaded
+[DEBUG] [2026-07-29T13:41:34.951Z] data saved
+[DEBUG] [2026-07-29T13:41:35.952Z] data loaded
+[DEBUG] [2026-07-29T13:41:35.955Z] data saved
+[DEBUG] [2026-07-29T13:41:36.967Z] data loaded
+[DEBUG] [2026-07-29T13:41:36.971Z] data saved
+[DEBUG] [2026-07-29T13:41:37.890Z] data loaded
+[DEBUG] [2026-07-29T13:41:37.901Z] Client disconnected (session: ba98ed55-66c7-46d4-83e3-b10c0e9fef74).
+[DEBUG] [2026-07-29T13:41:37.943Z] data loaded
+[DEBUG] [2026-07-29T13:41:37.943Z] Client connected via socket (session: ba98ed55-66c7-46d4-83e3-b10c0e9fef74)
+[DEBUG] [2026-07-29T13:41:37.943Z] Socket connection rejected: username not found for session ba98ed55-66c7-46d4-83e3-b10c0e9fef74
+[DEBUG] [2026-07-29T13:41:37.981Z] data loaded
+[DEBUG] [2026-07-29T13:41:37.985Z] data saved
+[DEBUG] [2026-07-29T13:41:38.994Z] data loaded
+[DEBUG] [2026-07-29T13:41:39.000Z] data saved
+[DEBUG] [2026-07-29T13:41:39.994Z] data loaded
+[DEBUG] [2026-07-29T13:41:39.996Z] data saved
+[DEBUG] [2026-07-29T13:41:40.998Z] data loaded
+[DEBUG] [2026-07-29T13:41:41.004Z] data saved
+[DEBUG] [2026-07-29T13:41:42.002Z] data loaded
+[DEBUG] [2026-07-29T13:41:42.005Z] data saved
+[DEBUG] [2026-07-29T13:41:43.016Z] data loaded
+[DEBUG] [2026-07-29T13:41:43.020Z] data saved
+[DEBUG] [2026-07-29T13:41:44.032Z] data loaded
+[DEBUG] [2026-07-29T13:41:44.037Z] data saved
+[DEBUG] [2026-07-29T13:41:45.043Z] data loaded
+[DEBUG] [2026-07-29T13:41:45.046Z] data saved
+[DEBUG] [2026-07-29T13:41:46.046Z] data loaded
+[DEBUG] [2026-07-29T13:41:46.051Z] data saved
+[DEBUG] [2026-07-29T13:41:47.074Z] data loaded
+[DEBUG] [2026-07-29T13:41:47.079Z] data saved
+[DEBUG] [2026-07-29T13:41:48.074Z] data loaded
+[DEBUG] [2026-07-29T13:41:48.081Z] data saved
+[DEBUG] [2026-07-29T13:41:49.088Z] data loaded
+[DEBUG] [2026-07-29T13:41:49.092Z] data saved
+[DEBUG] [2026-07-29T13:41:50.087Z] data loaded
+[DEBUG] [2026-07-29T13:41:50.089Z] data saved
+[DEBUG] [2026-07-29T13:41:51.088Z] data loaded
+[DEBUG] [2026-07-29T13:41:51.090Z] data saved
+[DEBUG] [2026-07-29T13:41:52.102Z] data loaded
+[DEBUG] [2026-07-29T13:41:52.110Z] data saved
+[DEBUG] [2026-07-29T13:41:53.103Z] data loaded
+[DEBUG] [2026-07-29T13:41:53.108Z] data saved
+[DEBUG] [2026-07-29T13:41:54.117Z] data loaded
+[DEBUG] [2026-07-29T13:41:54.119Z] data saved
+[DEBUG] [2026-07-29T13:41:55.126Z] data loaded
+[DEBUG] [2026-07-29T13:41:55.129Z] data saved
+[DEBUG] [2026-07-29T13:41:56.129Z] data loaded
+[DEBUG] [2026-07-29T13:41:56.134Z] data saved
+[DEBUG] [2026-07-29T13:41:56.863Z] Client (23a04774-c54f-45e6-bfcc-94abdf607018) requested to fix sabotage: o2
+[DEBUG] [2026-07-29T13:41:56.864Z] data loaded
+[DEBUG] [2026-07-29T13:41:56.864Z] Sabotage fixed by crew: o2
+[DEBUG] [2026-07-29T13:41:56.867Z] data saved
+[DEBUG] [2026-07-29T13:42:03.284Z] data loaded
+[DEBUG] [2026-07-29T13:42:03.311Z] Client disconnected (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a).
+[DEBUG] [2026-07-29T13:42:03.330Z] data loaded
+[DEBUG] [2026-07-29T13:42:03.330Z] Client connected via socket (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:42:03.330Z] client requested sabotage data (sent via connect for 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:42:16.700Z] Client (ba98ed55-66c7-46d4-83e3-b10c0e9fef74) triggered emergency event.
+[DEBUG] [2026-07-29T13:42:16.701Z] data loaded
+[DEBUG] [2026-07-29T13:42:16.702Z] Emergency meeting started.
+[DEBUG] [2026-07-29T13:42:16.705Z] data saved
+[DEBUG] [2026-07-29T13:42:16.729Z] data loaded
+[DEBUG] [2026-07-29T13:42:16.730Z] data loaded
+[DEBUG] [2026-07-29T13:42:16.753Z] Client disconnected (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a).
+[DEBUG] [2026-07-29T13:42:16.762Z] Client disconnected (session: 51d3aa5f-adee-46ea-818a-19eeace0234d).
+[DEBUG] [2026-07-29T13:42:16.779Z] data loaded
+[DEBUG] [2026-07-29T13:42:16.780Z] client requested sabotage data (sent via connect for 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:42:16.779Z] Client connected via socket (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:42:16.787Z] data loaded
+[DEBUG] [2026-07-29T13:42:16.788Z] Client connected via socket (session: 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:42:16.788Z] client requested sabotage data (sent via connect for 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:42:20.700Z] data loaded
+[DEBUG] [2026-07-29T13:42:20.701Z] 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a cast a vote for 51d3aa5f-adee-46ea-818a-19eeace0234d
+[DEBUG] [2026-07-29T13:42:46.710Z] Emergency meeting timer concluded.
+[DEBUG] [2026-07-29T13:42:46.715Z] data loaded
+[DEBUG] [2026-07-29T13:42:46.720Z] data saved
+[DEBUG] [2026-07-29T13:42:51.628Z] data loaded
+[DEBUG] [2026-07-29T13:42:51.632Z] data loaded
+[DEBUG] [2026-07-29T13:42:51.653Z] Client disconnected (session: 51d3aa5f-adee-46ea-818a-19eeace0234d).
+[DEBUG] [2026-07-29T13:42:51.666Z] Client disconnected (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a).
+[DEBUG] [2026-07-29T13:42:51.720Z] data loaded
+[DEBUG] [2026-07-29T13:42:51.721Z] Client connected via socket (session: 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:42:51.721Z] client requested sabotage data (sent via connect for 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:42:51.721Z] Client connected via socket (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:42:51.721Z] data loaded
+[DEBUG] [2026-07-29T13:42:51.722Z] client requested sabotage data (sent via connect for 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:46:08.385Z] Client (ba98ed55-66c7-46d4-83e3-b10c0e9fef74) triggered emergency event.
+[DEBUG] [2026-07-29T13:46:08.385Z] data loaded
+[DEBUG] [2026-07-29T13:46:08.386Z] Emergency meeting started.
+[DEBUG] [2026-07-29T13:46:08.395Z] data saved
+[DEBUG] [2026-07-29T13:46:08.433Z] data loaded
+[DEBUG] [2026-07-29T13:46:08.434Z] data loaded
+[DEBUG] [2026-07-29T13:46:08.465Z] Client disconnected (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a).
+[DEBUG] [2026-07-29T13:46:08.473Z] Client disconnected (session: 51d3aa5f-adee-46ea-818a-19eeace0234d).
+[DEBUG] [2026-07-29T13:46:08.497Z] data loaded
+[DEBUG] [2026-07-29T13:46:08.497Z] Client connected via socket (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:46:08.497Z] client requested sabotage data (sent via connect for 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:46:08.520Z] data loaded
+[DEBUG] [2026-07-29T13:46:08.520Z] Client connected via socket (session: 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:46:08.520Z] client requested sabotage data (sent via connect for 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:46:28.696Z] data loaded
+[DEBUG] [2026-07-29T13:46:28.697Z] 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a cast a vote for dummy_1785331812611_1
+[DEBUG] [2026-07-29T13:46:38.404Z] Emergency meeting timer concluded.
+[DEBUG] [2026-07-29T13:46:38.405Z] data loaded
+[DEBUG] [2026-07-29T13:46:38.408Z] data saved
+[DEBUG] [2026-07-29T13:46:42.616Z] data loaded
+[DEBUG] [2026-07-29T13:46:42.617Z] data loaded
+[DEBUG] [2026-07-29T13:46:42.641Z] Client disconnected (session: 51d3aa5f-adee-46ea-818a-19eeace0234d).
+[DEBUG] [2026-07-29T13:46:42.652Z] Client disconnected (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a).
+[DEBUG] [2026-07-29T13:46:42.680Z] data loaded
+[DEBUG] [2026-07-29T13:46:42.681Z] Client connected via socket (session: 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:46:42.681Z] client requested sabotage data (sent via connect for 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:46:42.684Z] data loaded
+[DEBUG] [2026-07-29T13:46:42.684Z] Client connected via socket (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:46:42.684Z] client requested sabotage data (sent via connect for 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:46:48.468Z] data loaded
+[DEBUG] [2026-07-29T13:46:48.481Z] Client disconnected (session: ba98ed55-66c7-46d4-83e3-b10c0e9fef74).
+[DEBUG] [2026-07-29T13:46:48.521Z] data loaded
+[DEBUG] [2026-07-29T13:46:48.522Z] Client connected via socket (session: ba98ed55-66c7-46d4-83e3-b10c0e9fef74)
+[DEBUG] [2026-07-29T13:46:48.522Z] Socket connection rejected: username not found for session ba98ed55-66c7-46d4-83e3-b10c0e9fef74
+[DEBUG] [2026-07-29T13:46:50.422Z] Client (ba98ed55-66c7-46d4-83e3-b10c0e9fef74) triggered emergency event.
+[DEBUG] [2026-07-29T13:46:50.424Z] data loaded
+[DEBUG] [2026-07-29T13:46:50.425Z] Emergency meeting started.
+[DEBUG] [2026-07-29T13:46:50.427Z] data saved
+[DEBUG] [2026-07-29T13:46:50.451Z] data loaded
+[DEBUG] [2026-07-29T13:46:50.452Z] data loaded
+[DEBUG] [2026-07-29T13:46:50.474Z] Client disconnected (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a).
+[DEBUG] [2026-07-29T13:46:50.480Z] Client disconnected (session: 51d3aa5f-adee-46ea-818a-19eeace0234d).
+[DEBUG] [2026-07-29T13:46:50.501Z] data loaded
+[DEBUG] [2026-07-29T13:46:50.501Z] Client connected via socket (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:46:50.501Z] client requested sabotage data (sent via connect for 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:46:50.505Z] data loaded
+[DEBUG] [2026-07-29T13:46:50.506Z] Client connected via socket (session: 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:46:50.506Z] client requested sabotage data (sent via connect for 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:46:53.977Z] data loaded
+[DEBUG] [2026-07-29T13:46:53.978Z] 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a cast a vote for dummy_1785331812611_2
+[DEBUG] [2026-07-29T13:47:20.434Z] Emergency meeting timer concluded.
+[DEBUG] [2026-07-29T13:47:20.441Z] data loaded
+[DEBUG] [2026-07-29T13:47:20.447Z] data saved
+[DEBUG] [2026-07-29T13:47:24.624Z] data loaded
+[DEBUG] [2026-07-29T13:47:24.623Z] data loaded
+[DEBUG] [2026-07-29T13:47:24.651Z] Client disconnected (session: 51d3aa5f-adee-46ea-818a-19eeace0234d).
+[DEBUG] [2026-07-29T13:47:24.656Z] Client disconnected (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a).
+[DEBUG] [2026-07-29T13:47:24.686Z] data loaded
+[DEBUG] [2026-07-29T13:47:24.686Z] Client connected via socket (session: 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:47:24.687Z] client requested sabotage data (sent via connect for 51d3aa5f-adee-46ea-818a-19eeace0234d)
+[DEBUG] [2026-07-29T13:47:24.692Z] data loaded
+[DEBUG] [2026-07-29T13:47:24.693Z] Client connected via socket (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:47:24.693Z] client requested sabotage data (sent via connect for 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:50:01.828Z] data loaded
+[DEBUG] [2026-07-29T13:50:01.851Z] Client disconnected (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a).
+[DEBUG] [2026-07-29T13:50:01.882Z] data loaded
+[DEBUG] [2026-07-29T13:50:01.882Z] Client connected via socket (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:50:01.883Z] client requested sabotage data (sent via connect for 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:50:04.151Z] Client (48d460f7-1cc1-4528-a8ed-c91f8ff6d13a) requested sabotage: o2
+[DEBUG] [2026-07-29T13:50:04.153Z] data loaded
+[DEBUG] [2026-07-29T13:50:04.159Z] Sabotage started: o2 with initial delay of 5 seconds.
+[DEBUG] [2026-07-29T13:50:04.162Z] data saved
+[DEBUG] [2026-07-29T13:50:05.177Z] data loaded
+[DEBUG] [2026-07-29T13:50:05.187Z] data saved
+[DEBUG] [2026-07-29T13:50:06.193Z] data loaded
+[DEBUG] [2026-07-29T13:50:06.199Z] data saved
+[DEBUG] [2026-07-29T13:50:07.199Z] data loaded
+[DEBUG] [2026-07-29T13:50:07.204Z] data saved
+[DEBUG] [2026-07-29T13:50:08.211Z] data loaded
+[DEBUG] [2026-07-29T13:50:08.216Z] data saved
+[DEBUG] [2026-07-29T13:50:09.216Z] data loaded
+[DEBUG] [2026-07-29T13:50:09.220Z] data saved
+[DEBUG] [2026-07-29T13:50:09.222Z] Sabotage o2 reached crisis phase!
+[DEBUG] [2026-07-29T13:50:09.224Z] data saved
+[DEBUG] [2026-07-29T13:50:09.227Z] Recieved unstable signal, Rebrodcasting for emergency Server.
+[DEBUG] [2026-07-29T13:50:10.227Z] data loaded
+[DEBUG] [2026-07-29T13:50:10.233Z] data saved
+[DEBUG] [2026-07-29T13:50:11.235Z] data loaded
+[DEBUG] [2026-07-29T13:50:11.241Z] data saved
+[DEBUG] [2026-07-29T13:50:12.255Z] data loaded
+[DEBUG] [2026-07-29T13:50:12.262Z] data saved
+[DEBUG] [2026-07-29T13:50:13.264Z] data loaded
+[DEBUG] [2026-07-29T13:50:13.267Z] data saved
+[DEBUG] [2026-07-29T13:50:14.277Z] data loaded
+[DEBUG] [2026-07-29T13:50:14.283Z] data saved
+[DEBUG] [2026-07-29T13:50:15.278Z] data loaded
+[DEBUG] [2026-07-29T13:50:15.281Z] data saved
+[DEBUG] [2026-07-29T13:50:16.289Z] data loaded
+[DEBUG] [2026-07-29T13:50:16.294Z] data saved
+[DEBUG] [2026-07-29T13:50:17.300Z] data loaded
+[DEBUG] [2026-07-29T13:50:17.307Z] data saved
+[DEBUG] [2026-07-29T13:50:18.312Z] data loaded
+[DEBUG] [2026-07-29T13:50:18.316Z] data saved
+[DEBUG] [2026-07-29T13:50:19.325Z] data loaded
+[DEBUG] [2026-07-29T13:50:19.327Z] data saved
+[DEBUG] [2026-07-29T13:50:20.338Z] data loaded
+[DEBUG] [2026-07-29T13:50:20.342Z] data saved
+[DEBUG] [2026-07-29T13:50:21.338Z] data loaded
+[DEBUG] [2026-07-29T13:50:21.343Z] data saved
+[DEBUG] [2026-07-29T13:50:22.338Z] data loaded
+[DEBUG] [2026-07-29T13:50:22.343Z] data saved
+[DEBUG] [2026-07-29T13:50:23.350Z] data loaded
+[DEBUG] [2026-07-29T13:50:23.357Z] data saved
+[DEBUG] [2026-07-29T13:50:24.362Z] data loaded
+[DEBUG] [2026-07-29T13:50:24.372Z] data saved
+[DEBUG] [2026-07-29T13:50:25.365Z] data loaded
+[DEBUG] [2026-07-29T13:50:25.368Z] data saved
+[DEBUG] [2026-07-29T13:50:26.364Z] data loaded
+[DEBUG] [2026-07-29T13:50:26.370Z] data saved
+[DEBUG] [2026-07-29T13:50:27.365Z] data loaded
+[DEBUG] [2026-07-29T13:50:27.369Z] data saved
+[DEBUG] [2026-07-29T13:50:28.377Z] data loaded
+[DEBUG] [2026-07-29T13:50:28.382Z] data saved
+[DEBUG] [2026-07-29T13:50:29.387Z] data loaded
+[DEBUG] [2026-07-29T13:50:29.393Z] data saved
+[DEBUG] [2026-07-29T13:50:30.387Z] data loaded
+[DEBUG] [2026-07-29T13:50:30.394Z] data saved
+[DEBUG] [2026-07-29T13:50:31.399Z] data loaded
+[DEBUG] [2026-07-29T13:50:31.404Z] data saved
+[DEBUG] [2026-07-29T13:50:32.159Z] Client (23a04774-c54f-45e6-bfcc-94abdf607018) requested to fix sabotage: o2
+[DEBUG] [2026-07-29T13:50:32.161Z] data loaded
+[DEBUG] [2026-07-29T13:50:32.162Z] Sabotage fixed by crew: o2
+[DEBUG] [2026-07-29T13:50:32.166Z] data saved
+[DEBUG] [2026-07-29T13:50:35.340Z] data loaded
+[DEBUG] [2026-07-29T13:50:35.366Z] Client disconnected (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a).
+[DEBUG] [2026-07-29T13:50:35.398Z] data loaded
+[DEBUG] [2026-07-29T13:50:35.398Z] Client connected via socket (session: 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)
+[DEBUG] [2026-07-29T13:50:35.398Z] client requested sabotage data (sent via connect for 48d460f7-1cc1-4528-a8ed-c91f8ff6d13a)

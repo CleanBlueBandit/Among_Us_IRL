@@ -8,73 +8,73 @@
     "emergencyMeetingEndTime": 0,
     "totalTasks": 50,
     "completedTasks": 0,
-    "host": "iMogUs",
+    "host": "I",
     "aliveImpostors": 2,
     "playerCount": 10,
-    "alivePlayers": 10
+    "alivePlayers": 7
   },
   "servers": {
-    "ad3bd7a3-a7a5-4ce6-9678-4984ce61be70": "o2",
-    "20fe9eb0-d46f-4c4a-be42-e9c0a2f474d9": "reactor",
-    "1d137d69-52c0-481b-8f06-fe05f0b46d6e": "emergency"
+    "23a04774-c54f-45e6-bfcc-94abdf607018": "o2",
+    "1ffdd930-46ad-49d5-9bbd-202c369d1479": "reactor",
+    "ba98ed55-66c7-46d4-83e3-b10c0e9fef74": "emergency"
   },
   "players": {
-    "06d165e4-7c2c-477e-80b3-e1d68169748d": {
-      "id": "06d165e4-7c2c-477e-80b3-e1d68169748d",
-      "username": "iMogUs",
+    "51d3aa5f-adee-46ea-818a-19eeace0234d": {
+      "id": "51d3aa5f-adee-46ea-818a-19eeace0234d",
+      "username": "I",
+      "alive": false,
+      "tasksCompleted": 0,
+      "totalTasks": 5,
+      "impostor": false,
+      "role": "crewmate"
+    },
+    "48d460f7-1cc1-4528-a8ed-c91f8ff6d13a": {
+      "id": "48d460f7-1cc1-4528-a8ed-c91f8ff6d13a",
+      "username": "amogus",
       "alive": true,
       "tasksCompleted": 0,
       "totalTasks": 5,
       "impostor": true,
       "role": "impostor"
     },
-    "dummy_1785318150877_1": {
-      "id": "5d876f03-eb22-490c-82e8-c76b6432ba15",
-      "username": "dummy_2",
-      "role": "crewmate",
-      "alive": true,
-      "tasksCompleted": 0,
-      "totalTasks": 5,
-      "impostor": false
-    },
-    "dummy_1785318150877_2": {
-      "id": "6c6c6604-56fc-4e71-b810-307346c3e9cd",
+    "dummy_1785331812611_1": {
+      "id": "b5a6dba5-8ee3-44f2-bff1-2663cbef005f",
       "username": "dummy_3",
       "role": "crewmate",
-      "alive": true,
+      "alive": false,
       "tasksCompleted": 0,
       "totalTasks": 5,
       "impostor": false
     },
-    "dummy_1785318150877_3": {
-      "id": "6900e1ac-2148-4de4-9a2e-4163a2e06b9a",
+    "dummy_1785331812611_2": {
+      "id": "5f85b6e3-96e8-426b-8e9d-8a4f50bc943f",
       "username": "dummy_4",
       "role": "crewmate",
-      "alive": true,
+      "alive": false,
       "tasksCompleted": 0,
       "totalTasks": 5,
       "impostor": false
     },
-    "dummy_1785318150877_4": {
-      "id": "4c9e61ff-4929-481b-8637-8806fa37ee1f",
+    "dummy_1785331812611_3": {
+      "id": "2251dc1e-d4bf-4da5-bcdb-90a373addb7a",
       "username": "dummy_5",
-      "role": "crewmate",
-      "alive": true,
-      "tasksCompleted": 0,
-      "totalTasks": 5,
-      "impostor": false
-    },
-    "dummy_1785318150877_5": {
-      "id": "6201601f-4859-4cdf-a986-06d6f1eca786",
-      "username": "dummy_6",
       "role": "impostor",
       "alive": true,
       "tasksCompleted": 0,
       "totalTasks": 5,
       "impostor": true
     },
-    "dummy_1785318150877_6": {
-      "id": "3838d282-b116-49e7-a7e5-9fbdcb618669",
+    "dummy_1785331812611_4": {
+      "id": "eb504cb2-7435-4506-ade9-e90b1e8ac949",
+      "username": "dummy_6",
+      "role": "crewmate",
+      "alive": true,
+      "tasksCompleted": 0,
+      "totalTasks": 5,
+      "impostor": false
+    },
+    "dummy_1785331812611_5": {
+      "id": "57e7e3cd-b4fd-4669-ae07-db913cb61041",
       "username": "dummy_7",
       "role": "crewmate",
       "alive": true,
@@ -82,8 +82,8 @@
       "totalTasks": 5,
       "impostor": false
     },
-    "dummy_1785318150877_7": {
-      "id": "522faff9-6c93-4d35-96c4-a02c5f5af674",
+    "dummy_1785331812611_6": {
+      "id": "378cd543-7401-4488-b8d6-5be45172b53f",
       "username": "dummy_8",
       "role": "crewmate",
       "alive": true,
@@ -91,8 +91,8 @@
       "totalTasks": 5,
       "impostor": false
     },
-    "dummy_1785318150877_8": {
-      "id": "d1303bc3-0256-4b51-90a4-34c7ac5e7284",
+    "dummy_1785331812611_7": {
+      "id": "adbfdf7f-b836-4e55-b20a-6ab1cee2674a",
       "username": "dummy_9",
       "role": "crewmate",
       "alive": true,
@@ -100,8 +100,8 @@
       "totalTasks": 5,
       "impostor": false
     },
-    "dummy_1785318150877_9": {
-      "id": "9b7a56cc-4385-4e77-b338-73319b20819d",
+    "dummy_1785331812611_8": {
+      "id": "b6b21f88-eb18-4c49-a9ff-8ea74f76aeba",
       "username": "dummy_10",
       "role": "crewmate",
       "alive": true,
@@ -126,6 +126,6 @@
     "impostors": 2,
     "meltdownCountdown": 30,
     "tasks": 5,
-    "emergencyCountdown": 30
+    "emergencyCountdown": 5
   }
 }

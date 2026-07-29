@@ -3,23 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Emergency Meeting Button</title>
+  <title>Emergency Meeting & Reveal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg-gradient: radial-gradient(ellipse at center, #6a6d72 0%, #4a4d52 100%);
+    }
+    
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       min-height: 100vh;
-      background: radial-gradient(ellipse at center, #6a6d72 0%, #4a4d52 100%);
+      background: var(--bg-gradient);
       display: flex;
       align-items: center;
       justify-content: center;
       font-family: 'Nunito', sans-serif;
       padding: 16px;
+      overflow: hidden; /* Prevent scrolling during fullscreen reveal */
     }
 
-    /* Same tablet shell as the other device/voting screens, for visual consistency */
+    /* -------------------- Tablet UI -------------------- */
     .tablet {
       position: relative;
       background: #b0b3b8;
@@ -30,6 +35,7 @@
         0 12px 48px rgba(0,0,0,0.65),
         inset 0 2px 0 rgba(255,255,255,0.22);
       width: min(520px, 96vw);
+      z-index: 10;
     }
 
     .screen {
@@ -94,7 +100,6 @@
     }
 
     .status {
-      font-family: 'Nunito', sans-serif;
       font-weight: 800;
       font-size: clamp(13px, 2vw, 16px);
       color: #b8c0cc;
@@ -105,6 +110,87 @@
 
     @media (max-width: 480px) {
       .screen { padding: 36px 16px; min-height: 360px; gap: 22px; }
+    }
+
+    /* -------------------- Cinematic Reveal Overlay -------------------- */
+    .reveal-overlay {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #000000;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 1s ease-in-out;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .reveal-overlay.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .particles { 
+      position: absolute; 
+      inset: 0; 
+      overflow: hidden; 
+      pointer-events: none; 
+      z-index: 1; 
+    }
+    .particle {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: 50%;
+      animation: drift linear infinite;
+      opacity: 0;
+    }
+    @keyframes drift {
+      0% { opacity: 0; transform: translateY(0); }
+      10% { opacity: 0.7; }
+      90% { opacity: 0.35; }
+      100% { opacity: 0; transform: translateY(-40px); }
+    }
+
+    .vignette {
+      position: absolute; 
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.85) 100%);
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    .cinematic-scene {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      width: 90vw;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: clamp(1.6rem, 5vw, 3rem);
+      color: rgba(255, 255, 255, 0.85);
+      font-weight: 300;
+      letter-spacing: 0.05em;
+      white-space: pre-wrap;
+    }
+
+    /* Pop-in subtext for remaining impostors */
+    .impostor-count {
+      display: block;
+      margin-top: 0;
+      font-size: clamp(1.2rem, 3.5vw, 2.2rem);
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.85);
+      opacity: 0;
+    }
+    .impostor-count.pop-in {
+      animation: popIn 0.35s cubic-bezier(.2,1.6,.35,1) forwards;
+    }
+
+    @keyframes popIn {
+      0% { opacity: 0; transform: scale(1.7); filter: blur(6px); }
+      55% { opacity: 1; transform: scale(0.92); filter: blur(0px); }
+      100% { opacity: 1; transform: scale(1); filter: blur(0px); }
     }
   </style>
 </head>
@@ -122,26 +208,104 @@
   </div>
 </div>
 
+<div class="reveal-overlay" id="revealOverlay">
+  <div class="particles" id="particles"></div>
+  <div class="cinematic-scene">
+    <div id="text-container"></div>
+    <div id="subtext-container" class="impostor-count"></div>
+  </div>
+  <div class="vignette"></div>
+</div>
+
 <script src="/socket.io/socket.io.js"></script>
 <script>
   const socket = io();
 
+  // Elements
   const btn = document.getElementById('callBtn');
   const statusEl = document.getElementById('status');
+  const revealOverlay = document.getElementById('revealOverlay');
+  const textContainer = document.getElementById('text-container');
+  const subtextContainer = document.getElementById('subtext-container');
+  const particleContainer = document.getElementById('particles');
 
   let meetingActive = false;
+  let countdownTick = null;
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+  // ---------------- UI Helpers ----------------
   function setStatus(text, urgent = false) {
     statusEl.textContent = text;
     statusEl.classList.toggle('urgent', urgent);
   }
 
-  function updateButton() {
-    btn.disabled = meetingActive;
-    btn.innerHTML = meetingActive ? 'MEETING<br>IN PROGRESS' : 'CALL<br>MEETING';
+  function updateButton(active, text) {
+    btn.disabled = active;
+    btn.innerHTML = text;
   }
 
-  // This device only ever calls a meeting - it never casts or sees votes.
+  // ---------------- Cinematic Logic ----------------
+  function initStars() {
+    const starCount = 90;
+    for (let i = 0; i < starCount; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      const size = Math.random() * 2 + 1;
+      p.style.width = size + 'px';
+      p.style.height = size + 'px';
+      p.style.left = Math.random() * 100 + 'vw';
+      p.style.top = Math.random() * 100 + 'vh';
+      p.style.animationDuration = (6 + Math.random() * 10) + 's';
+      p.style.animationDelay = (Math.random() * 8) + 's';
+      particleContainer.appendChild(p);
+    }
+  }
+
+  function typeText(el, text, speed) {
+    return new Promise((resolve) => {
+      el.textContent = '';
+      let i = 0;
+
+      function step() {
+        if (i < text.length) {
+          el.textContent = text.slice(0, i + 1);
+          i++;
+          setTimeout(step, speed);
+        } else {
+          setTimeout(resolve, 300);
+        }
+      }
+      step();
+    });
+  }
+
+  async function playRevealCinematic(outcomeText, impostorCountText) {
+    // 1. Prepare overlay
+    revealOverlay.classList.add('active');
+    textContainer.textContent = ''; 
+    subtextContainer.textContent = '';
+    subtextContainer.classList.remove('pop-in');
+    await sleep(1500); 
+
+    // 2. Type out the outcome text
+    await typeText(textContainer, outcomeText, 200);
+
+    // 3. Pop in remaining impostors subtext
+    if (impostorCountText) {
+      await sleep(600);
+      subtextContainer.textContent = impostorCountText;
+      subtextContainer.classList.add('pop-in');
+    }
+
+    // 4. Hold screen for 4 seconds
+    await sleep(4000);
+
+    // 5. Fade out overlay
+    revealOverlay.classList.remove('active');
+    await sleep(1000); 
+  }
+
+  // ---------------- Socket Events ----------------
   btn.addEventListener('click', () => {
     if (meetingActive) return;
     socket.emit('emergency');
@@ -149,26 +313,81 @@
 
   socket.on('emergency_ack', (payload) => {
     meetingActive = true;
-    updateButton();
+    updateButton(true, "MEETING<br>IN PROGRESS");
     setStatus(`Meeting called - ${payload.countdown}s to discuss.`);
+    
+    let remaining = parseInt(payload.countdown);
+    const tick = () => {
+      if (remaining <= 0) {
+        setStatus('Voting Ended', false);
+        clearInterval(countdownTick);
+        return;
+      }
+      setStatus(`Voting Ends In: ${remaining}s`, remaining <= 10);
+      remaining--;
+    };
+    tick();
+    if (countdownTick) clearInterval(countdownTick);
+    countdownTick = setInterval(tick, 1000);
   });
 
-  socket.on('emergency_result', (payload) => {
+  socket.on("unstable", (data) => {
+    meetingActive = true;
+    updateButton(true, "ALERT<br>CRISIS");
+    setStatus("Ship component state: critical", true);
+  });
+
+  socket.on("fix_ack", (data) => {
+    if(data.ok){
+      meetingActive = false;
+      updateButton(false, "CALL<br>MEETING");
+      setStatus("Ready");
+    }
+  });
+
+  socket.on('emergency_result', async (payload) => {
+    meetingActive = true;
+    updateButton(true, "CALL<br>MEETING");
+
+    if (countdownTick) clearInterval(countdownTick);
+
+    // Ejection Text
+    const ejectedPlayer = payload.ejected && payload.players ? payload.players[payload.ejected] : null;
+    const ejectedName = ejectedPlayer ? ejectedPlayer.username : 'Someone';
+
+    let tx = '';
+    if (payload.result === "ejection") {
+      const isImpostor = ejectedPlayer && ejectedPlayer.impostor;
+      tx = `${ejectedName} ${isImpostor ? "was" : "was not"} An Impostor.`;
+    } else {
+      tx = `No one was ejected (${payload.result === "skip" ? "Skipped" : "Tie"}).`;
+    }
+
+    // Count Remaining Impostors
+    let count = payload.impostorsRemaining;
+    if (count === undefined && payload.players) {
+      count = Object.values(payload.players).filter(p => p.impostor && p.isAlive !== false).length;
+    }
+    
+    const countText = count !== undefined 
+      ? `${count} ${count === 1 ? 'impostor remains' : 'impostors remain'}`
+      : '';
+
+    // Run cinematic reveal with pop-in subtext
+    await playRevealCinematic(tx, countText);
+
+    // Reset UI
     meetingActive = false;
-    updateButton();
-    const ejectedName = payload.ejected && payload.players[payload.ejected]
-      ? payload.players[payload.ejected].username
-      : null;
-    setStatus(ejectedName ? `${ejectedName} was ejected.` : 'No one was ejected.');
-  });
-
-  socket.on('Err', (payload) => {
-    setStatus(payload && payload.error ? payload.error : 'Something went wrong.', true);
+    updateButton(false, "CALL<br>MEETING");
+    setStatus('Ready');
   });
 
   socket.on("game_over", (data) => {
     window.location.href = "/win";
   });
+
+  // Run initialization
+  initStars();
 </script>
 </body>
 </html>

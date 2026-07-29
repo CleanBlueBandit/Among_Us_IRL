@@ -258,7 +258,7 @@ function renderRoleRevealHtml(isImpostor) {
     <div class="particles" id="particles"></div>
 
     <div class="scene" id="scene-shh">
-      <span>shhh...</span>
+      <span>sssh...</span>
     </div>
 
     <div class="scene" id="scene-role">

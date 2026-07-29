@@ -564,6 +564,8 @@
                             showToast('Error: ' + response.error, 'error');
                         } else {
                             showToast('Death reported', 'success');
+                            window.location.href = "/dashboard"
+
                         }
                     });
                     setTimeout(function() {
@@ -620,9 +622,6 @@
             socket.on('Err', function(data) {
                 console.error('Server error:', data.error);
                 showToast('Error: ' + data.error, 'error');
-            });
-            socket.on('emergency_ack', () => {
-                window.location.href = '/emergency-client';
             });
 
             socket.on('game_over', function(data) {

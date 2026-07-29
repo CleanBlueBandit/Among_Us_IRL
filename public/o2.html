@@ -212,6 +212,8 @@
         function enterO2DepletionUI() {
             if (currentState === 'unstable' || currentState === 'game-over') return;
             currentState = 'unstable';
+
+            socket.emit("unstable", {activated:true});
             
             statusDisplay.textContent = 'O2 CRITICAL - DEPLETING';
             statusDisplay.className = 'depleting';

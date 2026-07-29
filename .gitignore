@@ -1,9 +1,5 @@
 node_modules/
-
-game.json
-
-.env
-
-debug.log
-
-error.log
+./game.json
+./.env
+./debug.log
+./error.log

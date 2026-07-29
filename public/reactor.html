@@ -233,6 +233,7 @@
         function enterMeltdownUI() {
             if (currentState === 'unstable' || currentState === 'game-over') return;
             currentState = 'unstable';
+            socket.emit("unstable", {activated:true})
             statusDisplay.textContent = 'REACTOR MELTDOWN';
             statusDisplay.className = 'meltdown';
             countdownDisplay.style.display = 'block';
