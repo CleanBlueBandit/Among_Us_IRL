@@ -554,7 +554,7 @@
                     window.location.href = '/impostor';
                 } else {
                     if (!isAlive) {
-                        showToast('You are already dead', 'error');
+                        showToast('Oh really?', 'error');
                         return;
                     }
                     actionBtn.disabled = true;
@@ -611,11 +611,7 @@
 
                 var meetingEl = document.getElementById('emergencyMeetingStatus');
                 if (data.emergencyMeeting) {
-                    meetingEl.innerText = 'IN PROGRESS';
-                    meetingEl.className = 'meeting-badge meeting-active';
-                } else {
-                    meetingEl.innerText = 'INACTIVE';
-                    meetingEl.className = 'meeting-badge meeting-idle';
+                   window.location.href = "/emergency-client"
                 }
             });
 

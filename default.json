@@ -1,0 +1,37 @@
+{
+  "gameState": {
+    "started": false,
+    "winCondition": "",
+    "impostorsWon": false,
+    "crewmatesWon": false,
+    "emergencyMeeting": false,
+    "emergencyMeetingEndTime": 0,
+    "totalTasks": 0,
+    "completedTasks": 0,
+    "host": "",
+    "aliveImpostors": 0,
+    "playerCount": 0,
+    "alivePlayers": 0,
+    "lastEjection": null
+  },
+  "servers": {},
+  "players": {},
+  "activeSabotages": {
+    "o2": {
+      "sabotaged": false,
+      "depleted": false,
+      "timeLeft": 0
+    },
+    "reactor": {
+      "sabotaged": false,
+      "meltdown": false,
+      "timeLeft": 0
+    }
+  },
+  "settings": {
+    "impostors": 2,
+    "meltdownCountdown": 30,
+    "tasks": 5,
+    "emergencyCountdown": 30
+  }
+}
