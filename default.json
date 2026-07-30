@@ -32,6 +32,7 @@
     "impostors": 2,
     "meltdownCountdown": 30,
     "tasks": 5,
-    "emergencyCountdown": 30
+    "emergencyCountdown": 120,
+    "meetingCooldown":45
   }
 }

@@ -232,6 +232,9 @@
   let meetingActive = false;
   let countdownTick = null;
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  
+  // FIXED: Use a single absolute end-timestamp for the cooldown
+  let cooldownEndTime = 0;
 
   // ---------------- UI Helpers ----------------
   function setStatus(text, urgent = false) {
@@ -308,10 +311,10 @@
   // ---------------- Socket Events ----------------
   btn.addEventListener('click', () => {
     if (meetingActive) return;
+    // FIXED: Check if current time is past the cooldown end-time
+    if (Date.now() < cooldownEndTime) return;
     socket.emit('emergency');
   });
-
-
 
   socket.on("sabotage_data_request", (payload) => {
     if(!payload.sData.o2.depleted && !payload.sData.reactor.meltdown){
@@ -325,6 +328,7 @@
       setStatus("Ship component state: critical", true);
     }
   });
+
   socket.on('emergency_ack', (payload) => {
     meetingActive = true;
     updateButton(true, "MEETING<br>IN PROGRESS");
@@ -343,10 +347,6 @@
     tick();
     if (countdownTick) clearInterval(countdownTick);
     countdownTick = setInterval(tick, 1000);
-  });
-
-  socket.on("unstable", (data) => {
-    
   });
 
   socket.on('emergency_result', async (payload) => {
@@ -370,7 +370,7 @@
     // Count Remaining Impostors
     let count = payload.impostorsRemaining;
     if (count === undefined && payload.players) {
-      count = Object.values(payload.players).filter(p => p.impostor && p.isAlive !== false).length;
+      count = Object.values(payload.players).filter(p => p.impostor && p.alive !== false).length;
     }
     
     const countText = count !== undefined 
@@ -380,14 +380,37 @@
     // Run cinematic reveal with pop-in subtext
     await playRevealCinematic(tx, countText);
 
-    // Reset UI
-    meetingActive = false;
-    updateButton(false, "CALL<br>MEETING");
-    setStatus('Ready');
+    // FIXED: Use the cooldown end-time sent from server
+    cooldownEndTime = payload.cooldownEndTime || 0;
+    
+    // Reset UI and countdown
+    meetingActive = true;
+    updateButton(true, "OVERHEAT");
+    
+    const tick = () => {
+      const remaining = Math.max(0, Math.round((cooldownEndTime - Date.now()) / 1000));
+      if (remaining <= 0) {
+        setStatus('Ready', false);
+        clearInterval(countdownTick);
+        meetingActive = false;
+        updateButton(false, "CALL<br>MEETING");
+        return;
+      }
+      setStatus(`Time until operational: ${remaining}s`, true);
+    };
+    tick();
+    if (countdownTick) clearInterval(countdownTick);
+    countdownTick = setInterval(tick, 1000);
   });
 
   socket.on("game_over", (data) => {
     window.location.href = "/win";
+  });
+
+  socket.on("Err", (data) => {
+    if (data.error === 'emergency meeting on cooldown') {
+      setStatus("Meeting on cooldown", true);
+    }
   });
 
   // Run initialization

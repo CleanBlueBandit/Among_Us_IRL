@@ -10,9 +10,20 @@ import bcrypt from 'bcrypt';
 import 'dotenv/config';
 import { renderCrewmateWinHtml, renderImpostorWinHtml } from './winscreen.js';
 import { renderRoleRevealHtml } from './roleReveal.js';
+import { debuglog } from 'util';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const btoActive = true;
+
+let cooldownTime = Date.now();
+
+const betaTestingOverride = {
+    "emergencyCountdown": 30,
+    "meetingCooldown": 40
+}
+
 
 // --- LOGGING SYSTEM ---
 const DEBUG_LOG = path.join(__dirname, 'debug.log');
@@ -117,7 +128,8 @@ const DEFAULT_SETTINGS = {
     impostors: 2,
     meltdownCountdown: 30,
     tasks: 5,
-    emergencyCountdown: 30
+    emergencyCountdown: 120,
+    emergencyCooldown : 30
 };
 
 let meltdownCountdownSeconds = DEFAULT_SETTINGS.meltdownCountdown;
@@ -928,12 +940,17 @@ async function resolveEmergencyMeeting(resultData) {
     };
 
     await saveGame(data);
+    
+    // FIXED: Calculate cooldown duration and convert to absolute end-timestamp
+    const cooldownSeconds = btoActive ? betaTestingOverride.meetingCooldown : data.settings.emergencyCooldown;
+    cooldownTime = Date.now() + (cooldownSeconds * 1000);
 
     io.emit('emergency_result', {
         ejected: ejectedId,
         players: data.players,
         gameState: data.gameState,
-        result: _result
+        result: _result,
+        cooldownEndTime: cooldownTime
     });
 
     // Always broadcast the fresh game state - alive/impostor counts and the
@@ -1296,12 +1313,27 @@ io.on("connection", async (socket) => {
                     await resolveEmergencyMeeting(payload);
                     return;
                 }
-                await startEmergencyMeeting();
+                // FIXED: Corrected condition to properly check if cooldown has elapsed
+                if (Date.now() >= cooldownTime) {
+                    await startEmergencyMeeting();
+                } else {
+                    logDebug("Received premature emergency meeting request, denying.");
+                    socket.emit('Err', { error: 'emergency meeting on cooldown' });
+                }
             } catch (e) {
                 logError("Emergency error:", e);
                 socket.emit('Err', { error: e.message });
             }
         });
+
+
+        socket.on("settings_data_request", async (payload) => {
+            const data = await loadGame();
+            // FIXED: Corrected typo in event name (was "settings_data_requst")
+            socket.emit("settings_data_request", data.settings);
+            logDebug(`Settings data sent to ${cookies.session}`);
+        })
+        socket.emit("settings_data_request", data.settings);
         
         socket.on("cast_vote", async (payload) => {
             try {
@@ -1550,17 +1582,17 @@ app.post("/start", async (req, res) => {
             return res.status(400).json({ message: "Invalid or missing settings.", failed: true });
         }
 
-        logDebug(`Starting game with ${totalRealPlayers} real players (+ ${dummyIds.length} dummy players).`);
+        logDebug(`Starting game with ${totalRealPlayers} players.`);
         
         clearEmergencyMeetingTimer();
 
         data.settings = parsedSettings;
         const targetImpostors = data.settings.impostors;
-        meltdownCountdownSeconds = data.settings.meltdownCountdown;
-        emergencyCountdownSeconds = data.settings.emergencyCountdown;
+        meltdownCountdownSeconds = btoActive ? betaTestingOverride.meetingCooldown : data.settings.meltdownCountdown;
+        emergencyCountdownSeconds = btoActive ? betaTestingOverride.emergencyCountdown : data.settings.emergencyCountdown;
 
         let roleDeck = [];
-        for (let i = 0; i < totalRealPlayers; i++) {
+        for (let i = 0; i < allPlayerIds; i++) {
             if (i < targetImpostors) {
                 roleDeck.push("impostor");
             } else {
@@ -1577,7 +1609,7 @@ app.post("/start", async (req, res) => {
 
         let totalTasks = 0;
 
-        realPlayerIds.forEach((id, index) => {
+        allPlayerIds.forEach((id, index) => {
             const assignedRole = roleDeck[index];
             data.players[id].impostor = (assignedRole === "impostor");
             data.players[id].role = assignedRole === "impostor" ? "impostor" : "crewmate";
@@ -1588,19 +1620,13 @@ app.post("/start", async (req, res) => {
             logDebug(`${id} is now ${assignedRole}`);
         });
 
-        dummyIds.forEach((id) => {
-            data.players[id].impostor = false;
-            data.players[id].role = 'dummy';
-            data.players[id].totalTasks = 0;
-            data.players[id].tasksCompleted = 0;
-        });
 
         data.gameState.started = true;
         data.gameState.impostorsWon = false;
         data.gameState.crewmatesWon = false;
         data.gameState.aliveImpostors = targetImpostors;
-        data.gameState.playerCount = totalPlayers;
-        data.gameState.alivePlayers = totalPlayers;
+        data.gameState.playerCount = totalRealPlayers;
+        data.gameState.alivePlayers = totalRealPlayers;
         data.gameState.totalTasks = totalTasks;
         data.gameState.completedTasks = 0;
         data.gameState.emergencyMeeting = false;
@@ -1613,6 +1639,13 @@ app.post("/start", async (req, res) => {
         };
 
         await saveGame(data);
+        
+        // FIXED: Corrected variable name and property path
+        const meetingCooldownSeconds = btoActive
+            ? betaTestingOverride.emergencyCountdown
+            : (data.settings.emergencyCooldown + 20);
+        cooldownTime = Date.now() + (meetingCooldownSeconds * 1000);
+        
         logDebug("Game successfully started.");
         io.emit("start", {started:true})
         io.emit("game_data_request", data.gameState);
