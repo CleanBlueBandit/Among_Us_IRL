@@ -161,8 +161,19 @@ function publicPath(fileName) {
     return path.join(__dirname, 'public', fileName + '.html');
 }
 
+
+
+try {
+    await fs.access("./game.json");
+    logDebug(`game.json detected, proceeding.`);
+} catch {
+    await fs.copyFile("./default.json", "./game.json");
+    logDebug(`game.json missing, copying data from default.json`);
+}
+
 async function loadGame() {
     try {
+        
         const rawData = await fs.readFile('./game.json', 'utf-8');
         const data = JSON.parse(rawData);
 
