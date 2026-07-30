@@ -348,9 +348,6 @@
             <div id="time"></div>
         </div>
 
-        <a href="/logout" style="text-decoration: none;">
-            <button class="btn-leave">LEAVE GAME</button>
-        </a>
         <a href="/dashboard" style="text-decoration: none;">
             <button class="btn-leave">BACK TO CREWMATE</button>
         </a>
@@ -360,6 +357,7 @@
     <script src="common.js"></script>
     <script>
         let clientAnimationId = null;
+        let alive = true;
 
         // Helper function for adjustment buttons
         function adjustValue(elementId, isIncrement, maxVal = 120, minVal = 5) {
@@ -436,6 +434,9 @@
             // Cap at 100% just in case
             percentage = Math.min(percentage, 100);
             document.getElementById("taskProgressFill").style.width = percentage + "%";
+            if(data.emergencyMeeting){
+                window.location.href = "/emergency-client"
+            }
         });
 
         // Disable buttons when server acknowledges an active sabotage

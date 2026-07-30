@@ -485,6 +485,8 @@
   // ── SOCKET WIRING ────────────────────────────────────────────
   socket.on('player_data_request', (me) => {
     localPlayerId = me.id;
+    console.log(me)
+    votingOpen = me.alive;
     render();
   });
 
@@ -500,7 +502,6 @@
   });
 
   socket.on('emergency_ack', (payload) => {
-    votingOpen = true;
     hasVoted = false;
     selectedId = null;
     document.getElementById('resultBanner').classList.remove('show');
@@ -537,19 +538,25 @@
       ? payload.players[payload.ejected].username
       : null;
 
-
-    let tx;
-    if(payload.result = "ejection"){
-      banner.textContent = `${ejectedName} ${payload.players[payload.ejected].impostor ? "was" : "was not"} An impostor`;
-    }
-    else{
-      banner.textContent = `No one was ejected (${paylaod.result == "skip" ? "Skipped" : "Tie"})`;
-    }
+    banner.textContent = "Calculating the results..."
+    
     banner.classList.add('show');
     document.getElementById('playerGrid').style.display = 'none';
     document.getElementById('footer').style.display = 'none';
 
-    setTimeout(() => { window.location = '/dashboard'; }, 4000);
+    setTimeout(() => {
+      // 1. Update the banner at 5 seconds
+      if (payload.result == "ejection") {
+        banner.textContent = `${ejectedName} ${payload.players[payload.ejected].impostor ? "was" : "was not"} An impostor`;
+      } else {
+        banner.textContent = `No one was ejected (${payload.result == "skip" ? "Skipped" : "Tie"})`;
+      }
+
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 4000);
+
+    }, 5000);
   });
 
   socket.on("game_over", (data) => {

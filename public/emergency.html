@@ -204,7 +204,7 @@
       <button class="call-btn" id="callBtn">CALL<br>MEETING</button>
     </div>
 
-    <div class="status" id="status">Ready.</div>
+    <div class="status" id="status">Ready</div>
   </div>
 </div>
 
@@ -288,7 +288,7 @@
     await sleep(1500); 
 
     // 2. Type out the outcome text
-    await typeText(textContainer, outcomeText, 200);
+    await typeText(textContainer, outcomeText, 100);
 
     // 3. Pop in remaining impostors subtext
     if (impostorCountText) {
@@ -311,6 +311,20 @@
     socket.emit('emergency');
   });
 
+
+
+  socket.on("sabotage_data_request", (payload) => {
+    if(!payload.sData.o2.depleted && !payload.sData.reactor.meltdown){
+      meetingActive = false;
+      updateButton(false, "CALL<br>MEETING");
+      setStatus("Ready");
+    }
+    else{
+      meetingActive = true;
+      updateButton(true, "ALERT<br>CRISIS");
+      setStatus("Ship component state: critical", true);
+    }
+  });
   socket.on('emergency_ack', (payload) => {
     meetingActive = true;
     updateButton(true, "MEETING<br>IN PROGRESS");
@@ -332,17 +346,7 @@
   });
 
   socket.on("unstable", (data) => {
-    meetingActive = true;
-    updateButton(true, "ALERT<br>CRISIS");
-    setStatus("Ship component state: critical", true);
-  });
-
-  socket.on("fix_ack", (data) => {
-    if(data.ok){
-      meetingActive = false;
-      updateButton(false, "CALL<br>MEETING");
-      setStatus("Ready");
-    }
+    
   });
 
   socket.on('emergency_result', async (payload) => {

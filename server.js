@@ -135,7 +135,8 @@ const DEFAULT_GAME_STATE = {
     host: "",
     aliveImpostors: 0,
     playerCount: 0,
-    alivePlayers: 0
+    alivePlayers: 0,
+    lastEjection: null
 };
 
 const DEFAULT_SABOTAGES = {
@@ -238,6 +239,8 @@ app.post('/enter', async (req, res) => {
             data.gameState.alivePlayers = Object.keys(data.players).length;
 
             await saveGame(data);
+            // Anyone already watching the lobby (host included) needs to see the new player count.
+            io.emit('game_data_request', data.gameState);
             logDebug(`New player joined: ${username} with ID ${UUID}`);
 
             return res.status(200).json({ message: "username created!" })
@@ -281,7 +284,12 @@ app.post('/enter-host', async (req, res) => {
 
                 data.servers[UUID] = "none";
                 await saveGame(data);
-                
+                // Let the host lobby know a new device just connected (relevant to isGameOperational()).
+                io.emit('servers_data_request', {
+                    servers: data.servers,
+                    operational: isGameOperational(data.servers)
+                });
+
                 logDebug(`New server joined with ID ${UUID}`);
                 return res.sendFile(path.join(__dirname, 'public', 'server.html'))
             }
@@ -313,6 +321,7 @@ app.post('/enter-host', async (req, res) => {
             data.gameState.alivePlayers = Object.keys(data.players).length;
 
             await saveGame(data);
+            io.emit('game_data_request', data.gameState);
             logDebug(`Host successfully joined: ${username} with ID ${UUID}`);
 
             return res.status(200).json({ message: "wellcome, host!" })
@@ -334,6 +343,7 @@ app.get("/end", async (req, res) => {
     data.gameState.started = false;
     logDebug("Host ended the game.");
     await saveGame(data);
+    io.emit('game_data_request', data.gameState);
     res.sendStatus(200);
 })
 
@@ -353,11 +363,12 @@ app.get("/restart", async (req, res) => {
 
         for (const id of Object.keys(data.players)) {
             const p = data.players[id];
+            const wasDummy = p.role === 'dummy';
             p.impostor = false;
-            p.role = "none";
+            p.role = wasDummy ? 'dummy' : 'none';
             p.alive = true;
             p.tasksCompleted = 0;
-            p.totalTasks = data.settings.tasks;
+            p.totalTasks = wasDummy ? 0 : data.settings.tasks;
         }
 
         const playerCount = Object.keys(data.players).length;
@@ -376,6 +387,7 @@ app.get("/restart", async (req, res) => {
 
         await saveGame(data);
         io.emit('restart_game', {});
+        io.emit('game_data_request', data.gameState);
 
         return res.redirect("/waiting")
     });
@@ -397,11 +409,12 @@ app.post("/restart", async (req, res) => {
 
         for (const id of Object.keys(data.players)) {
             const p = data.players[id];
+            const wasDummy = p.role === 'dummy';
             p.impostor = false;
-            p.role = "none";
+            p.role = wasDummy ? 'dummy' : 'none';
             p.alive = true;
             p.tasksCompleted = 0;
-            p.totalTasks = data.settings.tasks; 
+            p.totalTasks = wasDummy ? 0 : data.settings.tasks;
         }
 
         const playerCount = Object.keys(data.players).length;
@@ -420,6 +433,7 @@ app.post("/restart", async (req, res) => {
 
         await saveGame(data);
         io.emit('restart_game', {});
+        io.emit('game_data_request', data.gameState);
 
         return res.status(200).json({ message: "Game restarted.", failed: false });
     });
@@ -465,13 +479,6 @@ app.get('/impostor', async (req, res) => {
     return res.sendFile(path.join(__dirname, 'public', 'crewmate.html'));
 })
 
-app.get("/emergency", async (req, res) => {
-    const data = await loadGame();
-    if (!validateServer(data.servers, req.cookies.session)) {
-        return res.status(401).json({ err: "401 unauthorised" })
-    }
-    return res.status(200).sendFile(path.join(__dirname, 'public', 'emergency.html'));
-})
 app.get('/emergency-client', async (req, res) => {
     const data = await loadGame();
     const session = req.cookies.session;
@@ -487,22 +494,51 @@ app.get('/logout', async (req, res) => {
     await withGameLock(async () => {
         const data = await loadGame();
         if (data.players[session]) {
-            logDebug(`Player logged out: ${data.players[session].username} (${session})`);
-            if (data.gameState.host == data.players[session].username) {
+            const leavingPlayer = data.players[session];
+            logDebug(`Player logged out: ${leavingPlayer.username} (${session})`);
+            if (data.gameState.host == leavingPlayer.username) {
                 logDebug(`Host logged out! Stopping game.`);
                 data.gameState.host = "";
                 data.gameState.started = false;
             }
+
+            // Only decrement alive-related counters if this player was actually still alive -
+            // previously this ran unconditionally, silently under-counting whenever a dead
+            // player (or an impostor) logged out.
+            const wasAlive = leavingPlayer.alive !== false;
             delete data.players[session];
             data.gameState.playerCount = Math.max(0, data.gameState.playerCount - 1);
-            data.gameState.alivePlayers = Math.max(0, data.gameState.alivePlayers - 1);
+
+            if (wasAlive) {
+                data.gameState.alivePlayers = Math.max(0, data.gameState.alivePlayers - 1);
+                if (leavingPlayer.impostor) {
+                    data.gameState.aliveImpostors = Math.max(0, data.gameState.aliveImpostors - 1);
+                }
+                evaluateWinConditions(data, {
+                    crewWin: "THE CREW ELIMINATED EVERY IMPOSTOR",
+                    impostorWin: "THE IMPOSTORS OVERWHELMED THE CREW"
+                });
+            }
+
             await saveGame(data);
+            io.emit('game_data_request', data.gameState);
+
+            if (!data.gameState.started && (data.gameState.crewmatesWon || data.gameState.impostorsWon)) {
+                io.emit('game_over', {
+                    winner: data.gameState.crewmatesWon ? 'crewmates' : 'impostors',
+                    reason: 'disconnect'
+                });
+            }
         }
 
         if (data.servers && data.servers.hasOwnProperty(session)) {
             logDebug(`Server device logged out: ${session}`);
             delete data.servers[session];
             await saveGame(data);
+            io.emit('servers_data_request', {
+                servers: data.servers,
+                operational: isGameOperational(data.servers)
+            });
         }
     });
 
@@ -523,6 +559,10 @@ app.post("/deviceFunc", async (req, res) => {
     data.servers[req.cookies.session] = sf;
     logDebug(`${sf} server is now online and registered to session ${req.cookies.session}`);
     await saveGame(data);
+    io.emit('servers_data_request', {
+        servers: data.servers,
+        operational: isGameOperational(data.servers)
+    });
     return res.status(200).json({ ok: true });
 })
 
@@ -533,7 +573,7 @@ app.get("/o2", async (req, res) => {
         
     }
     if(data.servers[req.cookies.session] != "o2"){
-            return res.status(400).redirect(data.servers[req.cookies.session])
+            return res.redirect(data.servers[req.cookies.session])
         }
     return res.status(200).sendFile(publicPath("o2"));
 })
@@ -544,7 +584,7 @@ app.get("/reactor", async (req, res) => {
         return res.status(401).json({ err: "401 unauthorised" })
     }
     if(data.servers[req.cookies.session] != "reactor"){
-            return res.status(400).redirect(data.servers[req.cookies.session])
+            return res.redirect(data.servers[req.cookies.session])
         }
     return res.status(200).sendFile(publicPath("reactor"));
 })
@@ -556,7 +596,7 @@ app.get("/control%20panel", async (req, res) => {
         
     }
     if(data.servers[req.cookies.session] != "control panel"){
-            return res.status(400).redirect(data.servers[req.cookies.session])
+            return res.redirect(data.servers[req.cookies.session])
         }
     return res.status(200).sendFile(publicPath("control panel"));
 })
@@ -568,7 +608,7 @@ app.get("/emergency", async (req, res) => {
         
     }
     if(data.servers[req.cookies.session] != "emergency"){
-            return res.status(400).redirect(data.servers[req.cookies.session])
+            return res.redirect(data.servers[req.cookies.session])
         }
     return res.status(200).sendFile(publicPath("emergency"));
 })
@@ -594,6 +634,13 @@ async function startSabotageCountdown(type, seconds) {
     else data.activeSabotages.reactor.meltdown = false;
 
     await saveGame(data);
+
+    // Broadcast immediately instead of waiting for the first 1s tick, so every
+    // connected client (not just the one that triggered it) finds out right away.
+    io.emit('sabotage_data_request', {
+        sData: data.activeSabotages,
+        endTime: Date.now() + (seconds * 1000)
+    });
 
     const timer = setInterval(async () => {
         try {
@@ -691,6 +738,7 @@ async function fixSabotage(type) {
     await saveGame(d);
 
     io.emit('sabotage_fixed', { type });
+    io.emit("sabotage_data_request", { sData: d.activeSabotages, timeLeft:0})
     return true;
 }
 
@@ -700,6 +748,35 @@ function clearAllSabotageTimers() {
         clearInterval(t);
     }
     sabotageTimers.clear();
+}
+
+// Shared win-condition check, used by anything that can change alive/impostor counts
+// (ejection, direct death reports, and players logging out mid-game). Consolidating
+// this in one place also means the sabotage/meeting timers always get cleaned up
+// consistently whenever the game actually ends, no matter what triggered the win.
+function evaluateWinConditions(data, messages = {}) {
+    if (!data.gameState.started) return false;
+
+    const aliveImpostors = data.gameState.aliveImpostors;
+    const aliveCrew = Math.max(0, data.gameState.alivePlayers - aliveImpostors);
+
+    if (aliveImpostors <= 0) {
+        data.gameState.crewmatesWon = true;
+        data.gameState.impostorsWon = false;
+        data.gameState.started = false;
+        data.gameState.winCondition = messages.crewWin || "THE CREW ELIMINATED EVERY IMPOSTOR";
+    } else if (aliveImpostors >= aliveCrew) {
+        data.gameState.impostorsWon = true;
+        data.gameState.crewmatesWon = false;
+        data.gameState.started = false;
+        data.gameState.winCondition = messages.impostorWin || "THE IMPOSTORS OVERWHELMED THE CREW";
+    } else {
+        return false;
+    }
+
+    clearAllSabotageTimers();
+    clearEmergencyMeetingTimer();
+    return true;
 }
 
 let emergencyMeetingTimer = null;
@@ -751,7 +828,14 @@ async function startEmergencyMeeting() {
         return;
     }
 
+    if (data.activeSabotages.o2.depleted || data.activeSabotages.reactor.meltdown) {
+        logDebug("Emergency meeting rejected: Crisis is underway.");
+        return;
+    }
+
+
     logDebug("Emergency meeting started.");
+    clearAllSabotageTimers();
     clearEmergencyMeetingTimer();
     emergencyVotes = {};
 
@@ -763,6 +847,7 @@ async function startEmergencyMeeting() {
     await saveGame(data);
 
     io.emit('emergency_ack', { countdown, endTime, players: buildEmergencyRoster(data) });
+    io.emit('game_data_request', data.gameState);
 
     emergencyMeetingTimer = setTimeout(async () => {
         logDebug("Emergency meeting timer concluded.");
@@ -818,26 +903,18 @@ async function resolveEmergencyMeeting(resultData) {
             data.gameState.aliveImpostors = Math.max(0, data.gameState.aliveImpostors - 1);
         }
 
-        // Check win conditions
-        const aliveImpostors = data.gameState.aliveImpostors;
-        const aliveCrew = Math.max(0, data.gameState.alivePlayers - aliveImpostors);
-
-        if (aliveImpostors <= 0) {
-            data.gameState.crewmatesWon = true;
-            data.gameState.impostorsWon = false;
-            data.gameState.started = false;
-            data.gameState.winCondition = "THE CREW EJECTED EVERY IMPOSTOR";
-        } else if (aliveImpostors >= aliveCrew) {
-            data.gameState.impostorsWon = true;
-            data.gameState.crewmatesWon = false;
-            data.gameState.started = false;
-            data.gameState.winCondition = "THE IMPOSTORS OVERWHELMED THE CREW";
-        }
-
-        if (!data.gameState.started) {
-            clearAllSabotageTimers();
-        }
+        evaluateWinConditions(data, {
+            crewWin: "THE CREW EJECTED EVERY IMPOSTOR",
+            impostorWin: "THE IMPOSTORS OVERWHELMED THE CREW"
+        });
     }
+
+    data.gameState.lastEjection = {
+        result: _result,
+        playerId: ejectedId,
+        playerName: ejectedId && data.players[ejectedId] ? data.players[ejectedId].username : null,
+        wasImpostor: ejectedId && data.players[ejectedId] ? !!data.players[ejectedId].impostor : null
+    };
 
     await saveGame(data);
 
@@ -848,8 +925,11 @@ async function resolveEmergencyMeeting(resultData) {
         result: _result
     });
 
+    // Always broadcast the fresh game state - alive/impostor counts and the
+    // emergencyMeeting flag just changed regardless of whether anyone won.
+    io.emit('game_data_request', data.gameState);
+
     if (!data.gameState.started && (data.gameState.crewmatesWon || data.gameState.impostorsWon)) {
-        io.emit('game_data_request', data.gameState);
         io.emit('game_over', {
             winner: data.gameState.crewmatesWon ? 'crewmates' : 'impostors',
             reason: 'emergency_meeting'
@@ -861,7 +941,7 @@ app.post(`/env`, (req, res) => {
     return res.json({ip:IP, port:PORT});
 })
 
-function ejectHtml(textToType) {
+function ejectHtml(textToType = "") {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1032,7 +1112,20 @@ function ejectHtml(textToType) {
 
 app.get("/revealResults", async (req, res) => {
     const data = await loadGame();
-    return ejectHtml()
+    const last = data.gameState.lastEjection;
+
+    let text;
+    if (!last || last.result === 'tie') {
+        text = "NO ONE WAS EJECTED\n(TIE VOTE)";
+    } else if (last.result === 'skip') {
+        text = "NO ONE WAS EJECTED";
+    } else if (last.result === 'ejection' && last.playerName) {
+        text = `${last.playerName.toUpperCase()} WAS EJECTED\n${last.wasImpostor ? "THEY WERE THE IMPOSTOR" : "THEY WERE NOT THE IMPOSTOR"}`;
+    } else {
+        text = "NO ONE WAS EJECTED";
+    }
+
+    return res.send(ejectHtml(text));
 })
 
 app.post("/addDummyPlayers", async (req, res) => {
@@ -1079,6 +1172,7 @@ app.post("/addDummyPlayers", async (req, res) => {
     data.gameState.alivePlayers = totalCount;
 
     await saveGame(data);
+    io.emit('game_data_request', data.gameState);
     logDebug(`Host successfully added ${toAdd} dummy players.`);
     res.status(200).json({ message: `Successfully added ${toAdd} dummy players.` });
 });
@@ -1131,15 +1225,33 @@ io.on("connection", async (socket) => {
                 });
             }
         }
+        else if (validateServer(data.servers, cookies.session)) {
+            // Previously server/room devices (o2, reactor, emergency, control panel) fell through
+            // to the "username not found" branch below and got an unwarranted Err on every connect.
+            logDebug(`Server device connected via socket (session: ${cookies.session}, role: ${data.servers[cookies.session]})`);
+
+            let targetEndTimestamp = 0;
+
+            if (data.activeSabotages.o2 && data.activeSabotages.o2.sabotaged && !data.activeSabotages.o2.depleted) {
+                targetEndTimestamp = Date.now() + (data.activeSabotages.o2.timeLeft * 1000);
+            } else if (data.activeSabotages.reactor && data.activeSabotages.reactor.sabotaged && !data.activeSabotages.reactor.meltdown) {
+                targetEndTimestamp = Date.now() + (data.activeSabotages.reactor.timeLeft * 1000);
+            }
+
+            socket.emit("sabotage_data_request", {
+                sData: data.activeSabotages,
+                endTime: targetEndTimestamp
+            });
+            socket.emit("game_data_request", data.gameState);
+            socket.emit("servers_data_request", {
+                servers: data.servers,
+                operational: isGameOperational(data.servers)
+            });
+        }
         else {
             logDebug(`Socket connection rejected: username not found for session ${cookies.session}`);
             socket.emit("Err", { error: "username not found." });
         }
-
-        socket.on("unstable", (payload) => {
-            logDebug("Recieved unstable signal, Rebrodcasting for emergency Server.")
-            socket.emit("unstable", {active:true});
-        })
         
         socket.on("sabotage", async (sabdata) => {
             logDebug(`Client (${cookies.session}) requested sabotage: ${sabdata ? sabdata.type : 'unknown'}`);
@@ -1149,9 +1261,13 @@ io.on("connection", async (socket) => {
                     socket.emit('sabotage_ack', {ok:false})
                     return;
                 }
-                if(data.activeSabotages.reactor.sabotaged || data.activeSabotages.reactor.sabotaged || data.activeSabotages.reactor.meltdown || data.activeSabotages.o2.depleted){
+                // Load fresh state instead of the stale snapshot captured at connect time,
+                // and check o2 (not reactor twice, as before) for an already-active sabotage.
+                const freshData = await loadGame();
+                if(freshData.activeSabotages.o2.sabotaged || freshData.activeSabotages.reactor.sabotaged || freshData.activeSabotages.reactor.meltdown || freshData.activeSabotages.o2.depleted){
                     socket.emit('Err', { error: 'already sabotaged' });
                     socket.emit('sabotage_ack', {ok:false})
+                    return;
                 }
                 await startSabotageCountdown(sabdata.type, sabdata.countdown);
                 socket.emit('sabotage_ack', { ok:true });
@@ -1169,7 +1285,6 @@ io.on("connection", async (socket) => {
                     await resolveEmergencyMeeting(payload);
                     return;
                 }
-                socket.emit("fix_ack", {ok: true})
                 await startEmergencyMeeting();
             } catch (e) {
                 logError("Emergency error:", e);
@@ -1238,16 +1353,54 @@ io.on("connection", async (socket) => {
         
         socket.on("im-dead", async () => {
             logDebug(`${cookies.session} requested death`);
-            if(!data.players[cookies.session]){
-                logDebug(`Death request failed: No user found for session ${cookies.session}`);
-                socket.emit("Err", {error:"No user found with associated session."})
-                socket.emit("imdead_ack", {ok:false});
-                return;
+            try {
+                // Reload fresh instead of mutating the connection-scoped snapshot from
+                // above - that snapshot could be stale by the time this fires and would
+                // silently clobber anything else that changed in the meantime on save.
+                const d = await loadGame();
+                const player = d.players[cookies.session];
+
+                if (!player) {
+                    logDebug(`Death request failed: No user found for session ${cookies.session}`);
+                    socket.emit("Err", { error: "No user found with associated session." });
+                    socket.emit("imdead_ack", { ok: false });
+                    return;
+                }
+
+                if (player.alive === false) {
+                    socket.emit("imdead_ack", { ok: true });
+                    return;
+                }
+
+                player.alive = false;
+                d.gameState.alivePlayers = Math.max(0, d.gameState.alivePlayers - 1);
+                if (player.impostor) {
+                    d.gameState.aliveImpostors = Math.max(0, d.gameState.aliveImpostors - 1);
+                }
+
+                evaluateWinConditions(d, {
+                    crewWin: "THE CREW ELIMINATED EVERY IMPOSTOR",
+                    impostorWin: "THE IMPOSTORS OVERWHELMED THE CREW"
+                });
+
+                await saveGame(d);
+                logDebug(`${cookies.session} death confirmed`);
+
+                socket.emit("imdead_ack", { ok: true });
+                socket.emit("player_data_request", player);
+                io.emit("game_data_request", d.gameState);
+
+                if (!d.gameState.started && (d.gameState.crewmatesWon || d.gameState.impostorsWon)) {
+                    io.emit('game_over', {
+                        winner: d.gameState.crewmatesWon ? 'crewmates' : 'impostors',
+                        reason: 'death'
+                    });
+                }
+            } catch (e) {
+                logError("im-dead error:", e);
+                socket.emit("Err", { error: e.message });
+                socket.emit("imdead_ack", { ok: false });
             }
-            data.players[cookies.session].alive = false; 
-            logDebug(`${cookies.session} death confirmed`);
-            socket.emit("imdead_ack", {ok:true});
-            await saveGame(data);
         })
         
         socket.on("fix_sabotage", async (payload) => {
@@ -1265,6 +1418,14 @@ io.on("connection", async (socket) => {
                 socket.emit('Err', { error: e.message });
                 socket.emit('fix_ack', {ok:false})
             }
+        });
+
+        socket.on("unstable", (payload) => {
+            // This previously lived on io.on("unstable", ...) at module scope, outside any
+            // connection handler - io never emits custom app events itself (only sockets do),
+            // and "socket" wasn't even in scope there, so this could never actually fire.
+            logDebug(`Received unstable signal from ${cookies.session}, rebroadcasting for emergency server.`);
+            io.emit("unstable", { active: true });
         });
         
         socket.on('disconnect', () => {
@@ -1369,17 +1530,17 @@ app.post("/start", async (req, res) => {
             return res.status(202).json({ message: "Cant start the game - o2, reactor or emergency server is missing.", failed: true })
         }
 
-        const playerIds = Object.keys(data.players);
-        const totalPlayers = playerIds.length;
+        const allPlayerIds = Object.keys(data.players);
+        const totalRealPlayers = allPlayerIds.length;
 
-        const parsedSettings = parseSettingsArray(req.body.settings, totalPlayers);
+        const parsedSettings = parseSettingsArray(req.body.settings, totalRealPlayers);
         if (!parsedSettings) {
             logDebug("Game start blocked: Invalid or missing settings.");
             return res.status(400).json({ message: "Invalid or missing settings.", failed: true });
         }
 
-        logDebug(`Starting game with ${totalPlayers} players.`);
-        clearAllSabotageTimers();
+        logDebug(`Starting game with ${totalRealPlayers} real players (+ ${dummyIds.length} dummy players).`);
+        
         clearEmergencyMeetingTimer();
 
         data.settings = parsedSettings;
@@ -1388,15 +1549,13 @@ app.post("/start", async (req, res) => {
         emergencyCountdownSeconds = data.settings.emergencyCountdown;
 
         let roleDeck = [];
-        for (let i = 0; i < totalPlayers; i++) {
+        for (let i = 0; i < totalRealPlayers; i++) {
             if (i < targetImpostors) {
                 roleDeck.push("impostor");
             } else {
                 roleDeck.push("crewmate");
             }
         }
-
-        let totalTasks = 0;
 
         for (let i = roleDeck.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -1405,7 +1564,9 @@ app.post("/start", async (req, res) => {
             roleDeck[j] = temp;
         }
 
-        playerIds.forEach((id, index) => {
+        let totalTasks = 0;
+
+        realPlayerIds.forEach((id, index) => {
             const assignedRole = roleDeck[index];
             data.players[id].impostor = (assignedRole === "impostor");
             data.players[id].role = assignedRole === "impostor" ? "impostor" : "crewmate";
@@ -1414,6 +1575,13 @@ app.post("/start", async (req, res) => {
             totalTasks += data.settings.tasks;
             
             logDebug(`${id} is now ${assignedRole}`);
+        });
+
+        dummyIds.forEach((id) => {
+            data.players[id].impostor = false;
+            data.players[id].role = 'dummy';
+            data.players[id].totalTasks = 0;
+            data.players[id].tasksCompleted = 0;
         });
 
         data.gameState.started = true;
@@ -1426,6 +1594,7 @@ app.post("/start", async (req, res) => {
         data.gameState.completedTasks = 0;
         data.gameState.emergencyMeeting = false;
         data.gameState.emergencyMeetingEndTime = 0;
+        data.gameState.lastEjection = null;
 
         data.activeSabotages = {
             o2: { ...DEFAULT_SABOTAGES.o2 },
@@ -1434,9 +1603,8 @@ app.post("/start", async (req, res) => {
 
         await saveGame(data);
         logDebug("Game successfully started.");
-        io.on("connection", (scoket) => {
-            socket.emit("start", {started:true})
-        })
+        io.emit("start", {started:true})
+        io.emit("game_data_request", data.gameState);
         return res.status(200).json({ message: "May a fine game take place, among us!", failed: false });
     });
 });
@@ -1497,6 +1665,13 @@ app.get("/reset", async (req, res) => {
     };
 
     await saveGame(data);
+    // Everything just got wiped - make sure every connected client (players, host, and
+    // room devices) hears about it instead of being left showing stale state.
+    io.emit('game_data_request', data.gameState);
+    io.emit('servers_data_request', { servers: data.servers, operational: false });
+    io.emit('sabotage_data_request', { sData: data.activeSabotages, endTime: 0 });
+    io.emit('restart_game', {});
+
     let dynamicHtml = `
         <!DOCTYPE html>
         <html>
