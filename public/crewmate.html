@@ -615,6 +615,10 @@
                 }
             });
 
+            sokcet.on("restart_game", function(data){
+                window.location.href = "/waiting";
+            })
+
             socket.on('Err', function(data) {
                 console.error('Server error:', data.error);
                 showToast('Error: ' + data.error, 'error');

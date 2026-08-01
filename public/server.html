@@ -13,6 +13,7 @@
         <p style="margin: 10px" id="func_val">o2</p>
         <button onclick="cicleBetweenValues('func_val', true, ['o2', 'reactor', 'control panel', 'emergency'])">&gt;</button>
     </div>
+    <p id="server_res"></p>
     <br>
     <button onclick="postServer()">Submit</button>
     <script src="/socket.io/socket.io.js"></script>
@@ -33,6 +34,9 @@
             .then((data) => {
                 if(data.ok){
                     window.location.href = "/" + it;
+                }
+                else{
+                    get("server_res").innerText = data.resp;
                 }
             })
         }

@@ -50,11 +50,15 @@
     </div>
     <button style="margin-top: 10px;" onclick="createDummyPlayers()">Create dummy players</button>
     <p id="dummy_resp"></p>
+    <h4>Fill server slots with dummies</h4>
+    <button onclick="createDummyServers()">Fill</button>
+    <p id="server_resp"></p>
     <hr>
     
     <button onclick="post_start()">start game</button>
     <a href="/logout"><button>leave</button></a>
     <a href="/reset"><button>reset</button></a>
+    
     <br>
     <p id="fail"></p>
 
@@ -110,6 +114,16 @@
             })
             .then(res => res.json())
             .then((data) => { get('dummy_resp').innerText = data.message; })
+            .catch(console.error);
+        }
+
+        function createDummyServers() {
+            fetch('/addDummyServers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            })
+            .then(res => res.json())
+            .then((data) => { get('server_resp').innerText = data.message; })
             .catch(console.error);
         }
 

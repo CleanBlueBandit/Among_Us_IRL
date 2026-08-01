@@ -262,7 +262,6 @@ app.post('/enter', async (req, res) => {
             data.gameState.alivePlayers = Object.keys(data.players).length;
 
             await saveGame(data);
-            // Anyone already watching the lobby (host included) needs to see the new player count.
             io.emit('game_data_request', data.gameState);
             logDebug(`New player joined: ${username} with ID ${UUID}`);
 
@@ -577,8 +576,14 @@ app.post("/deviceFunc", async (req, res) => {
     const sf = req.body.setting;
     if (!validateServer(data.servers, req.cookies.session)) {
         logDebug(`Unauthorised /deviceFunc request by ${req.cookies.session}`);
-        return res.status(401).json({ err: "401 unauthorised" })
+        return res.status(401).json({ ok : false, resp : "401 unauthorised" })
     }
+    Object.values(data.servers).forEach(v => {
+        if(v == req.body.setting){
+            logDebug(`${req.cookies.session} tried to take on the role of an existing server, denying.`);
+            return res.status(400).json({ ok:false, resp : "400 - the server role is already taken." })
+        }
+    });
     data.servers[req.cookies.session] = sf;
     logDebug(`${sf} server is now online and registered to session ${req.cookies.session}`);
     await saveGame(data);
@@ -1206,6 +1211,26 @@ app.post("/addDummyPlayers", async (req, res) => {
 });
 
 
+app.post("/addDummyServers", async (req, res) => {
+    const data = await loadGame();
+
+
+    if (data.players[req.cookies.session]?.username !== data.gameState.host) {
+        logDebug(`Unauthorised dummy player request by ${req.cookies.session}`);
+        return res.status(401).json({ message: "401 Unauthorized", hint: "No host - no admin controls." });
+    }
+    data.servers = {
+        "o2_dummy":"o2",
+        "reactor_dummy":"reactor",
+        "emergency_dummy":"emergency"
+    }
+    await saveGame(data);
+    io.emit('game_data_request', data.gameState);
+    logDebug(`Host successfully added servers.`);
+    res.status(200).json({ message: `Successfully added dummy servers` });
+});
+
+
 function parseSocketCookies(cookieHeader) {
     const cookies = {};
     if (!cookieHeader) return cookies;
@@ -1570,7 +1595,7 @@ app.post("/start", async (req, res) => {
 
         if (!isGameOperational(data.servers)) {
             logDebug("Game start blocked: Operational servers are missing.");
-            return res.status(202).json({ message: "Cant start the game - o2, reactor or emergency server is missing.", failed: true })
+            return res.status(202).json({ message: "Cant start the game - o2, reactor or emergency server is missing. (Or all of them idk)", failed: true })
         }
 
         const allPlayerIds = Object.keys(data.players);
@@ -1592,7 +1617,7 @@ app.post("/start", async (req, res) => {
         emergencyCountdownSeconds = btoActive ? betaTestingOverride.emergencyCountdown : data.settings.emergencyCountdown;
 
         let roleDeck = [];
-        for (let i = 0; i < allPlayerIds; i++) {
+        for (let i = 0; i < allPlayerIds.length; i++) {
             if (i < targetImpostors) {
                 roleDeck.push("impostor");
             } else {
