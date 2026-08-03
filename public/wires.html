@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wires task</title>
+</head>
+<style>
+
+    body{
+        background-color: #3d4b4c;
+        user-select: none;
+    }
+    .container{
+        position: relative;
+        justify-self: center;
+        width: 95%;
+        border: 10px solid gray;
+        border-radius: 8px;
+        height: 60vh;
+        display: flex;
+        flex-direction: row;
+        background-image: url(wires.png);
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        justify-content: left;
+    }
+
+    .subcontainer{
+        display: flex;
+        flex-direction: column;
+        width: 50%;
+        gap: 7.55vh;
+        margin-top: 10vh;
+    }
+
+    .left {
+        align-items: flex-start;
+    }
+
+    .right {
+        align-items: flex-end;
+    }
+    button{
+        width: 30%;
+        height: 5vh;
+        border: 0;
+        cursor: grab;
+        touch-action: none;
+    }
+
+    .left_btn{
+        border-radius: 0 8px 8px 0;
+    }
+    .right_btn{
+        border-radius: 8px 0 0 8px;
+    }
+    
+    .top-container{
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 25vh;
+    }
+
+    h1{
+        font-family: Arial, Helvetica, sans-serif;
+    }
+
+
+    .wires-layer{
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+    }
+
+    .wire-line{
+        position: absolute;
+        height: 5vh;
+        border-radius: 0 8px 8px 0;
+        transform-origin: 0 50%;
+        pointer-events: none;
+        display: none;
+    }
+
+    .wire-handle{
+        position: absolute;
+        background: transparent;
+        transform: translate(-50%, -50%);
+        pointer-events: auto;
+        touch-action: none;
+        cursor: grab;
+        display: none;
+    }
+
+    .wire-handle:active{
+        cursor: grabbing;
+    }
+
+</style>
+<body>
+    <div class="top-container">
+        <h1>FIX WIRING</h1>
+    </div>
+    <div class="container">
+        <div class="left subcontainer"></div>
+        <div class="right subcontainer"></div>
+    </div>
+
+   <script>
+        const colors = ["red", "yellow", "blue", "magenta"];
+
+        const container = document.querySelector(".container");
+        const leftContainer = document.querySelector(".left");
+        const rightContainer = document.querySelector(".right");
+
+        const OFFSET_X_LEFT = 12; 
+        const OFFSET_X_RIGHT = 15; 
+        const OFFSET_Y = -16.5;
+
+        let pool = [...colors];
+        while (pool.length > 0) {
+            let index = Math.floor(Math.random() * pool.length);
+            const el = pool[index];
+            pool.splice(index, 1);
+
+            const button = document.createElement("button");
+            button.style.backgroundColor = el;
+            button.setAttribute("id", `${el}_left`);
+            button.setAttribute("class", "left_btn");
+            button.setAttribute("type", "button");
+            leftContainer.append(button);
+        }
+
+        pool = [...colors];
+        while (pool.length > 0) {
+            let index = Math.floor(Math.random() * pool.length);
+            const el = pool[index];
+            pool.splice(index, 1);
+
+            const button = document.createElement("button");
+            button.style.backgroundColor = el;
+            button.setAttribute("id", `${el}_right`);
+            button.setAttribute("class", "right_btn");
+            button.setAttribute("type", "button");
+            rightContainer.append(button);
+        }
+
+        const wiresLayer = document.createElement("div");
+        wiresLayer.className = "wires-layer";
+        container.appendChild(wiresLayer);
+
+        const wires = {};
+        let connected = {};
+
+        colors.forEach(color => {
+            const line = document.createElement("div");
+            line.className = "wire-line";
+            line.style.backgroundColor = color;
+            wiresLayer.appendChild(line);
+
+            const handle = document.createElement("div");
+            handle.className = "wire-handle";
+            handle.style.backgroundColor = color;
+            wiresLayer.appendChild(handle);
+
+            wires[color] = {
+                connectedRight: null,
+                lineEl: line,
+                handleEl: handle
+            };
+            connected[color] = false;
+
+            handle.addEventListener("pointerdown", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                beginDrag(color, pointFromEvent(e));
+            });
+
+            document.getElementById(`${color}_left`).addEventListener("pointerdown", (e) => {
+                e.preventDefault();
+                beginDrag(color, getLeftTip(color));
+            });
+        });
+
+        let zCounter = 1;
+        let activeDrag = null;
+
+        function getTipPoint(el, side){
+            const contRect = wiresLayer.getBoundingClientRect();
+            const rect = el.getBoundingClientRect();
+            
+            const offsetX = side === "right" ? OFFSET_X_RIGHT : OFFSET_X_LEFT;
+            const y = (rect.top + rect.height / 2 - contRect.top) + OFFSET_Y;
+            const x = (side === "right" ? rect.left - contRect.left : rect.left - contRect.left) + offsetX;
+            return { x, y };
+        }
+
+        function getLeftTip(color){
+            return getTipPoint(document.getElementById(`${color}_left`), "left");
+        }
+
+        function getRightTip(color){
+            return getTipPoint(document.getElementById(`${color}_right`), "right");
+        }
+
+        function pointFromEvent(e){
+            const contRect = wiresLayer.getBoundingClientRect();
+            return { x: e.clientX - contRect.left + OFFSET_X_LEFT, y: e.clientY - contRect.top + OFFSET_Y };
+        }
+
+        function isNearRightPort(point, color){
+            const btn = document.getElementById(`${color}_right`);
+            const contRect = wiresLayer.getBoundingClientRect();
+            const rect = btn.getBoundingClientRect();
+            const margin = 25; // how forgiving "near" is, in px
+            
+            const left = rect.left - contRect.left - margin + OFFSET_X_RIGHT;
+            const right = rect.right - contRect.left + margin + OFFSET_X_RIGHT;
+            const top = rect.top - contRect.top - margin + OFFSET_Y;
+            const bottom = rect.bottom - contRect.top + margin + OFFSET_Y;
+            return point.x >= left && point.x <= right && point.y >= top && point.y <= bottom;
+        }
+
+        function findNearbyRightPort(point){
+            for (const color of colors){
+                if (isNearRightPort(point, color)) return color;
+            }
+            return null;
+        }
+
+        function drawLine(lineEl, p1, p2){
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const length = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+            lineEl.style.width = `${length}px`;
+            lineEl.style.left = `${p1.x}px`;
+            lineEl.style.top = `${p1.y}px`;
+            lineEl.style.transform = `rotate(${angle}deg)`;
+        }
+
+        function renderWire(color, tip){
+            const wire = wires[color];
+            drawLine(wire.lineEl, getLeftTip(color), tip);
+            wire.handleEl.style.left = `${tip.x}px`;
+            wire.handleEl.style.top = `${tip.y}px`;
+        }
+
+        function beginDrag(color, initialTip){
+            document.removeEventListener("pointermove", onDragMove);
+
+            const wire = wires[color];
+            wire.connectedRight = null;
+
+            zCounter += 1;
+            wire.lineEl.style.zIndex = zCounter;
+            wire.handleEl.style.zIndex = zCounter;
+
+            wire.lineEl.style.display = "block";
+            wire.handleEl.style.display = "block";
+
+            activeDrag = color;
+            renderWire(color, initialTip);
+
+            document.addEventListener("pointermove", onDragMove);
+            document.addEventListener("pointerup", onDragEnd, { once: true });
+        }
+
+        function onDragMove(e){
+            if (!activeDrag) return;
+            renderWire(activeDrag, pointFromEvent(e));
+        }
+
+        function onDragEnd(e){
+            if (!activeDrag) return;
+            const color = activeDrag;
+            const wire = wires[color];
+            const releasePoint = pointFromEvent(e);
+            const nearRight = findNearbyRightPort(releasePoint);
+
+            document.removeEventListener("pointermove", onDragMove);
+
+            if (nearRight){
+                wire.connectedRight = nearRight;
+                renderWire(color, getRightTip(nearRight));
+            } else {
+                wire.connectedRight = null;
+                wire.lineEl.style.display = "none";
+                wire.handleEl.style.display = "none";
+            }
+
+            activeDrag = null;
+            updateConnectedStatus();
+        }
+
+        function updateConnectedStatus(){
+            colors.forEach(color => {
+                connected[color] = wires[color].connectedRight === color;
+            });
+            if (checkDone()){
+                resetWires();
+            }
+        }
+
+        function checkDone(){
+            let ec = 0;
+            for (const [key, value] of Object.entries(connected)){
+                if (!value){
+                    console.log(`${key} isnt wired up correctly!`);
+                    ec += 1;
+                }
+            }
+            if (ec === 0){
+                console.log("Wires task done!");
+                return true;
+            }
+            return false;
+        }
+
+        function resetWires(){
+            colors.forEach(color => {
+                const wire = wires[color];
+                wire.connectedRight = null;
+                wire.lineEl.style.display = "none";
+                wire.handleEl.style.display = "none";
+                connected[color] = false;
+            });
+        }
+
+        window.addEventListener("resize", () => {
+            colors.forEach(color => {
+                const wire = wires[color];
+                if (wire.connectedRight){
+                    renderWire(color, getRightTip(wire.connectedRight));
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
