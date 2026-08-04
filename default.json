@@ -17,6 +17,7 @@
   "servers": {},
   "players": {},
   "activeSabotages": {
+    "cooldown":0,
     "o2": {
       "sabotaged": false,
       "depleted": false,
@@ -33,6 +34,7 @@
     "meltdownCountdown": 30,
     "tasks": 5,
     "emergencyCountdown": 120,
-    "meetingCooldown":45
+    "meetingCooldown":45,
+    "sabotageCooldown":30
   }
 }

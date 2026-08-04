@@ -158,6 +158,30 @@
             letter-spacing: 1px;
         }
 
+        /* Cooldown-specific bits */
+        #cooldownText {
+            text-align: center;
+            margin-top: 6px;
+            color: #ffcc00;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        #cooldownFill {
+            background: linear-gradient(90deg, #8b4513, #d19a66);
+            box-shadow: 0 0 8px rgba(209, 154, 102, 0.4);
+        }
+
+        #cooldownFill.ready {
+            background: linear-gradient(90deg, #2b662b, #44aa44);
+            box-shadow: 0 0 8px rgba(68, 170, 68, 0.4);
+        }
+
+        #cooldownFill.static-warning {
+            background: linear-gradient(90deg, #ccaa00, #ffdd33);
+            box-shadow: 0 0 8px rgba(255, 221, 51, 0.5);
+        }
+
         /* Stepper Buttons & Displays */
         .stepper {
             display: flex;
@@ -275,8 +299,7 @@
             margin-top: 8px;
         }
 
-        /* Leave Button */
-        .btn-leave {
+        .btn-back {
             width: 100%;
             padding: 10px;
             background: #1c1410;
@@ -316,6 +339,14 @@
             </div>
         </div>
 
+        <div class="control-group" id="cooldown-panel">
+            <h4>Sabotage Cooldown</h4>
+            <div class="progress-track">
+                <div class="progress-fill ready" id="cooldownFill" style="width:100%;"></div>
+            </div>
+            <div id="cooldownText">Ready</div>
+        </div>
+
         <div class="control-group">
             <h4>Deplete O2</h4>
             <div class="stepper">
@@ -348,11 +379,8 @@
             <div id="time"></div>
         </div>
 
-        <a href="/logout" style="text-decoration: none;">
-            <button class="btn-leave">LEAVE GAME</button>
-        </a>
         <a href="/dashboard" style="text-decoration: none;">
-            <button class="btn-leave">BACK TO CREWMATE</button>
+            <button class="btn-back">BACK TO CREWMATE</button>
         </a>
     </div>
 
@@ -360,6 +388,9 @@
     <script src="common.js"></script>
     <script>
         let clientAnimationId = null;
+        let cooldownAnimationId = null;
+        let cooldownDuration = 0;
+        let sabotageActive = false; // true while o2/reactor is actively sabotaged, so cooldown-end doesn't wrongly re-enable buttons
 
         // Helper function for adjustment buttons
         function adjustValue(elementId, isIncrement, maxVal = 120, minVal = 5) {
@@ -373,6 +404,34 @@
 
         function get(id) {
             return document.getElementById(id);
+        }
+
+        function setSabotageButtonsDisabled(disabled) {
+            document.getElementById("o2_sabotage").disabled = disabled;
+            document.getElementById("reac_sabotage").disabled = disabled;
+        }
+
+        function setCooldownStatic(label) {
+            // Used for "sabotaged" / "crisis" — full yellow bar, no animation, no ticking
+            if (cooldownAnimationId) {
+                cancelAnimationFrame(cooldownAnimationId);
+                cooldownAnimationId = null;
+            }
+            cooldownDuration = 0;
+            const fillEl = document.getElementById("cooldownFill");
+            fillEl.style.width = "100%";
+            fillEl.classList.remove("ready");
+            fillEl.classList.add("static-warning");
+            document.getElementById("cooldownText").innerText = label;
+        }
+
+        function setCooldownReady() {
+            cooldownDuration = 0;
+            const fillEl = document.getElementById("cooldownFill");
+            fillEl.style.width = "100%";
+            fillEl.classList.remove("static-warning");
+            fillEl.classList.add("ready");
+            document.getElementById("cooldownText").innerText = "Ready";
         }
 
         function animateCountdown(targetEndTime) {
@@ -401,15 +460,57 @@
                 cancelAnimationFrame(clientAnimationId);
                 clientAnimationId = null;
             }
+            sabotageActive = false;
             document.getElementById("time").innerText = "";
             document.getElementById("o2").innerText = "stable";
             document.getElementById("o2").className = "stable";
             document.getElementById("reactor").innerText = "stable";
             document.getElementById("reactor").className = "stable";
-            
-            // Re-enable sabotage buttons once systems are clear
-            document.getElementById("o2_sabotage").disabled = false;
-            document.getElementById("reac_sabotage").disabled = false;
+
+            // Only re-enable sabotage buttons if a cooldown isn't also in effect
+            if (!cooldownAnimationId) {
+                setSabotageButtonsDisabled(false);
+            }
+        }
+
+        function animateCooldown(endTime) {
+            if (cooldownAnimationId) cancelAnimationFrame(cooldownAnimationId);
+
+            const startTime = Date.now();
+            // Track the longest span we've seen for this cooldown so the bar fills proportionally
+            cooldownDuration = Math.max(endTime - startTime, cooldownDuration, 1);
+
+            const fillEl = document.getElementById("cooldownFill");
+            fillEl.classList.remove("ready");
+
+            if (!sabotageActive) setSabotageButtonsDisabled(true);
+
+            function updateFrame() {
+                const now = Date.now();
+                const remaining = endTime - now;
+
+                if (remaining <= 0) {
+                    document.getElementById("cooldownText").innerText = "Ready";
+                    fillEl.style.width = "100%";
+                    fillEl.classList.add("ready");
+                    if (!sabotageActive) setSabotageButtonsDisabled(false);
+                    cancelAnimationFrame(cooldownAnimationId);
+                    cooldownAnimationId = null;
+                    cooldownDuration = 0;
+                    return;
+                }
+
+                const secondsLeft = Math.max(0, remaining / 1000).toFixed(1);
+                const elapsed = cooldownDuration - remaining;
+                const pct = Math.min(100, Math.max(0, (elapsed / cooldownDuration) * 100));
+
+                document.getElementById("cooldownText").innerText = secondsLeft + "s until sabotage available";
+                fillEl.style.width = pct + "%";
+
+                cooldownAnimationId = requestAnimationFrame(updateFrame);
+            }
+
+            cooldownAnimationId = requestAnimationFrame(updateFrame);
         }
 
         // --- Socket Listeners ---
@@ -441,13 +542,14 @@
             }
         });
 
-        socket.on("emergency")
-
-        // Disable buttons when server acknowledges an active sabotage
+        // Disable buttons when server acknowledges an active sabotage,
+        // or animate the cooldown bar if the server rejected it as premature
         socket.on("sabotage_ack", (data) => {
             if (data.ok) {
-                document.getElementById("o2_sabotage").disabled = true;
-                document.getElementById("reac_sabotage").disabled = true;
+                sabotageActive = true;
+                setSabotageButtonsDisabled(true);
+            } else if (data.cooldownEndTime) {
+                animateCooldown(data.cooldownEndTime);
             }
         });
 
@@ -456,32 +558,57 @@
             clearActiveSabotageUI();
         });
 
+        // Server tells us the current/updated sabotage cooldown window
+        socket.on("sabotage_cooldown", (data) => {
+            if (data.endTime > Date.now()) {
+                animateCooldown(data.endTime);
+            } else {
+                if (!sabotageActive) {
+                    setCooldownReady();
+                    setSabotageButtonsDisabled(false);
+                }
+            }
+        });
+
         // Sync active state from server
         socket.on("sabotage_data_request", (data) => {
-            if (data.sData.o2.depleted) {
-                document.getElementById("o2").innerText = "depleted";
-                document.getElementById("o2").className = "unstable";
-                document.getElementById("reactor").innerText = "stable";
-                document.getElementById("reactor").className = "stable";
-                
-                document.getElementById("o2_sabotage").disabled = true;
-                document.getElementById("reac_sabotage").disabled = true;
-                
+            const o2 = data.sData.o2;
+            const reactor = data.sData.reactor;
+
+            if (o2.depleted || reactor.meltdown) {
+                sabotageActive = true;
+                setSabotageButtonsDisabled(true);
+
+                document.getElementById("o2").innerText = o2.depleted ? "depleted" : "stable";
+                document.getElementById("o2").className = o2.depleted ? "unstable" : "stable";
+                document.getElementById("reactor").innerText = reactor.meltdown ? "meltdown" : "stable";
+                document.getElementById("reactor").className = reactor.meltdown ? "unstable" : "stable";
+
                 animateCountdown(data.endTime);
-            } 
-            else if (data.sData.reactor.meltdown) {
-                document.getElementById("reactor").innerText = "meltdown";
-                document.getElementById("reactor").className = "unstable";
-                document.getElementById("o2").innerText = "stable";
-                document.getElementById("o2").className = "stable";
-                
-                document.getElementById("o2_sabotage").disabled = true;
-                document.getElementById("reac_sabotage").disabled = true;
-                
+                setCooldownStatic("CRISIS");
+                return;
+            }
+
+            if (o2.sabotaged || reactor.sabotaged) {
+                sabotageActive = true;
+                setSabotageButtonsDisabled(true);
+
+                document.getElementById("o2").innerText = o2.sabotaged ? "sabotaged" : "stable";
+                document.getElementById("o2").className = o2.sabotaged ? "unstable" : "stable";
+                document.getElementById("reactor").innerText = reactor.sabotaged ? "sabotaged" : "stable";
+                document.getElementById("reactor").className = reactor.sabotaged ? "unstable" : "stable";
+
                 animateCountdown(data.endTime);
-            } 
-            else {
-                clearActiveSabotageUI();
+                setCooldownStatic("SABOTAGED");
+                return;
+            }
+
+            // Nothing active on the sabotage side
+            clearActiveSabotageUI();
+
+            // Only fall back to "Ready" here if there isn't a real cooldown timer running
+            if (!cooldownAnimationId) {
+                setCooldownReady();
             }
         });
 

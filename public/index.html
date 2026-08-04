@@ -4,15 +4,305 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AMOGUS</title>
-    <link rel="stylesheet" href="common.css">
+    <style>
+        :root{
+            --bg-void: #04050a;
+            --metal-1: #4b5058;
+            --metal-2: #383c43;
+            --metal-3: #24272c;
+            --metal-highlight: rgba(255, 255, 255, 0.16);
+            --metal-shadow: rgba(0, 0, 0, 0.55);
+            --bg-field: linear-gradient(160deg, rgba(0,0,0,0.35), rgba(0,0,0,0.15));
+            --border-dim: rgba(255, 255, 255, 0.08);
+            --border-mid: rgba(255, 59, 59, 0.4);
+            --text-bright: #f1f3f6;
+            --text-dim: #9aa0a8;
+            --text-faint: #6b7078;
+            --signal: #ff3b3b;
+            --signal-soft: rgba(255, 59, 59, 0.4);
+        }
 
+        *{
+            box-sizing: border-box;
+        }
+
+        html, body{
+            height: 100%;
+            margin: 0;
+        }
+
+        body{
+            background: var(--bg-void);
+            color: var(--text-bright);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            overflow: hidden;
+            position: relative;
+        }
+
+        canvas#stars{
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            z-index: 0;
+        }
+
+        .void-gradient{
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+            background:
+                radial-gradient(ellipse 60% 45% at 50% 12%, rgba(80, 100, 180, 0.10), transparent 60%),
+                radial-gradient(ellipse 70% 50% at 85% 90%, rgba(120, 70, 160, 0.08), transparent 65%);
+        }
+
+        .stage{
+            position: relative;
+            z-index: 2;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .panel{
+            position: relative;
+            width: min(360px, 100%);
+            padding: 44px 34px 34px;
+            border-radius: 14px;
+            background:
+                repeating-linear-gradient(135deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 5px),
+                linear-gradient(160deg, var(--metal-1) 0%, var(--metal-2) 45%, var(--metal-3) 100%);
+            border: 1px solid rgba(0,0,0,0.6);
+            box-shadow:
+                inset 0 1px 0 var(--metal-highlight),
+                inset 0 -2px 6px var(--metal-shadow),
+                inset 0 0 0 1px rgba(255,255,255,0.04),
+                0 30px 80px -30px rgba(0,0,0,0.8);
+            text-align: center;
+            animation: rise 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes rise{
+            from{ opacity: 0; transform: translateY(18px); }
+            to{ opacity: 1; transform: translateY(0); }
+        }
+
+        .rivet{
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 30%, #d8dce0, #7d828a 55%, #303338 100%);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.7), inset 0 0 1px rgba(255,255,255,0.4);
+        }
+
+        .rivet.tl{ top: 12px; left: 12px; }
+        .rivet.tr{ top: 12px; right: 12px; }
+        .rivet.bl{ bottom: 12px; left: 12px; }
+        .rivet.br{ bottom: 12px; right: 12px; }
+
+        .beacon{
+            position: relative;
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .beacon-housing{
+            position: absolute;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 30%, #5a5f66, #2b2e33 70%);
+            box-shadow:
+                inset 0 2px 3px rgba(255,255,255,0.15),
+                inset 0 -3px 4px rgba(0,0,0,0.6),
+                0 2px 4px rgba(0,0,0,0.5);
+            z-index: 1;
+        }
+
+        .beacon-core{
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--signal);
+            box-shadow: 0 0 10px 2px var(--signal-soft);
+            z-index: 2;
+            animation: core-pulse 2.2s ease-in-out infinite;
+        }
+
+        .beacon-ring{
+            position: absolute;
+            border-radius: 50%;
+            border: 1px solid var(--signal);
+            opacity: 0;
+            animation: ring-out 2.6s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+        }
+
+        .beacon-ring:nth-child(2){ animation-delay: 0s; }
+        .beacon-ring:nth-child(3){ animation-delay: 0.9s; }
+        .beacon-ring:nth-child(4){ animation-delay: 1.8s; }
+
+        @keyframes ring-out{
+            0%   { width: 10px; height: 10px; opacity: 0.55; }
+            80%  { opacity: 0; }
+            100% { width: 76px; height: 76px; opacity: 0; }
+        }
+
+        @keyframes core-pulse{
+            0%, 100%{ transform: scale(1); }
+            50%{ transform: scale(1.25); }
+        }
+
+        h1{
+            margin: 0 0 4px;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+        }
+
+        .subtitle{
+            margin: 0 0 28px;
+            font-size: 12px;
+            color: var(--text-dim);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .field{
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .field label{
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-faint);
+            margin-bottom: 6px;
+        }
+
+        input[type="text"]{
+            width: 100%;
+            font-family: inherit;
+            font-size: 14px;
+            color: var(--text-bright);
+            background: var(--bg-field);
+            border: 1px solid rgba(0,0,0,0.6);
+            border-radius: 8px;
+            padding: 11px 14px;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+            outline: none;
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        input[type="text"]::placeholder{
+            color: var(--text-faint);
+        }
+
+        input[type="text"]:focus{
+            border-color: var(--border-mid);
+            box-shadow:
+                inset 0 2px 5px rgba(0,0,0,0.5),
+                inset 0 1px 0 rgba(255,255,255,0.05),
+                0 0 0 3px rgba(255, 59, 59, 0.18);
+        }
+
+        button{
+            width: 100%;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            color: #fff;
+            background: linear-gradient(180deg, #ff5b5b 0%, #b81e1e 100%);
+            border: 1px solid rgba(0,0,0,0.5);
+            border-radius: 8px;
+            padding: 12px 22px;
+            cursor: pointer;
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.35),
+                inset 0 -2px 3px rgba(0,0,0,0.35),
+                0 2px 6px rgba(255, 59, 59, 0.3);
+            transition: box-shadow 0.2s ease;
+        }
+
+        button:hover{
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.4),
+                inset 0 -2px 3px rgba(0,0,0,0.35),
+                0 0 16px rgba(255, 59, 59, 0.55);
+        }
+
+        button:active{
+            box-shadow:
+                inset 0 2px 4px rgba(0,0,0,0.5),
+                inset 0 -1px 0 rgba(255,255,255,0.05);
+        }
+
+        .host-link{
+            display: inline-block;
+            margin-top: 18px;
+            font-size: 12.5px;
+            color: var(--text-faint);
+            text-decoration: none;
+            letter-spacing: 0.02em;
+            transition: color 0.2s ease;
+        }
+
+        .host-link:hover{
+            color: var(--signal);
+        }
+
+        @media (prefers-reduced-motion: reduce){
+            .panel, .beacon-ring, .beacon-core{
+                animation: none !important;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="common.css">
 </head>
 <body>
-    <input type="text" placeholder="username" id="user" autocomplete="off">
-    <button id="button-id">enter</button>
-    <br>
-    <a href="/host">are you host?</a>
+    <canvas id="stars"></canvas>
+    <div class="void-gradient"></div>
 
+    <div class="stage">
+        <div class="panel">
+            <div class="rivet tl"></div>
+            <div class="rivet tr"></div>
+            <div class="rivet bl"></div>
+            <div class="rivet br"></div>
+
+            <div class="beacon">
+                <div class="beacon-ring"></div>
+                <div class="beacon-ring"></div>
+                <div class="beacon-ring"></div>
+                <div class="beacon-housing"></div>
+                <div class="beacon-core"></div>
+            </div>
+
+            <h1>AMONG US</h1>
+
+            <div class="field">
+                <label for="user">Username</label>
+                <input type="text" placeholder="username" id="user" autocomplete="off">
+            </div>
+
+            <button id="button-id">Enter</button>
+
+            <br>
+            <a class="host-link" href="/host">are you host?</a>
+        </div>
+    </div>
 
     <script>
         document.querySelector("#button-id").addEventListener('click', f => {
@@ -31,6 +321,48 @@
             console.error(error);
         });
         })
+
+        // --- ambient starfield ---
+        (function(){
+            const canvas = document.getElementById('stars');
+            const ctx = canvas.getContext('2d');
+            let w, h, stars;
+
+            function resize(){
+                w = canvas.width = window.innerWidth;
+                h = canvas.height = window.innerHeight;
+                const count = Math.floor((w * h) / 2600);
+                stars = Array.from({ length: count }, () => ({
+                    x: Math.random() * w,
+                    y: Math.random() * h,
+                    r: Math.random() * 1.3 + 0.3,
+                    baseAlpha: Math.random() * 0.5 + 0.3,
+                    phase: Math.random() * Math.PI * 2,
+                    speed: Math.random() * 0.015 + 0.005,
+                    drift: Math.random() * 0.02 + 0.005
+                }));
+            }
+
+            function draw(t){
+                ctx.clearRect(0, 0, w, h);
+                for(const s of stars){
+                    const twinkle = Math.sin(t * s.speed + s.phase) * 0.5 + 0.5;
+                    const alpha = s.baseAlpha * (0.5 + 0.5 * twinkle);
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(230, 238, 255, ${alpha.toFixed(3)})`;
+                    ctx.fill();
+
+                    s.y += s.drift * 0.15;
+                    if(s.y > h) s.y = 0;
+                }
+                requestAnimationFrame(draw);
+            }
+
+            window.addEventListener('resize', resize);
+            resize();
+            requestAnimationFrame(draw);
+        })();
     </script>
 </body>
 </html>

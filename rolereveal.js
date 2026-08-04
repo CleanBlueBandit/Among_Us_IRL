@@ -5,7 +5,7 @@ function renderRoleRevealHtml(isImpostor) {
   const roleLabel = isImpostor ? 'IMPOSTOR' : 'CREWMATE';
   const roleDescription = isImpostor
     ? 'Kill and sabotage'
-    : 'Complete tasks and eject Impostors';
+    : 'Do tasks and eject';
 
   return `<!DOCTYPE html>
 <html lang="en">

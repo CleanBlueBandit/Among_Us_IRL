@@ -1,7 +1,7 @@
 import express from 'express';
 import fs from 'fs/promises';
 import cookieParser from 'cookie-parser';
-import crypto from 'crypto';
+import crypto, { KeyObject } from 'crypto';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import path from 'path';
@@ -11,6 +11,8 @@ import 'dotenv/config';
 import { renderCrewmateWinHtml, renderImpostorWinHtml } from './winscreen.js';
 import { renderRoleRevealHtml } from './roleReveal.js';
 import { debuglog } from 'util';
+import { raw } from '@prisma/client/runtime/library.js';
+import { marked } from "marked";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,10 +20,12 @@ const __dirname = path.dirname(__filename);
 const btoActive = true;
 
 let cooldownTime = Date.now();
+let sabCooldownTime = Date.now();
 
 const betaTestingOverride = {
-    "emergencyCountdown": 30,
-    "meetingCooldown": 40
+    emergencyCountdown : 30,
+    meetingCooldown: 40,
+    sabotageCooldown: 30
 }
 
 
@@ -33,7 +37,6 @@ function logDebug(message) {
     const timestamp = new Date().toISOString();
     const logMsg = `[DEBUG] [${timestamp}] ${message}`;
     console.log(logMsg);
-    // Fire and forget to avoid blocking the event loop
     fs.appendFile(DEBUG_LOG, logMsg + '\n', 'utf-8').catch(e => console.error("Logger error:", e));
 }
 
@@ -42,7 +45,6 @@ function logError(message, error = "") {
     const errorStr = error instanceof Error ? (error.stack || error.message) : String(error);
     const logMsg = `[ERROR] [${timestamp}] ${message} ${errorStr}`;
     console.error(logMsg);
-    // Fire and forget
     fs.appendFile(ERROR_LOG, logMsg + '\n', 'utf-8').catch(e => console.error("Logger error:", e));
 }
 // ----------------------
@@ -129,7 +131,8 @@ const DEFAULT_SETTINGS = {
     meltdownCountdown: 30,
     tasks: 5,
     emergencyCountdown: 120,
-    emergencyCooldown : 30
+    emergencyCooldown : 30,
+    sabotageCooldown:30
 };
 
 let meltdownCountdownSeconds = DEFAULT_SETTINGS.meltdownCountdown;
@@ -152,6 +155,7 @@ const DEFAULT_GAME_STATE = {
 };
 
 const DEFAULT_SABOTAGES = {
+    cooldown : 0,
     o2: { sabotaged: false, depleted: false, timeLeft: 0 },
     reactor: { sabotaged: false, meltdown: false, timeLeft: 0 }
 };
@@ -221,7 +225,19 @@ async function loadGame() {
 
 async function saveGame(data) {
     await fs.writeFile('./game.json', JSON.stringify(data, null, 2), 'utf-8');
-    logDebug("data saved");
+    io.emit('game_data_request', data.gameState);
+    io.emit('servers_data_request', { servers: data.servers, operational: false });
+
+    let sabEndTime = 0;
+    const { o2, reactor } = data.activeSabotages;
+    if (o2.sabotaged) sabEndTime = Date.now() + (o2.timeLeft * 1000);
+    else if (reactor.sabotaged) sabEndTime = Date.now() + (reactor.timeLeft * 1000);
+
+
+    // I know this is insecure, but i dont want to write multiple step handshakes and authentication
+    io.emit('sabotage_data_request', { sData: data.activeSabotages, endTime: sabEndTime });
+    io.emit('player_data_request', data.playerData);
+    logDebug("data saved and brodcasted");
 }
 
 httpServer.listen(PORT, () => {
@@ -313,7 +329,7 @@ app.post('/enter-host', async (req, res) => {
                 });
 
                 logDebug(`New server joined with ID ${UUID}`);
-                return res.sendFile(path.join(__dirname, 'public', 'server.html'))
+                return res.sendFile(path.join(__dirname, 'public', 'server.html'));
             }
 
             if (data.gameState.host != "") {
@@ -574,25 +590,28 @@ app.get('/logout', async (req, res) => {
 app.post("/deviceFunc", async (req, res) => {
     const data = await loadGame();
     const sf = req.body.setting;
+
     if (!validateServer(data.servers, req.cookies.session)) {
         logDebug(`Unauthorised /deviceFunc request by ${req.cookies.session}`);
-        return res.status(401).json({ ok : false, resp : "401 unauthorised" })
+        return res.status(401).json({ ok: false, resp: "401 unauthorised" });
     }
-    Object.values(data.servers).forEach(v => {
-        if(v == req.body.setting){
-            logDebug(`${req.cookies.session} tried to take on the role of an existing server, denying.`);
-            return res.status(400).json({ ok:false, resp : "400 - the server role is already taken." })
-        }
-    });
+
+    if (Object.values(data.servers).includes(sf)) {
+        logDebug(`${req.cookies.session} tried to take on the role of an existing server, denying.`);
+        return res.status(400).json({ ok: false, resp: "400 - the server role is already taken." });
+    }
+
     data.servers[req.cookies.session] = sf;
     logDebug(`${sf} server is now online and registered to session ${req.cookies.session}`);
     await saveGame(data);
+
     io.emit('servers_data_request', {
         servers: data.servers,
         operational: isGameOperational(data.servers)
     });
+
     return res.status(200).json({ ok: true });
-})
+});
 
 app.get("/o2", async (req, res) => {
     const data = await loadGame();
@@ -1173,7 +1192,7 @@ app.post("/addDummyPlayers", async (req, res) => {
 
     if (data.players[req.cookies.session]?.username !== data.gameState.host) {
         logDebug(`Unauthorised dummy player request by ${req.cookies.session}`);
-        return res.status(401).json({ message: "401 Unauthorized", hint: "No host - no admin controls." });
+        return res.status(401).json({ message: "401 Unauthorized" });
     }
 
     const currentCount = Object.keys(data.players).length;
@@ -1216,15 +1235,25 @@ app.post("/addDummyServers", async (req, res) => {
 
 
     if (data.players[req.cookies.session]?.username !== data.gameState.host) {
-        logDebug(`Unauthorised dummy player request by ${req.cookies.session}`);
-        return res.status(401).json({ message: "401 Unauthorized", hint: "No host - no admin controls." });
+        logDebug(`Unauthorised dummy server request by ${req.cookies.session}`);
+        return res.status(401).json({ message: "401 Unauthorized." });
     }
-    data.servers = {
-        "o2_dummy":"o2",
-        "reactor_dummy":"reactor",
-        "emergency_dummy":"emergency"
+
+    const dummy_servers = {
+        "o2_dummy": "o2",
+        "reactor_dummy": "reactor",
+        "emergency_dummy": "emergency"
+    };
+
+    const existingValues = Object.values(data.servers);
+    for (let [key, value] of Object.entries(dummy_servers)) {
+        if (existingValues.includes(value)) {
+            delete dummy_servers[key];
+        }
     }
+    data.servers = { ...data.servers, ...dummy_servers };
     await saveGame(data);
+
     io.emit('game_data_request', data.gameState);
     logDebug(`Host successfully added servers.`);
     res.status(200).json({ message: `Successfully added dummy servers` });
@@ -1269,6 +1298,7 @@ io.on("connection", async (socket) => {
                 sData: data.activeSabotages,
                 endTime: targetEndTimestamp
             });
+            socket.emit("sabotage_cooldown", { endTime: sabCooldownTime });
 
             if (data.gameState.emergencyMeeting && data.gameState.emergencyMeetingEndTime) {
                 socket.emit("emergency_ack", {
@@ -1307,19 +1337,29 @@ io.on("connection", async (socket) => {
         }
         
         socket.on("sabotage", async (sabdata) => {
+            if(!data.players[cookies.session].impostor){
+                logDebug(`Unauthorised sabotage start request from ${cookies.session}. requested sabotage: ${sabdata ? sabdata.type : 'unknown'}`);
+                socket.emit('Err', { error: 'You are not impostor' });
+                socket.emit('sabotage_ack', {ok:false, reason: 'You are not impostor'});
+                return;
+            }
             logDebug(`Client (${cookies.session}) requested sabotage: ${sabdata ? sabdata.type : 'unknown'}`);
+            if(Date.now() < sabCooldownTime){
+                logDebug("Sabotage request denied, cooldown not over yet");
+                socket.emit('Err', { error: 'Premature request' });
+                socket.emit('sabotage_ack', {ok:false, reason: 'Premature request, cooldown not over yet'});
+                return;
+            }
             try {
                 if (!sabdata || !sabdata.type || typeof sabdata.countdown !== 'number') {
                     socket.emit('Err', { error: 'invalid sabotage payload' });
-                    socket.emit('sabotage_ack', {ok:false})
+                    socket.emit('sabotage_ack', {ok:false, reason:"invalid sabotage payload"});
                     return;
                 }
-                // Load fresh state instead of the stale snapshot captured at connect time,
-                // and check o2 (not reactor twice, as before) for an already-active sabotage.
                 const freshData = await loadGame();
                 if(freshData.activeSabotages.o2.sabotaged || freshData.activeSabotages.reactor.sabotaged || freshData.activeSabotages.reactor.meltdown || freshData.activeSabotages.o2.depleted){
                     socket.emit('Err', { error: 'already sabotaged' });
-                    socket.emit('sabotage_ack', {ok:false})
+                    socket.emit('sabotage_ack', {ok:false, reason:"already sabotaged"})
                     return;
                 }
                 await startSabotageCountdown(sabdata.type, sabdata.countdown);
@@ -1331,7 +1371,7 @@ io.on("connection", async (socket) => {
         });
         
         socket.on("emergency", async (payload) => {
-            logDebug(`Client (${cookies.session}) triggered emergency event.`);
+            logDebug(`Client (${cookies.session}) triggered emergency meeting.`);
             try {
                 const hasResults = payload && typeof payload === 'object' && payload.votes && typeof payload.votes === 'object';
                 if (hasResults) {
@@ -1481,6 +1521,14 @@ io.on("connection", async (socket) => {
                 }
                 const fixed = await fixSabotage(payload.type);
                 socket.emit('fix_ack', { ok: fixed });
+
+                const freshData = await loadGame();
+                const cooldownEndTime = Date.now() + (freshData.settings.sabotageCooldown * 1000);
+                sabCooldownTime = cooldownEndTime;
+                freshData.activeSabotages.cooldown = cooldownEndTime;
+
+                await saveGame(freshData);
+                io.emit("sabotage_cooldown", { endTime: cooldownEndTime });
             } catch (e) {
                 logError("Fix sabotage error:", e);
                 socket.emit('Err', { error: e.message });
@@ -1567,7 +1615,7 @@ app.get("/waiting", async (req, res) => {
 function parseSettingsArray(rawSettings, playerCount) {
     if (!Array.isArray(rawSettings)) return null;
 
-    const [impostorsRaw, cdRaw, tasksRaw, emergencyRaw] = rawSettings;
+    const [impostorsRaw, cdRaw, tasksRaw, emergencyRaw, sabotageCdRaw] = rawSettings;
 
     const impostors = parseInt(impostorsRaw, 10);
     const meltdownCountdown = parseInt(cdRaw, 10);
@@ -1575,13 +1623,45 @@ function parseSettingsArray(rawSettings, playerCount) {
     const emergencyCountdown = emergencyRaw === undefined
         ? DEFAULT_SETTINGS.emergencyCountdown
         : parseInt(emergencyRaw, 10);
+    const sabotageCooldown = sabotageCdRaw === undefined
+        ? DEFAULT_SETTINGS.sabotageCooldown
+        : parseInt(sabotageCdRaw, 10);
 
     if (isNaN(impostors) || isNaN(meltdownCountdown) || isNaN(tasks) || isNaN(emergencyCountdown)) return null;
     if (impostors < 0 || meltdownCountdown < 0 || tasks < 0 || emergencyCountdown < 0) return null;
     if (playerCount !== undefined && impostors >= playerCount) return null;
 
-    return { impostors, meltdownCountdown, tasks, emergencyCountdown };
+    return { impostors, meltdownCountdown, tasks, emergencyCountdown, sabotageCooldown };
 }
+
+app.get("/help", async (req, res) => {
+    
+    try {
+        const filePath = path.join(__dirname, "src", `${req.query.topic}.md`);
+        const data = await fs.readFile(filePath, "utf-8");
+
+        const htmlContent = marked.parse(data);
+
+        return res.send(`
+            <!doctype html>
+            <html>
+            <head>
+                <meta charset="utf-8"/>
+                <title>${req.query.topic}</title>
+            </head>
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/simpledotcss@2/simple.min.css">
+            <body>
+                <div id="content">${htmlContent}</div>
+            </body>
+            </html>
+        `);
+    } catch (err) {
+        if (err && err.code === "ENOENT") {
+            return res.send({ err: "400 - bad request" }); 
+        }
+        throw err;
+    }
+})
 
 app.post("/start", async (req, res) => {
     await withGameLock(async () => {
@@ -1615,6 +1695,7 @@ app.post("/start", async (req, res) => {
         const targetImpostors = data.settings.impostors;
         meltdownCountdownSeconds = btoActive ? betaTestingOverride.meetingCooldown : data.settings.meltdownCountdown;
         emergencyCountdownSeconds = btoActive ? betaTestingOverride.emergencyCountdown : data.settings.emergencyCountdown;
+        emergencyCountdownSeconds = btoActive ? betaTestingOverride.sabotageCooldown : data.settings.sabotageCooldown;
 
         let roleDeck = [];
         for (let i = 0; i < allPlayerIds.length; i++) {
@@ -1665,7 +1746,6 @@ app.post("/start", async (req, res) => {
 
         await saveGame(data);
         
-        // FIXED: Corrected variable name and property path
         const meetingCooldownSeconds = btoActive
             ? betaTestingOverride.emergencyCountdown
             : (data.settings.emergencyCooldown + 20);

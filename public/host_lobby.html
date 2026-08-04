@@ -5,62 +5,466 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Waiting</title>
     <style>
-        .stable { color: green; }
-        .unstable { color: red; }
+        :root{
+            --bg-void: #04050a;
+            --metal-1: #4b5058;
+            --metal-2: #383c43;
+            --metal-3: #24272c;
+            --metal-highlight: rgba(255, 255, 255, 0.16);
+            --metal-shadow: rgba(0, 0, 0, 0.55);
+            --bg-field: linear-gradient(160deg, rgba(0,0,0,0.35), rgba(0,0,0,0.15));
+            --border-dim: rgba(255, 255, 255, 0.08);
+            --border-mid: rgba(255, 59, 59, 0.4);
+            --text-bright: #f1f3f6;
+            --text-dim: #9aa0a8;
+            --text-faint: #6b7078;
+            --signal: #ff3b3b;
+            --signal-soft: rgba(255, 59, 59, 0.4);
+            --stable: #7be08a;
+            --unstable: #ff3b3b;
+        }
+
+        *{
+            box-sizing: border-box;
+        }
+
+        html, body{
+            min-height: 100%;
+            margin: 0;
+        }
+
+        body{
+            background: var(--bg-void);
+            color: var(--text-bright);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            position: relative;
+        }
+
+        canvas#stars{
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            z-index: 0;
+        }
+
+        .void-gradient{
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+            background:
+                radial-gradient(ellipse 60% 45% at 50% 0%, rgba(80, 100, 180, 0.10), transparent 60%),
+                radial-gradient(ellipse 70% 50% at 90% 100%, rgba(120, 70, 160, 0.08), transparent 65%);
+        }
+
+        .stage{
+            position: relative;
+            z-index: 2;
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 56px 24px 64px;
+        }
+
+        .panel{
+            position: relative;
+            width: min(480px, 100%);
+            padding: 40px 34px 34px;
+            border-radius: 14px;
+            background:
+                repeating-linear-gradient(135deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 5px),
+                linear-gradient(160deg, var(--metal-1) 0%, var(--metal-2) 45%, var(--metal-3) 100%);
+            border: 1px solid rgba(0,0,0,0.6);
+            box-shadow:
+                inset 0 1px 0 var(--metal-highlight),
+                inset 0 -2px 6px var(--metal-shadow),
+                inset 0 0 0 1px rgba(255,255,255,0.04),
+                0 30px 80px -30px rgba(0,0,0,0.8);
+            animation: rise 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .rivet{
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 30%, #d8dce0, #7d828a 55%, #303338 100%);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.7), inset 0 0 1px rgba(255,255,255,0.4);
+        }
+
+        .rivet.tl{ top: 12px; left: 12px; }
+        .rivet.tr{ top: 12px; right: 12px; }
+        .rivet.bl{ bottom: 12px; left: 12px; }
+        .rivet.br{ bottom: 12px; right: 12px; }
+
+        @keyframes rise{
+            from{ opacity: 0; transform: translateY(18px); }
+            to{ opacity: 1; transform: translateY(0); }
+        }
+
+        .header{
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .beacon{
+            position: relative;
+            width: 70px;
+            height: 70px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .beacon-housing{
+            position: absolute;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 30%, #5a5f66, #2b2e33 70%);
+            box-shadow:
+                inset 0 2px 3px rgba(255,255,255,0.15),
+                inset 0 -3px 4px rgba(0,0,0,0.6),
+                0 2px 4px rgba(0,0,0,0.5);
+            z-index: 1;
+        }
+
+        .beacon-core{
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--signal);
+            box-shadow: 0 0 10px 2px var(--signal-soft);
+            z-index: 2;
+            animation: core-pulse 2.2s ease-in-out infinite;
+        }
+
+        .beacon-ring{
+            position: absolute;
+            border-radius: 50%;
+            border: 1px solid var(--signal);
+            opacity: 0;
+            animation: ring-out 2.6s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+        }
+
+        .beacon-ring:nth-child(2){ animation-delay: 0s; }
+        .beacon-ring:nth-child(3){ animation-delay: 0.9s; }
+        .beacon-ring:nth-child(4){ animation-delay: 1.8s; }
+
+        @keyframes ring-out{
+            0%   { width: 10px; height: 10px; opacity: 0.55; }
+            80%  { opacity: 0; }
+            100% { width: 76px; height: 76px; opacity: 0; }
+        }
+
+        @keyframes core-pulse{
+            0%, 100%{ transform: scale(1); }
+            50%{ transform: scale(1.25); }
+        }
+
+        h1{
+            margin: 0 0 4px;
+            font-size: 19px;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+        }
+
+        .subtitle{
+            margin: 0;
+            font-size: 12.5px;
+            color: var(--text-dim);
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .section{
+            margin-bottom: 22px;
+        }
+
+        .section-label{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 11.5px;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-faint);
+            margin: 0 0 14px;
+        }
+
+        .section-label::after{
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-dim);
+        }
+
+        .readout{
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 16px 18px;
+            background: var(--bg-field);
+            border: 1px solid rgba(0,0,0,0.6);
+            border-radius: 10px;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+
+        .readout p{
+            margin: 0;
+            font-size: 13.5px;
+            color: var(--text-dim);
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .readout p:empty{
+            display: none;
+        }
+
+        .stable{ color: var(--stable) !important; }
+        .unstable{ color: var(--unstable) !important; }
+
+        .setting-row{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: var(--bg-field);
+            border: 1px solid rgba(0,0,0,0.6);
+            border-radius: 10px;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+            margin-bottom: 10px;
+        }
+
+        .setting-row:last-child{
+            margin-bottom: 0;
+        }
+
+        .setting-name{
+            font-size: 13.5px;
+            color: var(--text-bright);
+        }
+
+        .stepper{
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .stepper button{
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            font-size: 15px;
+            line-height: 1;
+            border-radius: 8px;
+        }
+
+        .stepper p{
+            margin: 0;
+            width: 40px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            color: var(--text-bright);
+        }
+
+        button{
+            font-family: inherit;
+            font-size: 13px;
+            letter-spacing: 0.03em;
+            font-weight: 600;
+            color: var(--text-dim);
+            background: linear-gradient(180deg, #565b63 0%, #33363b 100%);
+            border: 1px solid rgba(0,0,0,0.6);
+            border-radius: 8px;
+            padding: 9px 18px;
+            cursor: pointer;
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.18),
+                inset 0 -2px 3px rgba(0,0,0,0.4),
+                0 2px 4px rgba(0,0,0,0.4);
+            transition: color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        button:hover{
+            color: var(--text-bright);
+            border-color: var(--border-mid);
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.2),
+                inset 0 -2px 3px rgba(0,0,0,0.4),
+                0 0 10px rgba(255, 59, 59, 0.35);
+        }
+
+        button:active{
+            box-shadow:
+                inset 0 2px 4px rgba(0,0,0,0.5),
+                inset 0 -1px 0 rgba(255,255,255,0.05);
+        }
+
+        button.primary{
+            color: #fff;
+            background: linear-gradient(180deg, #ff5b5b 0%, #b81e1e 100%);
+            border-color: rgba(0,0,0,0.5);
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.35),
+                inset 0 -2px 3px rgba(0,0,0,0.35),
+                0 2px 6px rgba(255, 59, 59, 0.3);
+        }
+
+        button.primary:hover{
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.4),
+                inset 0 -2px 3px rgba(0,0,0,0.35),
+                0 0 16px rgba(255, 59, 59, 0.55);
+        }
+
+        .test-block{
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .test-response{
+            margin: 0;
+            font-size: 12px;
+            color: var(--text-faint);
+            min-height: 16px;
+        }
+
+        .actions{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 4px;
+        }
+
+        .actions a{
+            text-decoration: none;
+            flex: 1;
+        }
+
+        .actions a button{
+            width: 100%;
+        }
+
+        .fail-msg{
+            margin: 14px 0 0;
+            font-size: 12.5px;
+            color: var(--unstable);
+            text-align: center;
+            min-height: 16px;
+        }
+
+        @media (prefers-reduced-motion: reduce){
+            .panel, .beacon-ring, .beacon-core{
+                animation: none !important;
+            }
+        }
     </style>
     <link rel="stylesheet" href="common.css">
-
 </head>
 <body>
-    <h1>Start anytime</h1>
-    <h3>Overview</h3>
-    <p id="usr"></p>
-    <p id="id"></p>
-    <p id="host"></p>
-    <p id="players"></p>
-    <hr>
-    
-    <h3>Settings</h3>
-    <h4>Impostors</h4>
-    <div style="display: flex;">
-        <button onclick="adjustValue('impostor_val', false, 20)">&lt;</button>
-        <p style="margin: 10px" id="impostor_val">2</p>
-        <button onclick="adjustValue('impostor_val', true, 20)">&gt;</button>
+    <canvas id="stars"></canvas>
+    <div class="void-gradient"></div>
+
+    <div class="stage">
+        <div class="panel">
+            <div class="rivet tl"></div>
+            <div class="rivet tr"></div>
+            <div class="rivet bl"></div>
+            <div class="rivet br"></div>
+
+            <div class="header">
+                <div class="beacon">
+                    <div class="beacon-ring"></div>
+                    <div class="beacon-ring"></div>
+                    <div class="beacon-ring"></div>
+                    <div class="beacon-housing"></div>
+                    <div class="beacon-core"></div>
+                </div>
+                <h1>Start anytime</h1>
+                <p class="subtitle">Overview</p>
+            </div>
+
+            <div class="section">
+                <div class="readout">
+                    <p id="usr"></p>
+                    <p id="id"></p>
+                    <p id="host"></p>
+                    <p id="players"></p>
+                </div>
+            </div>
+
+            <div class="section">
+                <p class="section-label">Settings</p>
+
+                <div class="setting-row">
+                    <span class="setting-name">Impostors</span>
+                    <div class="stepper">
+                        <button onclick="adjustValue('impostor_val', false, 20)">&lt;</button>
+                        <p id="impostor_val">2</p>
+                        <button onclick="adjustValue('impostor_val', true, 20)">&gt;</button>
+                    </div>
+                </div>
+
+                <div class="setting-row">
+                    <span class="setting-name">Crisis countdown</span>
+                    <div class="stepper">
+                        <button onclick="adjustValue('cd_val', false, 510)">&lt;</button>
+                        <p id="cd_val">30</p>
+                        <button onclick="adjustValue('cd_val', true, 510)">&gt;</button>
+                    </div>
+                </div>
+
+                <div class="setting-row">
+                    <span class="setting-name">Tasks per player</span>
+                    <div class="stepper">
+                        <button onclick="adjustValue('tasks_val', false, 20)">&lt;</button>
+                        <p id="tasks_val">5</p>
+                        <button onclick="adjustValue('tasks_val', true, 20)">&gt;</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <p class="section-label">Testing</p>
+
+                <div class="test-block">
+                    <div class="setting-row">
+                        <span class="setting-name">Create dummy players</span>
+                        <div class="stepper">
+                            <button onclick="adjustValue('dummy_vv', false, 20)">&lt;</button>
+                            <p id="dummy_vv">0</p>
+                            <button onclick="adjustValue('dummy_vv', true, 20)">&gt;</button>
+                        </div>
+                    </div>
+                    <button onclick="createDummyPlayers()">Create dummy players</button>
+                    <p class="test-response" id="dummy_resp"></p>
+
+                    <button onclick="createDummyServers()">Fill server slots with dummies</button>
+                    <p class="test-response" id="server_resp"></p>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="actions">
+                    <button class="primary" onclick="post_start()">Start game</button>
+                    <a href="/logout"><button>Leave</button></a>
+                    <a href="/reset"><button>Reset</button></a>
+                </div>
+                <p class="fail-msg" id="fail"></p>
+            </div>
+        </div>
     </div>
-    <h4>Crisis countdown</h4>
-    <div style="display: flex;">
-        <button onclick="adjustValue('cd_val', false, 510)">&lt;</button>
-        <p style="margin: 10px" id="cd_val">30</p>
-        <button onclick="adjustValue('cd_val', true, 510)">&gt;</button>
-    </div>
-    <h4>Tasks per player</h4>
-    <div style="display: flex;">
-        <button onclick="adjustValue('tasks_val', false, 20)">&lt;</button>
-        <p style="margin: 10px" id="tasks_val">5</p>
-        <button onclick="adjustValue('tasks_val', true, 20)">&gt;</button>
-    </div>
-    
-    <hr>
-    <h3>Testing</h3>
-    <h4>Create dummy players</h4>
-    <div style="display: flex;">
-        <button onclick="adjustValue('dummy_vv', false, 20)">&lt;</button>
-        <p style="margin: 10px" id="dummy_vv">0</p>
-        <button onclick="adjustValue('dummy_vv', true, 20)">&gt;</button>
-    </div>
-    <button style="margin-top: 10px;" onclick="createDummyPlayers()">Create dummy players</button>
-    <p id="dummy_resp"></p>
-    <h4>Fill server slots with dummies</h4>
-    <button onclick="createDummyServers()">Fill</button>
-    <p id="server_resp"></p>
-    <hr>
-    
-    <button onclick="post_start()">start game</button>
-    <a href="/logout"><button>leave</button></a>
-    <a href="/reset"><button>reset</button></a>
-    
-    <br>
-    <p id="fail"></p>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="common.js"></script>
@@ -127,6 +531,47 @@
             .catch(console.error);
         }
 
+        // --- ambient starfield ---
+        (function(){
+            const canvas = document.getElementById('stars');
+            const ctx = canvas.getContext('2d');
+            let w, h, stars;
+
+            function resize(){
+                w = canvas.width = window.innerWidth;
+                h = canvas.height = window.innerHeight;
+                const count = Math.floor((w * h) / 2600);
+                stars = Array.from({ length: count }, () => ({
+                    x: Math.random() * w,
+                    y: Math.random() * h,
+                    r: Math.random() * 1.3 + 0.3,
+                    baseAlpha: Math.random() * 0.5 + 0.3,
+                    phase: Math.random() * Math.PI * 2,
+                    speed: Math.random() * 0.015 + 0.005,
+                    drift: Math.random() * 0.02 + 0.005
+                }));
+            }
+
+            function draw(t){
+                ctx.clearRect(0, 0, w, h);
+                for(const s of stars){
+                    const twinkle = Math.sin(t * s.speed + s.phase) * 0.5 + 0.5;
+                    const alpha = s.baseAlpha * (0.5 + 0.5 * twinkle);
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(230, 238, 255, ${alpha.toFixed(3)})`;
+                    ctx.fill();
+
+                    s.y += s.drift * 0.15;
+                    if(s.y > h) s.y = 0;
+                }
+                requestAnimationFrame(draw);
+            }
+
+            window.addEventListener('resize', resize);
+            resize();
+            requestAnimationFrame(draw);
+        })();
         
     </script>
 </body>
