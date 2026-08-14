@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Refuel Gas tank</title>
+</head>
+<style>
+    body{
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-color: gainsboro;
+    }
+    .fuel-tank{
+        width: 80%;
+        height: 50vh;
+        border: 10px solid black;
+        background-color: gray;
+        border-radius: 8px;
+        margin-top: 10vh;
+        display: flex;
+    }
+    .fuel{
+        width: 100%;
+        height: 0vh;
+        background-color: yellow;
+        margin-top: 49vh;
+    }
+
+    .fill-btn{
+        width: 35%;
+        height: 10vh;
+        font-size: 20px;
+        font-family: Arial, Helvetica, sans-serif;
+        background-color: gray;
+        border: 3px solid black;
+        border-radius: 8px;
+        margin-top: 10vh;
+    }
+
+</style>
+<body>
+    <div class="fuel-tank">
+        <div class="fuel" id="fuel"></div>
+    </div>
+    <button class="fill-btn" id="fill">
+        fill tank
+    </button>
+
+    <script>
+        const button = document.getElementById("fill");
+        const fuel = document.getElementById("fuel");
+
+        let percentage = 0;
+        let margin = 50;
+        let interval;
+
+        button.addEventListener("pointerdown", () => {
+            interval = setInterval(() => {
+                if (percentage < 50) {
+                    percentage++;
+                    margin--;
+
+                    fuel.style.height = `${percentage}vh`;
+                    fuel.style.marginTop = `${margin}vh`;
+                }
+            }, 50); // fills every 50ms while held
+        });
+
+        function stopFilling() {
+            clearInterval(interval);
+        }
+
+        button.addEventListener("pointerup", stopFilling);
+        button.addEventListener("pointerleave", stopFilling);
+        button.addEventListener("pointercancel", stopFilling);
+    </script>
+</body>
+</html>

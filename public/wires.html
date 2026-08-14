@@ -102,8 +102,25 @@
         cursor: grabbing;
     }
 
+    @keyframes Correct {
+        0% { opacity: 0;}
+        50% { opacity: 1; }
+        100% { opacity: 0; }
+    }
+
+    .correct{
+        opacity: 0;
+        position: fixed;
+        width: 100%;
+        height: 100vh;
+        background-color: lime;
+        z-index: 1000;
+        animation: Correct 0.4s linear forwards;
+    }
+
 </style>
 <body>
+    <div style="display: none;" id="correct"></div>
     <div class="top-container">
         <h1>FIX WIRING</h1>
     </div>
@@ -121,7 +138,7 @@
 
         const OFFSET_X_LEFT = 12; 
         const OFFSET_X_RIGHT = 15; 
-        const OFFSET_Y = -16.5;
+        const OFFSET_Y = -23;
 
         let pool = [...colors];
         while (pool.length > 0) {
@@ -218,7 +235,7 @@
             const btn = document.getElementById(`${color}_right`);
             const contRect = wiresLayer.getBoundingClientRect();
             const rect = btn.getBoundingClientRect();
-            const margin = 25; // how forgiving "near" is, in px
+            const margin = 25;
             
             const left = rect.left - contRect.left - margin + OFFSET_X_RIGHT;
             const right = rect.right - contRect.left + margin + OFFSET_X_RIGHT;
@@ -303,9 +320,7 @@
             colors.forEach(color => {
                 connected[color] = wires[color].connectedRight === color;
             });
-            if (checkDone()){
-                resetWires();
-            }
+            checkDone();
         }
 
         function checkDone(){
@@ -318,6 +333,9 @@
             }
             if (ec === 0){
                 console.log("Wires task done!");
+                const correctDiv = document.getElementById("correct");
+                correctDiv.setAttribute("style", "");
+                correctDiv.setAttribute("class", "correct");
                 return true;
             }
             return false;
@@ -341,6 +359,7 @@
                 }
             });
         });
+
     </script>
 
 </body>

@@ -26,10 +26,21 @@ const betaTestingOverride = {
     emergencyCountdown : 30,
     meetingCooldown: 40,
     sabotageCooldown: 30
+} 
+
+async function haltScript(){
+    while(true){};
 }
 
+// Uncomment after this line
 
-// --- LOGGING SYSTEM ---
+// const h = await bcrypt.hash("YOUR PASSWORD HERE", 10); // <-- Your password there
+// console.log(`Your hash: ${h}`);
+
+// await haltScript();
+
+// Up to this line
+
 const DEBUG_LOG = path.join(__dirname, 'debug.log');
 const ERROR_LOG = path.join(__dirname, 'error.log');
 
@@ -47,7 +58,6 @@ function logError(message, error = "") {
     console.error(logMsg);
     fs.appendFile(ERROR_LOG, logMsg + '\n', 'utf-8').catch(e => console.error("Logger error:", e));
 }
-// ----------------------
 
 let PORT = process.env.PORT;
 let IP = process.env.IP;
@@ -66,8 +76,8 @@ if(!process.env.IP){
     ic++
 }
 if(!process.env.PASSWORD_HASH){
-    logError("PASSWORD_HASH variable missing in .env, defaulting to the password \"Password\"");
-    host_pass = "$2b$10$Okp8WCSOnQ23BEJMYWKcCO.L8QkpABXWEFCrcN3PYVvKwUwsgF7D2";
+    logError("PASSWORD_HASH variable missing in .env, defaulting to the password \"Amogus\"");
+    host_pass = "$2b$10$uKDD79durabBkvd2X6fH.OhkyPc4jW/jNiwoQwYBqM/FbLXJoI5.i";
     ic++;
 }
 if(!process.env.PROTOCOL){
@@ -1635,7 +1645,41 @@ function parseSettingsArray(rawSettings, playerCount) {
 }
 
 app.get("/help", async (req, res) => {
-    
+    const value = req.query.topic;
+
+    if (value === undefined || value === "" || value == "help") {
+        let data = await fs.readFile(path.join(__dirname, "src", `help.md`), "utf-8");
+        let entries = await fs.readdir(path.join(__dirname, "src"), { withFileTypes: true });
+        let htmlContent = marked.parse(data);
+        htmlContent += "<hr>\n<h3>3 - Follow these links</h3>\n<ul>"
+        entries = entries.filter(entry => entry.isFile()).map(entry => path.parse(entry.name).name);
+        entries.forEach(el => {
+            htmlContent += `<li><a href="/help?topic=${el}">${el}</a></li>\n`;
+        });
+        htmlContent += "</ul>\n<hr>"
+        
+        return res.send(`
+            <!doctype html>
+            <html>
+            <head>
+                <meta charset="utf-8"/>
+                <title>help</title>
+            </head>
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/simpledotcss@2/simple.min.css">
+            <body>
+                <div id="content">
+                    ${htmlContent}             
+                </div>
+                <style>
+                    #content{
+                        max-width: 100% !important;
+                        width: 100% !important;
+                    }
+                </style>
+            </body>
+            </html>
+        `);
+    }
     try {
         const filePath = path.join(__dirname, "src", `${req.query.topic}.md`);
         const data = await fs.readFile(filePath, "utf-8");
@@ -1652,6 +1696,12 @@ app.get("/help", async (req, res) => {
             <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/simpledotcss@2/simple.min.css">
             <body>
                 <div id="content">${htmlContent}</div>
+                <style>
+                    #content{
+                        max-width: 100% !important;
+                        width: 100% !important;
+                    }
+                </style>
             </body>
             </html>
         `);
@@ -1661,6 +1711,11 @@ app.get("/help", async (req, res) => {
         }
         throw err;
     }
+})
+
+
+app.post("calibrate-power-done", async (req, res) => {
+    
 })
 
 app.post("/start", async (req, res) => {

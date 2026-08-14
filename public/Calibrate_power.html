@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Power Distribution Panel</title>
+<style>
+
+  :root{
+    --panel-dark:#242527;
+    --panel-mid:#2f3033;
+    --panel-light:#3c3d41;
+    --bezel:#0e0e10;
+    --metal-hi:#5a5b60;
+    --caution-yellow:#f2c14e;
+    --caution-black:#1a1a1c;
+    --led-red:#ff4433;
+    --led-off:#3a1012;
+    --knob-light:#eceef0;
+    --knob-mid:#a7a8ad;
+    --knob-dark:#5f6065;
+    --text-label:#d3d4d9;
+    --text-dim:#8d8e93;
+    --pilot-green:#3ddc63;
+    --sticky-yellow:#f7e07a;
+    --sticky-yellow-dark:#e0c85e;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:40px 16px;
+    background:
+      radial-gradient(ellipse at 50% 0%, #2a2a2e 0%, #131315 60%, #0a0a0b 100%);
+    font-family:'Arial Narrow', Arial, Helvetica, sans-serif;
+  }
+
+  /* ===================== PANEL SHELL ===================== */
+  .panel{
+    position:relative;
+    width:100%;
+    max-width:760px;
+    background:
+      repeating-linear-gradient(100deg,
+        var(--panel-mid) 0px, var(--panel-mid) 2px,
+        var(--panel-light) 3px, var(--panel-mid) 4px),
+      linear-gradient(180deg, var(--panel-light) 0%, var(--panel-dark) 100%);
+    border-radius:14px;
+    padding:22px 26px 18px;
+    box-shadow:
+      0 20px 50px rgba(0,0,0,0.6),
+      inset 0 1px 0 rgba(255,255,255,0.08),
+      inset 0 0 0 6px var(--bezel),
+      inset 0 0 0 8px #050506;
+  }
+
+  /* ===================== STICKY NOTE ===================== */
+  .sticky-note{
+    position:relative;
+    max-width:220px;
+    margin:0 auto 16px;
+    padding:14px 16px 16px;
+    background: linear-gradient(160deg, var(--sticky-yellow) 0%, var(--sticky-yellow-dark) 100%);
+    color:#3a331a;
+    font-family:'Comic Sans MS', 'Marker Felt', 'Arial Narrow', sans-serif;
+    font-size:14px;
+    font-weight:700;
+    text-align:center;
+    border-radius:2px;
+    transform:rotate(-2deg);
+    box-shadow:
+      0 6px 10px rgba(0,0,0,0.45),
+      0 1px 0 rgba(255,255,255,0.3) inset;
+  }
+  .sticky-note::before{
+    content:"";
+    position:absolute;
+    top:-8px;
+    left:50%;
+    width:26px;
+    height:16px;
+    transform:translateX(-50%) rotate(2deg);
+    background:rgba(200,200,200,0.55);
+    border:1px solid rgba(0,0,0,0.08);
+    box-shadow:0 1px 2px rgba(0,0,0,0.25);
+  }
+  .sticky-note .sticky-title{
+    display:block;
+    font-size:11px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    opacity:0.7;
+    margin-bottom:4px;
+  }
+  .sticky-note .sticky-target{
+    display:block;
+    font-size:20px;
+  }
+  .sticky-note .sticky-status{
+    display:block;
+    margin-top:6px;
+    font-size:11px;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+    opacity:0.85;
+  }
+  .sticky-note.calibrated{
+    background: linear-gradient(160deg, #b7f2b0 0%, #93d98a 100%);
+  }
+
+  .rivet{
+    position:absolute;
+    width:14px;
+    height:14px;
+    border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, var(--knob-light), var(--knob-mid) 45%, var(--knob-dark) 80%);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.8), inset 0 0 2px rgba(0,0,0,0.6);
+  }
+  .rivet::after{
+    content:"";
+    position:absolute;
+    top:50%; left:15%;
+    width:70%; height:1.5px;
+    background:rgba(0,0,0,0.55);
+    transform:translateY(-50%) rotate(20deg);
+  }
+  .rivet.tl{ top:14px; left:14px; }
+  .rivet.tr{ top:14px; right:14px; }
+  .rivet.bl{ bottom:14px; left:14px; }
+  .rivet.br{ bottom:14px; right:14px; }
+
+  /* ===================== HEADER ===================== */
+  .caution-stripe{
+    height:10px;
+    border-radius:3px;
+    margin:6px 6px 16px;
+    background: repeating-linear-gradient(135deg,
+      var(--caution-yellow) 0 12px,
+      var(--caution-black) 12px 24px);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.5);
+  }
+
+  .panel-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 8px 14px;
+  }
+
+  .title-block h1{
+    margin:0;
+    font-size:20px;
+    letter-spacing:3px;
+    font-weight:800;
+    text-transform:uppercase;
+    color:var(--text-label);
+    text-shadow: 0 1px 0 rgba(255,255,255,0.08), 0 -1px 1px rgba(0,0,0,0.7);
+  }
+  .title-block .subtitle{
+    margin-top:3px;
+    font-size:11px;
+    letter-spacing:2px;
+    color:var(--text-dim);
+    text-transform:uppercase;
+  }
+
+  .pilot{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .pilot-light{
+    width:14px; height:14px;
+    border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, #b8ffcb, var(--pilot-green) 55%, #0e5c25 100%);
+    box-shadow:
+      0 0 6px var(--pilot-green),
+      0 0 14px rgba(61,220,99,0.7),
+      inset 0 0 2px rgba(0,0,0,0.4);
+    animation: flicker 3.2s infinite ease-in-out;
+  }
+  @keyframes flicker{
+    0%,100%{ opacity:1; }
+    50%{ opacity:0.82; }
+    52%{ opacity:1; }
+  }
+  .pilot-label{
+    font-size:11px;
+    letter-spacing:2px;
+    color:var(--text-dim);
+    text-transform:uppercase;
+  }
+
+  /* ===================== CHANNEL ROWS ===================== */
+  .channels{
+    background: linear-gradient(180deg, rgba(0,0,0,0.18), rgba(0,0,0,0.05));
+    border-radius:8px;
+    padding:6px 10px;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.45);
+  }
+
+  .channel-row{
+    display:flex;
+    align-items:center;
+    gap:18px;
+    padding:14px 6px;
+    border-bottom:1px solid rgba(0,0,0,0.4);
+    border-top:1px solid rgba(255,255,255,0.03);
+  }
+  .channel-row:last-child{ border-bottom:none; }
+
+  .channel-label{
+    width:92px;
+    flex-shrink:0;
+  }
+  .ch-name{
+    display:block;
+    font-size:13px;
+    font-weight:800;
+    letter-spacing:1.5px;
+    color:var(--text-label);
+    text-transform:uppercase;
+  }
+  .ch-range{
+    display:block;
+    font-size:10px;
+    letter-spacing:1px;
+    color:var(--text-dim);
+    margin-top:2px;
+  }
+
+  /* ---------- slider ---------- */
+  .slider-wrap{
+    flex:1 1 auto;
+    min-width:120px;
+  }
+  .slider-track{
+    position:relative;
+    padding:10px 4px 4px;
+  }
+  .ticks{
+    display:flex;
+    justify-content:space-between;
+    padding:0 8px;
+    margin-top:4px;
+  }
+  .ticks span{
+    font-size:9px;
+    color:var(--text-dim);
+    letter-spacing:0.5px;
+  }
+
+  input[type="range"].panel-slider{
+    -webkit-appearance:none;
+    appearance:none;
+    width:100%;
+    height:8px;
+    border-radius:5px;
+    background:
+      linear-gradient(180deg, #0a0a0b, #131315);
+    box-shadow:
+      inset 0 2px 4px rgba(0,0,0,0.85),
+      inset 0 -1px 0 rgba(255,255,255,0.05);
+    outline:none;
+    cursor:pointer;
+  }
+  input[type="range"].panel-slider:focus-visible{
+    box-shadow:
+      inset 0 2px 4px rgba(0,0,0,0.85),
+      0 0 0 2px rgba(255,68,51,0.55);
+  }
+
+  /* webkit thumb */
+  input[type="range"].panel-slider::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:20px;
+    height:32px;
+    margin-top:-12px;
+    border-radius:4px;
+    border:1px solid #303134;
+    background-image:
+      linear-gradient(180deg, var(--knob-light) 0%, var(--knob-mid) 45%, var(--knob-dark) 100%),
+      repeating-linear-gradient(180deg, rgba(0,0,0,0.28) 0px, rgba(0,0,0,0.28) 1px, transparent 1px, transparent 4px);
+    background-blend-mode: multiply, normal;
+    box-shadow:
+      0 2px 3px rgba(0,0,0,0.7),
+      inset 0 1px 0 rgba(255,255,255,0.55),
+      inset 0 -2px 3px rgba(0,0,0,0.35);
+    cursor:grab;
+  }
+  input[type="range"].panel-slider::-webkit-slider-thumb:active{
+    cursor:grabbing;
+    filter:brightness(0.95);
+  }
+
+  /* firefox thumb/track */
+  input[type="range"].panel-slider::-moz-range-track{
+    width:100%;
+    height:8px;
+    border-radius:5px;
+    background:linear-gradient(180deg, #0a0a0b, #131315);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.85);
+  }
+  input[type="range"].panel-slider::-moz-range-thumb{
+    width:20px;
+    height:32px;
+    border-radius:4px;
+    border:1px solid #303134;
+    background: linear-gradient(180deg, var(--knob-light) 0%, var(--knob-mid) 45%, var(--knob-dark) 100%);
+    box-shadow:
+      0 2px 3px rgba(0,0,0,0.7),
+      inset 0 1px 0 rgba(255,255,255,0.55),
+      inset 0 -2px 3px rgba(0,0,0,0.35);
+    cursor:grab;
+  }
+
+  /* ---------- readout ---------- */
+  .readout-window{
+    display:flex;
+    align-items:flex-end;
+    gap:8px;
+    flex-shrink:0;
+    background: linear-gradient(180deg,#020202,#0f0f10);
+    border:2px solid #050506;
+    border-radius:8px;
+    padding:8px 12px;
+    box-shadow:
+      inset 0 3px 6px rgba(0,0,0,0.9),
+      inset 0 -1px 0 rgba(255,255,255,0.04),
+      0 1px 0 rgba(255,255,255,0.05);
+  }
+
+  .display{
+    display:flex;
+    gap:5px;
+  }
+
+  .digit{
+    position:relative;
+    width:22px;
+    height:38px;
+  }
+
+  .seg{
+    position:absolute;
+    background:var(--led-off);
+    border-radius:2px;
+    transition:0.15s;
+  }
+  .seg.active{
+    background:var(--led-red);
+    box-shadow:
+      0 0 4px var(--led-red),
+      0 0 8px rgba(255,68,51,0.85),
+      0 0 16px rgba(255,68,51,0.4);
+  }
+
+  .a,.d,.g{ width:14px; height:3px; left:4px; }
+  .a{ top:0; }
+  .g{ top:17.5px; }
+  .d{ bottom:0; }
+
+  .b,.c,.e,.f{ width:3px; height:14px; }
+  .f{ top:2px; left:0; }
+  .b{ top:2px; right:0; }
+  .e{ bottom:2px; left:0; }
+  .c{ bottom:2px; right:0; }
+
+  .unit-label{
+    font-size:18px;
+    font-weight:800;
+    color:var(--led-red);
+    text-shadow: 0 0 5px var(--led-red), 0 0 10px rgba(255,68,51,0.6);
+    letter-spacing:1px;
+    padding-bottom:2px;
+  }
+
+  /* ===================== FOOTER ===================== */
+  .panel-footer{
+    display:flex;
+    justify-content:space-between;
+    padding:14px 10px 0;
+    font-size:9px;
+    letter-spacing:1px;
+    color:var(--text-dim);
+    text-transform:uppercase;
+  }
+
+  @media (max-width:560px){
+    .channel-row{ flex-wrap:wrap; row-gap:10px; }
+    .channel-label{ width:100%; }
+    .readout-window{ margin-left:auto; }
+  }
+
+</style>
+</head>
+<body>
+
+  <div class="panel">
+    <div class="rivet tl"></div>
+    <div class="rivet tr"></div>
+    <div class="rivet bl"></div>
+    <div class="rivet br"></div>
+
+    <div class="sticky-note" id="sticky-note">
+      <span class="sticky-title">Calibrate</span>
+      <span class="sticky-target" id="sticky-target">Area ? &ndash; ?A</span>
+      <span class="sticky-status" id="sticky-status">Pending&hellip;</span>
+    </div>
+
+    <div class="caution-stripe"></div>
+
+    <div class="panel-header">
+      <div class="title-block">
+        <h1>Power Distribution Panel</h1>
+        <div class="subtitle">Model PDP&#8209;450 &middot; 5 Channel</div>
+      </div>
+      <div class="pilot">
+        <div class="pilot-light"></div>
+        <span class="pilot-label">Power</span>
+      </div>
+    </div>
+
+    <div class="channels" id="channels">
+    </div>
+
+    <div class="panel-footer">
+      <span>Caution &middot; Live Circuit</span>
+      <span>Running at 120V DC · Bus A</span>
+    </div>
+  </div>
+
+<script>
+
+    const numbers = {
+        0: ["a","b","c","d","e","f"],
+        1: ["b","c"],
+        2: ["a","b","g","e","d"],
+        3: ["a","b","c","d","g"],
+        4: ["f","g","b","c"],
+        5: ["a","f","g","c","d"],
+        6: ["a","f","g","e","c","d"],
+        7: ["a","b","c"],
+        8: ["a","b","c","d","e","f","g"],
+        9: ["a","b","c","d","f","g"]
+    };
+    const c1 = Math.floor(Math.random() * 15);
+    const c2 = Math.floor(Math.random() * 15);
+    const c3 = Math.floor(Math.random() * 15);
+
+    const channels = [
+        { id:"ch1", name:"Area 1", value: c1 },
+        { id:"ch2", name:"Area 2", value: c2 },
+        { id:"ch3", name:"Area 3", value: c3 },
+    ];
+
+    const digitTemplate = () => `
+        <div class="digit">
+        <div class="seg a"></div>
+        <div class="seg b"></div>
+        <div class="seg c"></div>
+        <div class="seg d"></div>
+        <div class="seg e"></div>
+        <div class="seg f"></div>
+        <div class="seg g"></div>
+        </div>`;
+
+        const container = document.getElementById("channels");
+
+        container.innerHTML = channels.map(ch => `
+        <div class="channel-row">
+        <div class="channel-label">
+            <span class="ch-name">${ch.name}</span>
+            <span class="ch-range">0&ndash;15 A</span>
+        </div>
+        <div class="slider-wrap">
+            <div class="slider-track">
+            <input type="range" class="panel-slider" min="0" max="15" value="${ch.value}"
+                    data-target="${ch.id}-display" data-channel="${ch.id}" aria-label="${ch.name} voltage">
+            </div>
+            <div class="ticks"><span>0</span><span>3.7</span><span>7.5</span><span>11.2</span><span>15</span></div>
+        </div>
+        <div class="readout-window">
+            <div class="display" id="${ch.id}-display">
+            ${digitTemplate()}${digitTemplate()}
+            </div>
+            <span class="unit-label">A</span>
+        </div>
+        </div>
+    `).join("");
+
+    function setDigit(digitEl, value){
+        digitEl.querySelectorAll(".seg").forEach(seg => seg.classList.remove("active"));
+        numbers[value].forEach(segment => {
+            digitEl.querySelector("." + segment).classList.add("active");
+        });
+    }
+
+    function setReadout(displayId, value){
+        const num = Math.max(0, Math.min(99, Math.floor(Number(value))));
+        const tens = Math.floor(num / 10);
+        const ones = num % 10;
+        const el = document.getElementById(displayId);
+        const digitEls = el.querySelectorAll(".digit");
+        setDigit(digitEls[0], tens);
+        setDigit(digitEls[1], ones);
+    }
+
+    document.querySelectorAll(".panel-slider").forEach(slider => {
+        setReadout(slider.dataset.target, slider.value);
+        slider.addEventListener("input", function(){
+            setReadout(this.dataset.target, this.value);
+        });
+    });
+
+    /* ===================== CALIBRATION TASK ===================== */
+
+    // pick a random channel + a random target value (e.g. 2A or 8A)
+    const calibrationChannel = channels[Math.floor(Math.random() * channels.length)];
+    const possibleTargets = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]; 
+    let calibrationTarget = possibleTargets[Math.floor(Math.random() * possibleTargets.length)];
+    console.log(`${calibrationChannel.value}, ${calibrationTarget}`)
+    if(calibrationChannel.value == calibrationTarget){
+      calibrationTarget = 0;
+    }
+
+
+    const stickyNoteEl = document.getElementById("sticky-note");
+    const stickyTargetEl = document.getElementById("sticky-target");
+    const stickyStatusEl = document.getElementById("sticky-status");
+
+    stickyTargetEl.textContent = `${calibrationChannel.name} \u2013 ${calibrationTarget}A`;
+
+    let calibrationDone = false;
+
+    async function postCalibrationStatus(done){
+        try{
+            await fetch("/calibrate-power-done", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+            });
+        }catch(err){
+            console.warn("calibrate-task fetch failed:", err);
+        }
+    }
+
+
+    const calibrationSlider = document.querySelector(
+        `.panel-slider[data-channel="${calibrationChannel.id}"]`
+    );
+
+    if (calibrationSlider){
+        calibrationSlider.addEventListener("input", function(){
+            const current = Number(this.value);
+            if (!calibrationDone && current === calibrationTarget){
+                calibrationDone = true;
+                stickyStatusEl.textContent = "Calibrated \u2713";
+                stickyNoteEl.classList.add("calibrated");
+                postCalibrationStatus(true);
+            } else if (calibrationDone && current !== calibrationTarget){
+                calibrationDone = false;
+                stickyStatusEl.textContent = "Pending\u2026";
+                stickyNoteEl.classList.remove("calibrated");
+                postCalibrationStatus(false);
+            }
+        });
+    }
+</script>
+</body>
+</html>
