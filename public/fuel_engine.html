@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fuel the Rocket Engine</title>
+<style>
+    :root{
+        --amber-top:#ffd766;
+        --amber-mid:#f5a623;
+        --amber-deep:#a85f0a;
+        --led:#39ff88;
+        --chrome:#c9d2da;
+        --flame:#ff7a2e;
+    }
+    *{ box-sizing: border-box; }
+    body{
+        margin:0;
+        min-height:100vh;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        background:
+            radial-gradient(ellipse 900px 500px at 50% -10%, rgba(180,210,255,0.08), transparent 60%),
+            repeating-linear-gradient(90deg, rgba(255,255,255,0.015) 0 2px, transparent 2px 40px),
+            #0d1016;
+        font-family: Arial, Helvetica, sans-serif;
+        overflow-x:hidden;
+        padding: 30px 12px 60px;
+    }
+
+    .scene{
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        width: 100%;
+        max-width: 460px;
+    }
+
+    .signage{
+        background: linear-gradient(180deg,#2b5cad,#1c3f7a);
+        color:#eaf1ff;
+        font-weight:800;
+        letter-spacing:2px;
+        font-size:14px;
+        padding:8px 22px;
+        border-radius:6px 6px 0 0;
+        box-shadow: 0 3px 0 rgba(0,0,0,0.35);
+    }
+
+    .console{
+        width:100%;
+        background: linear-gradient(155deg,#454c58,#262a31 55%, #1f2227);
+        border:2px solid #565e69;
+        border-top:none;
+        border-radius: 0 0 18px 18px;
+        padding: 18px;
+        position:relative;
+        box-shadow: 0 20px 45px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06);
+        min-height: 120px;
+    }
+
+    /* loading state */
+    .loading-state{
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        gap:8px;
+        padding: 40px 0;
+        color:#8b94a0;
+        font-family:'Courier New', monospace;
+        font-size:13px;
+        letter-spacing:1px;
+    }
+    .dot{
+        width:6px; height:6px; border-radius:50%;
+        background:#8b94a0;
+        animation: pulseDot 1s ease-in-out infinite;
+    }
+    .dot:nth-child(2){ animation-delay:0.15s; }
+    .dot:nth-child(3){ animation-delay:0.3s; }
+    @keyframes pulseDot{
+        0%,100%{ opacity:0.25; transform:scale(0.8); }
+        50%{ opacity:1; transform:scale(1.1); }
+    }
+
+    /* empty state */
+    .empty-state{
+        display:none;
+        flex-direction:column;
+        align-items:center;
+        text-align:center;
+        padding: 22px 10px 10px;
+        gap:14px;
+    }
+    .empty-icon{
+        width:64px; height:64px;
+        border:3px dashed #565e69;
+        border-radius:12px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        color:#565e69;
+    }
+    .empty-icon svg{ width:30px; height:30px; }
+    .empty-state h2{
+        margin:0;
+        font-size:15px;
+        letter-spacing:1.5px;
+        color:#dfe4e8;
+        font-family:'Courier New', monospace;
+    }
+    .empty-state p{
+        margin:0;
+        font-size:13px;
+        color:#8b94a0;
+        line-height:1.5;
+        max-width:280px;
+    }
+    .recheck-btn{
+        margin-top:4px;
+        background: linear-gradient(180deg,#5a6270,#3a3f47);
+        color:#eef2f5;
+        border:none;
+        border-radius:999px;
+        padding:10px 22px;
+        font-size:13px;
+        font-weight:800;
+        letter-spacing:1px;
+        cursor:pointer;
+    }
+    .recheck-btn:active{ transform: scale(0.97); }
+
+    /* ready state */
+    .ready-state{
+        display:none;
+        flex-direction:column;
+        align-items:center;
+    }
+
+    .lcd-row{
+        display:flex;
+        justify-content:space-between;
+        align-items:baseline;
+        width:100%;
+    }
+    .lcd{
+        width:100%;
+        background: linear-gradient(180deg,#0a1710,#050c07);
+        border:2px solid #2a3d2f;
+        border-radius:10px;
+        padding:10px 14px;
+        display:flex;
+        flex-direction:column;
+        gap:6px;
+        margin-bottom:18px;
+    }
+    .lcd-label{
+        font-size:10px;
+        color:#3f9c67;
+        letter-spacing:1.5px;
+        font-family:'Courier New', monospace;
+        font-weight:700;
+    }
+    .lcd-value{
+        font-family:'Courier New', monospace;
+        font-size:20px;
+        font-weight:700;
+        color: var(--led);
+        text-shadow: 0 0 8px rgba(57,255,136,0.65), 0 0 2px rgba(57,255,136,0.9);
+    }
+    .lcd-value.flicker{ animation: flicker 0.18s ease; }
+    @keyframes flicker{ 0%{ opacity:0.35; } 100%{ opacity:1; } }
+    .lcd-status{
+        margin-top:2px;
+        font-family:'Courier New', monospace;
+        font-size:11px;
+        letter-spacing:2px;
+        color:#3f9c67;
+        text-align:right;
+    }
+    .lcd-status.ignited{
+        color:#ffb066;
+        animation: blink 0.8s steps(1) infinite;
+    }
+    @keyframes blink{ 50%{ opacity:0.3; } }
+
+    .rig{
+        display:flex;
+        align-items:flex-end;
+        justify-content:center;
+        gap:6px;
+        width:100%;
+    }
+
+    .tank-col{
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+    }
+    .mini-tank{
+        width:78px;
+        height:130px;
+        border-radius:10px 10px 16px 16px;
+        border:4px solid var(--chrome);
+        background: #1a1e24;
+        position:relative;
+        overflow:hidden;
+        box-shadow: inset 0 0 16px rgba(0,0,0,0.6);
+    }
+    .mini-liquid-wrap{
+        position:absolute;
+        bottom:0; left:0; width:100%;
+        height:100%;
+        transition: height 0.12s linear;
+    }
+    .mini-liquid-body{
+        position:absolute; top:6px; left:0; width:100%; height:100%;
+        background: linear-gradient(180deg, var(--amber-top), var(--amber-mid) 45%, var(--amber-deep));
+    }
+    .mini-wave{
+        position:absolute; top:-7px; left:0; width:200%; height:16px;
+    }
+    .mini-wave svg{ display:block; width:100%; height:100%; }
+    .mini-wave1{ animation: waveMove 2.4s linear infinite; }
+    .mini-wave2{ animation: waveMove 3.8s linear infinite reverse; opacity:0.5; top:-4px; }
+    @keyframes waveMove{ from{ transform:translateX(0);} to{ transform:translateX(-50%);} }
+    .tank-tag{
+        margin-top:6px;
+        font-size:10px;
+        color:#8b94a0;
+        letter-spacing:1px;
+        font-family:'Courier New', monospace;
+    }
+
+    .hose-col{
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        padding-bottom:40px;
+    }
+    .hose2{
+        width:44px;
+        height:12px;
+        background: linear-gradient(90deg,#3a3f47,#1c1f24);
+        border:1px solid #565e69;
+        border-radius:6px;
+        position:relative;
+        overflow:hidden;
+        transform-origin: left center;
+        transition: transform 0.55s cubic-bezier(.34,1.56,.4,1);
+    }
+    .hose2.disconnected{ transform: translateY(-24px) rotate(-30deg); }
+    .hose2::before{
+        content:'';
+        position:absolute; inset:0;
+        background: repeating-linear-gradient(90deg, var(--amber-top) 0 6px, transparent 6px 18px);
+        background-size:24px 100%;
+        opacity:0;
+        transition: opacity 0.2s ease;
+    }
+    .hose2.flowing::before{ opacity:0.85; animation: flow2 0.4s linear infinite; }
+    @keyframes flow2{ from{ background-position-x:0; } to{ background-position-x:-24px; } }
+
+    .engine-col{
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+    }
+    .engine-svg{ width:118px; height:150px; display:block; overflow:visible; }
+    .engine-tag{
+        margin-top:6px;
+        font-size:10px;
+        color:#8b94a0;
+        letter-spacing:1px;
+        font-family:'Courier New', monospace;
+    }
+
+    .spark{
+        position:absolute;
+        width:4px; height:4px;
+        border-radius:50%;
+        background: var(--flame);
+        opacity:0;
+        pointer-events:none;
+    }
+    .spark.go{ animation: sparkFly 0.7s ease-out forwards; }
+    @keyframes sparkFly{
+        0%{ opacity:1; transform: translate(0,0) scale(1); }
+        100%{ opacity:0; transform: var(--fly); }
+    }
+
+    .action-slot{
+        margin-top:22px;
+        min-height:52px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+    }
+    .pill-btn{
+        border:none;
+        border-radius:999px;
+        padding:14px 26px;
+        font-size:14px;
+        font-weight:800;
+        letter-spacing:1px;
+        cursor:pointer;
+        display:flex;
+        align-items:center;
+        gap:10px;
+        touch-action:none;
+        user-select:none;
+        -webkit-user-select:none;
+        transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .pill-btn svg{ width:18px; height:18px; flex-shrink:0; }
+    .pill-btn:disabled{ opacity:0.5; cursor:default; }
+    .connect-btn2{
+        background: linear-gradient(180deg,#5a6270,#3a3f47);
+        color:#eef2f5;
+        box-shadow: 0 6px 14px rgba(0,0,0,0.35);
+    }
+    .fuel-btn{
+        display:none;
+        background: linear-gradient(180deg,#3d7fe0,#2359ad);
+        color:#eef4ff;
+        box-shadow: 0 6px 14px rgba(35,89,173,0.4);
+    }
+    .fuel-btn.ready{ display:flex; }
+    .fuel-btn.active{
+        background: linear-gradient(180deg,#2359ad,#1a4685);
+        transform: scale(0.96);
+    }
+
+    .caption{
+        margin-top:8px;
+        font-size:12px;
+        color:#8b94a0;
+        letter-spacing:0.5px;
+        text-align:center;
+    }
+</style>
+</head>
+<body>
+    <div class="scene">
+        <div class="signage">ROCKET ENGINE FUELING</div>
+
+        <div class="console" id="console">
+            <div class="loading-state" id="loadingState">
+                <span>CHECKING TANK</span>
+                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            </div>
+
+            <div class="empty-state" id="emptyState">
+                <div class="empty-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v6M12 8c3 3 5 6 5 9a5 5 0 0 1-10 0c0-3 2-6 5-9z"/><path d="M4 4l16 16" /></svg>
+                </div>
+                <h2>TANK EMPTY</h2>
+                <p>There's no fuel to load yet. Go fill the tank on the pump page first, then come back here.</p>
+                <button class="recheck-btn" id="recheckBtn">Check again</button>
+            </div>
+
+            <div class="ready-state" id="readyState">
+                <div class="lcd">
+                    <div class="lcd-row">
+                        <span class="lcd-label">LOAD</span>
+                        <span class="lcd-value" id="loadPct">0%</span>
+                    </div>
+                    <div class="lcd-row">
+                        <span class="lcd-label">LITERS TRANSFERRED</span>
+                        <span class="lcd-value" id="litreLoaded">0.00</span>
+                    </div>
+                    <div class="lcd-status" id="engineStatus">STANDBY</div>
+                </div>
+
+                <div class="rig">
+                    <div class="tank-col">
+                        <div class="mini-tank">
+                            <div class="mini-liquid-wrap" id="miniLiquidWrap">
+                                <div class="mini-liquid-body"></div>
+                                <div class="mini-wave mini-wave1">
+                                    <svg viewBox="0 0 800 16" preserveAspectRatio="none"><path d="M0,8 Q100,-4 200,8 T400,8 T600,8 T800,8 L800,16 L0,16 Z" fill="#ffdb80"></path></svg>
+                                </div>
+                                <div class="mini-wave mini-wave2">
+                                    <svg viewBox="0 0 800 16" preserveAspectRatio="none"><path d="M0,8 Q100,18 200,8 T400,8 T600,8 T800,8 L800,16 L0,16 Z" fill="#e08a1e"></path></svg>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tank-tag">SOURCE TANK</div>
+                    </div>
+
+                    <div class="hose-col">
+                        <div class="hose2 disconnected" id="hose2"></div>
+                    </div>
+
+                    <div class="engine-col" id="engineCol" style="position:relative;">
+                        <svg class="engine-svg" viewBox="0 0 140 190">
+                            <defs>
+                                <linearGradient id="metal" x1="0" y1="0" x2="1" y2="0">
+                                    <stop offset="0" stop-color="#7f8790"/>
+                                    <stop offset="0.5" stop-color="#3c4149"/>
+                                    <stop offset="1" stop-color="#7f8790"/>
+                                </linearGradient>
+                                <radialGradient id="glowGrad" cx="50%" cy="50%" r="50%">
+                                    <stop offset="0" stop-color="#ffd9a0" stop-opacity="0.95"/>
+                                    <stop offset="45%" stop-color="var(--flame)" stop-opacity="0.7"/>
+                                    <stop offset="100%" stop-color="var(--flame)" stop-opacity="0"/>
+                                </radialGradient>
+                            </defs>
+                            <rect x="50" y="4" width="40" height="30" rx="6" fill="url(#metal)" stroke="#22262b" stroke-width="1"/>
+                            <path d="M54,34 L86,34 L128,168 Q70,188 12,168 Z" fill="url(#metal)" stroke="#22262b" stroke-width="1.5"/>
+                            <path d="M58,58 L82,58 M52,80 L88,80 M46,104 L94,104 M38,128 L102,128 M28,150 L112,150" stroke="#22262b" stroke-width="1.5" opacity="0.6"/>
+                            <ellipse id="engineGlow" cx="70" cy="168" rx="10" ry="4" fill="url(#glowGrad)" opacity="0"/>
+                        </svg>
+                        <div class="engine-tag">ENGINE INLET</div>
+                    </div>
+                </div>
+
+                <div class="action-slot">
+                    <button class="pill-btn connect-btn2" id="connectBtn2">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3v6M15 3v6M6 9h12l-1.5 12h-9L6 9z"/></svg>
+                        Connect hose
+                    </button>
+                    <button class="pill-btn fuel-btn" id="fuelBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                        Hold to fuel engine
+                    </button>
+                </div>
+                <div class="caption" id="caption2">Connect the hose to the engine inlet before transferring fuel</div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const STORAGE_KEY = 'fill-rocket-status';
+
+    const loadingState = document.getElementById('loadingState');
+    const emptyState = document.getElementById('emptyState');
+    const readyState = document.getElementById('readyState');
+    const recheckBtn = document.getElementById('recheckBtn');
+
+    const connectBtn2 = document.getElementById('connectBtn2');
+    const fuelBtn = document.getElementById('fuelBtn');
+    const hose2 = document.getElementById('hose2');
+    const miniLiquidWrap = document.getElementById('miniLiquidWrap');
+    const loadPct = document.getElementById('loadPct');
+    const litreLoaded = document.getElementById('litreLoaded');
+    const engineStatus = document.getElementById('engineStatus');
+    const engineGlow = document.getElementById('engineGlow');
+    const engineCol = document.getElementById('engineCol');
+    const caption2 = document.getElementById('caption2');
+
+    let sourceGallons = 12.5;
+    let remainingPct = 100;
+    let hoseConnected2 = false;
+    let fuelInterval = null;
+    let ignited = false;
+
+    function checkTankStatus(){
+        return fetch("/fill-rocket", { method: "GET" })
+            .then(res => res.json())
+            .then((data) => ({ filled: !!data.filled, gallons: data.gallons || 12.5 }));
+    }
+
+    function persistConsumed(){
+        fetch("/fill-rocket", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ filled: false, gallons: 0 })
+        }).then(res => res.json()).then((data) => {
+            console.log('Tank marked as consumed:', data);
+        });
+    }
+
+    function showLoading(){
+        loadingState.style.display = 'flex';
+        emptyState.style.display = 'none';
+        readyState.style.display = 'none';
+    }
+    function showEmpty(){
+        loadingState.style.display = 'none';
+        emptyState.style.display = 'flex';
+        readyState.style.display = 'none';
+    }
+    function showReady(gallons){
+        sourceGallons = gallons || 12.5;
+        loadingState.style.display = 'none';
+        emptyState.style.display = 'none';
+        readyState.style.display = 'flex';
+    }
+
+    async function refresh(){
+        showLoading();
+        const status = await checkTankStatus();
+        if (status.filled){
+            showReady(status.gallons);
+        } else {
+            showEmpty();
+        }
+    }
+
+    recheckBtn.addEventListener('click', refresh);
+
+    function updateEngine(){
+        miniLiquidWrap.style.height = remainingPct + '%';
+        const loaded = 100 - remainingPct;
+        loadPct.textContent = loaded + '%';
+        const litres = (loaded / 100 * sourceGallons) * 3.7854;
+        litreLoaded.textContent = litres.toFixed(2);
+        litreLoaded.classList.remove('flicker');
+        loadPct.classList.remove('flicker');
+        void loadPct.offsetWidth;
+        loadPct.classList.add('flicker');
+        litreLoaded.classList.add('flicker');
+        engineGlow.setAttribute('opacity', Math.min(0.9, loaded / 100 * 0.9));
+        const scale = 1 + (loaded / 100) * 1.6;
+        engineGlow.setAttribute('rx', 10 * scale);
+        engineGlow.setAttribute('ry', 4 * scale);
+    }
+
+    connectBtn2.addEventListener('click', () => {
+        connectBtn2.disabled = true;
+        connectBtn2.textContent = '';
+        connectBtn2.append('Connecting\u2026');
+        engineStatus.textContent = 'CONNECTING\u2026';
+        hose2.classList.remove('disconnected');
+        setTimeout(() => {
+            hoseConnected2 = true;
+            connectBtn2.style.display = 'none';
+            fuelBtn.classList.add('ready');
+            engineStatus.textContent = 'STANDBY';
+            caption2.textContent = 'Hold the button to transfer fuel into the engine';
+        }, 550);
+    });
+
+    function spawnSparks(){
+        const rect = engineCol.getBoundingClientRect();
+        for (let i = 0; i < 8; i++){
+            const s = document.createElement('div');
+            s.className = 'spark';
+            const angle = (Math.random() * 140 - 70) * Math.PI / 180;
+            const dist = 30 + Math.random() * 30;
+            const fx = Math.sin(angle) * dist;
+            const fy = Math.abs(Math.cos(angle)) * dist + 10;
+            s.style.setProperty('--fly', `translate(${fx}px, ${fy}px) scale(0.2)`);
+            s.style.left = '52%';
+            s.style.top = '84%';
+            engineCol.appendChild(s);
+            requestAnimationFrame(() => s.classList.add('go'));
+            setTimeout(() => s.remove(), 750);
+        }
+    }
+
+    function startFueling(){
+        if (ignited || !hoseConnected2) return;
+        fuelBtn.classList.add('active');
+        hose2.classList.add('flowing');
+        engineStatus.textContent = 'TRANSFERRING...';
+
+        fuelInterval = setInterval(() => {
+            if (remainingPct > 0){
+                remainingPct--;
+                updateEngine();
+            } else {
+                finishFueling();
+            }
+        }, 50);
+    }
+
+    function stopFueling(){
+        fuelBtn.classList.remove('active');
+        hose2.classList.remove('flowing');
+        clearInterval(fuelInterval);
+        if (!ignited) engineStatus.textContent = 'STANDBY';
+    }
+
+    function finishFueling(){
+        clearInterval(fuelInterval);
+        ignited = true;
+        fuelBtn.classList.remove('active');
+        fuelBtn.disabled = true;
+        hose2.classList.remove('flowing');
+        engineStatus.textContent = 'ENGINE FUELED \u2014 READY FOR LAUNCH';
+        engineStatus.classList.add('ignited');
+        caption2.textContent = 'Full load transferred. Refill the tank on the pump page to fuel again.';
+        spawnSparks();
+        setTimeout(spawnSparks, 200);
+        persistConsumed();
+    }
+
+    fuelBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); startFueling(); });
+    fuelBtn.addEventListener('pointerup', stopFueling);
+    fuelBtn.addEventListener('pointerleave', stopFueling);
+    fuelBtn.addEventListener('pointercancel', stopFueling);
+
+    updateEngine();
+    refresh();
+</script>
+</body>
+</html>

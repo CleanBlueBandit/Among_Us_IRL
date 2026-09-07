@@ -17,7 +17,7 @@ Every player needs a mobile device to carry around and complete tasks on.
 
 ## Setup (required no matter which hosting method you pick)
 
-Every method below needs the server to know its IP, port, protocol, and password hash — that all comes from a single `.env` file. Do this step first, regardless of how you end up running the server.
+Every method below needs the server to know its IP, port, protocol, and password hash - that all comes from a single `.env` file. Do this step first, regardless of how you end up running the server.
 
 - Download the project and run `npm install`.
 - Create a `.env` file at the project root:
@@ -48,7 +48,7 @@ Dont forget to comment the code snippet again (or delete it), since it **halts**
 
 ## Firewall rules (needed for LAN hosting)
 
-By default, most OS firewalls block unsolicited inbound connections — so even with the server running and `.env` configured correctly, other devices on the same Wi-Fi may not be able to reach it until you open the port. This applies to methods 1–5 below; it's **not** needed for the tunnel method, since ngrok/Cloudflare Tunnel/localtunnel establish an outbound connection and handle inbound traffic themselves.
+By default, most OS firewalls block unsolicited inbound connections - so even with the server running and `.env` configured correctly, other devices on the same Wi-Fi may not be able to reach it until you open the port. This applies to methods 1–5 below; it's **not** needed for the tunnel method, since ngrok/Cloudflare Tunnel/localtunnel establish an outbound connection and handle inbound traffic themselves.
 
 **Windows** (run in an elevated PowerShell/Command Prompt):
 ```powershell
@@ -73,7 +73,7 @@ sudo firewall-cmd --add-port={your port}/tcp --permanent
 sudo firewall-cmd --reload
 ```
 
-If you're using Docker with the default bridge network (not `network_mode: host`), the Docker daemon manages its own iptables rules for the published port — but the host firewall rule above is usually still required on top of that, since ufw/firewalld can override or coexist awkwardly with Docker's rules depending on distro defaults. If players still can't connect after publishing the port, check the host firewall first.
+If you're using Docker with the default bridge network (not `network_mode: host`), the Docker daemon manages its own iptables rules for the published port - but the host firewall rule above is usually still required on top of that, since ufw/firewalld can override or coexist awkwardly with Docker's rules depending on distro defaults. If players still can't connect after publishing the port, check the host firewall first.
 
 ## How do I play
 With `.env` in place, host it. There are a few ways to do this. pick whichever fits your setup.
@@ -159,7 +159,7 @@ EnvironmentFile=/path/to/Among_Us_IRL/.env
 WantedBy=multi-user.target
 ```
 
-`EnvironmentFile` is what actually loads `.env` here — systemd doesn't read files named `.env` on its own, so this line is required even though `WorkingDirectory` also points at the same folder.
+`EnvironmentFile` is what actually loads `.env` here - systemd doesn't read files named `.env` on its own, so this line is required even though `WorkingDirectory` also points at the same folder.
 
 ```bash
 sudo systemctl daemon-reload
@@ -182,11 +182,13 @@ The `AppDirectory` line matters: NSSM doesn't default the working directory to y
 
 The server is meant for **localhost / same-LAN use only**. If some players aren't on your Wi-Fi, you can expose it with a tunneling tool instead of opening ports on your router:
 
-- **[ngrok](https://ngrok.com/)**: `ngrok http {your port}` — gives you a temporary public HTTPS URL that forwards to your local server.
-- **[Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)**: `cloudflared tunnel --url http://localhost:{your port}` — similar idea, no account strictly required for a quick tunnel.
-- **[localtunnel](https://github.com/localtunnel/localtunnel)**: `npx localtunnel --port {your port}` — lightweight npm-based alternative.
+- **[ngrok](https://ngrok.com/)**: `ngrok http {your port}` - gives you a temporary public HTTPS URL that forwards to your local server.
+- **[localtunnel](https://github.com/localtunnel/localtunnel)**: `npx localtunnel --port {your port}` - lightweight npm-based alternative.
+- **[Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)**: `cloudflared tunnel --url http://localhost:{your port}` - similar idea, no account strictly required for a quick tunnel. I reccomend this approach, works the best for me.
 
-> **This significantly increases the security risk described below.** Exposing the server to the public internet, even briefly, means anyone who finds the URL can interact with it — not just your players. Only use this for the duration of a single game session, and shut the tunnel down immediately afterward.
+> For cloudflare, it didnt work for me before I tried with http2, here is the command `cloudflared tunnel --protocol http2 --url http://localhost:{your port}`
+
+**This significantly increases the security risk described below.** Exposing the server to the public internet, even briefly, means anyone who finds the URL can interact with it - not just your players. Only use this for the duration of a single game session, and shut the tunnel down immediately afterward.
 
 ## In-Game setup
 

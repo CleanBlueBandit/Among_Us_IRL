@@ -1,80 +1,707 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Refuel Gas tank</title>
-</head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Refuel Gas Tank</title>
 <style>
+    :root{
+        --amber-top:#ffd766;
+        --amber-mid:#f5a623;
+        --amber-deep:#a85f0a;
+        --led:#39ff88;
+        --chrome:#c9d2da;
+    }
+    *{ box-sizing: border-box; }
     body{
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        background-color: gainsboro;
+        margin:0;
+        min-height:100vh;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        background:
+            radial-gradient(ellipse 900px 500px at 50% -10%, rgba(255,236,180,0.10), transparent 60%),
+            repeating-linear-gradient(90deg, rgba(255,255,255,0.015) 0 2px, transparent 2px 40px),
+            #12161d;
+        font-family: Arial, Helvetica, sans-serif;
+        overflow-x:hidden;
+        padding: 30px 12px 50px;
     }
-    .fuel-tank{
-        width: 80%;
-        height: 50vh;
-        border: 10px solid black;
-        background-color: gray;
-        border-radius: 8px;
-        margin-top: 10vh;
-        display: flex;
-    }
-    .fuel{
+
+    .scene{
+        display:flex;
+        flex-direction:column;
+        align-items:center;
         width: 100%;
-        height: 0vh;
-        background-color: yellow;
-        margin-top: 49vh;
+        max-width: 420px;
     }
+
+    .signage{
+        background: linear-gradient(180deg,#e63946,#b52332);
+        color:#fff8ea;
+        font-weight:800;
+        letter-spacing:2px;
+        font-size:14px;
+        padding:8px 22px;
+        border-radius:6px 6px 0 0;
+        box-shadow: 0 3px 0 rgba(0,0,0,0.35);
+    }
+
+    .console{
+        width:100%;
+        background: linear-gradient(155deg,#4a515c,#2a2f36 55%, #23272d);
+        border:2px solid #565e69;
+        border-top:none;
+        border-radius: 0 0 18px 18px;
+        padding: 18px;
+        position:relative;
+        box-shadow: 0 20px 45px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+
+    .display-row{
+        display:flex;
+        gap:14px;
+        align-items:stretch;
+        margin-bottom:16px;
+    }
+
+    .gauge-box{
+        flex: 0 0 118px;
+        background:#1b1f24;
+        border:2px solid #565e69;
+        border-radius:10px;
+        padding:10px 8px 8px;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+    }
+    .gauge{
+        width:96px;
+        height:52px;
+        position:relative;
+        overflow:hidden;
+        border-top-left-radius:96px;
+        border-top-right-radius:96px;
+        background: radial-gradient(circle at 50% 100%, #12151a, #05070a 80%);
+        border:3px solid var(--chrome);
+        border-bottom:none;
+    }
+    .gauge .tick{
+        position:absolute;
+        bottom:2px;
+        width:2px;
+        height:8px;
+        background:#5f6871;
+    }
+    .gauge .tick.mid{ left:50%; transform:translateX(-50%); height:10px; background:#8b94a0;}
+    .gauge .tick.e{ left:6px; }
+    .gauge .tick.f{ right:6px; }
+    .needle{
+        position:absolute;
+        bottom:0;
+        left:50%;
+        width:3px;
+        height:46px;
+        background: linear-gradient(#ff7b6b,#e63946);
+        border-radius:2px 2px 0 0;
+        transform-origin: bottom center;
+        transform: translateX(-50%) rotate(-80deg);
+        transition: transform 0.35s cubic-bezier(.34,1.4,.4,1);
+        box-shadow:0 0 6px rgba(230,57,70,0.7);
+    }
+    .needle::after{
+        content:'';
+        position:absolute;
+        bottom:-5px;
+        left:50%;
+        width:9px;
+        height:9px;
+        background:#dfe4e8;
+        border-radius:50%;
+        transform:translateX(-50%);
+        border:1px solid #40474f;
+    }
+    .gauge-labels{
+        display:flex;
+        justify-content:space-between;
+        width:96px;
+        font-size:10px;
+        color:#8b94a0;
+        font-weight:700;
+        margin-top:4px;
+        letter-spacing:1px;
+    }
+
+    .lcd{
+        flex:1;
+        background: linear-gradient(180deg,#0a1710,#050c07);
+        border:2px solid #2a3d2f;
+        border-radius:10px;
+        padding:10px 12px;
+        display:flex;
+        flex-direction:column;
+        justify-content:center;
+        gap:6px;
+        min-width:0;
+    }
+    .lcd-row{
+        display:flex;
+        justify-content:space-between;
+        align-items:baseline;
+    }
+    .lcd-label{
+        font-size:10px;
+        color:#3f9c67;
+        letter-spacing:1.5px;
+        font-family: 'Courier New', monospace;
+        font-weight:700;
+    }
+    .lcd-value{
+        font-family:'Courier New', monospace;
+        font-size:22px;
+        font-weight:700;
+        color: var(--led);
+        text-shadow: 0 0 8px rgba(57,255,136,0.65), 0 0 2px rgba(57,255,136,0.9);
+        letter-spacing:1px;
+    }
+    .lcd-value.flicker{ animation: flicker 0.18s ease; }
+    @keyframes flicker{
+        0%{ opacity:0.35; }
+        100%{ opacity:1; }
+    }
+    .lcd-status{
+        margin-top:2px;
+        font-family:'Courier New', monospace;
+        font-size:11px;
+        letter-spacing:2px;
+        color:#3f9c67;
+        text-align:right;
+        min-height:14px;
+    }
+    .lcd-status.full{
+        color: var(--led);
+        animation: blink 0.9s steps(1) infinite;
+    }
+    @keyframes blink{
+        50%{ opacity:0.25; }
+    }
+
+    .tank-unit{
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        position:relative;
+    }
+
+    .hose-slot{
+        width:60px;
+        height:38px;
+        position:relative;
+        display:flex;
+        justify-content:center;
+    }
+    .hose{
+        width:14px;
+        height:34px;
+        background: linear-gradient(180deg,#3a3f47,#1c1f24);
+        border-radius:6px;
+        position:absolute;
+        top:0;
+        overflow:hidden;
+        border:1px solid #565e69;
+        transform-origin: bottom center;
+        transition: transform 0.55s cubic-bezier(.34,1.56,.4,1);
+    }
+    .hose::after{
+        content:'';
+        position:absolute;
+        top:-6px; left:50%;
+        width:20px; height:8px;
+        background: linear-gradient(180deg,#dfe4e8,#8b94a0);
+        border-radius:4px;
+        transform:translateX(-50%);
+        border:1px solid #565e69;
+    }
+    .hose.disconnected{
+        transform: translateX(30px) rotate(34deg);
+    }
+    .hose::before{
+        content:'';
+        position:absolute;
+        inset:0;
+        background: repeating-linear-gradient(180deg, var(--amber-top) 0 6px, transparent 6px 18px);
+        background-size:100% 24px;
+        opacity:0;
+        transition: opacity 0.2s ease;
+    }
+    .hose.flowing::before{
+        opacity:0.85;
+        animation: flow 0.45s linear infinite;
+    }
+    @keyframes flow{
+        from{ background-position-y:0; }
+        to{ background-position-y:24px; }
+    }
+
+    .port-cap{
+        position:absolute;
+        top:-4px;
+        left:50%;
+        width:22px;
+        height:10px;
+        background: linear-gradient(180deg,#565e69,#2a2f36);
+        border:1px solid #6b7480;
+        border-radius:4px;
+        transform:translateX(-50%);
+        transition: opacity 0.25s ease;
+        z-index:4;
+    }
+    .port-cap.hidden{ opacity:0; }
+
+    .tank-glass{
+        width:190px;
+        height:250px;
+        border-radius:16px 16px 26px 26px;
+        border:6px solid var(--chrome);
+        background: linear-gradient(160deg, rgba(255,255,255,0.05), rgba(0,0,0,0.35)), #1a1e24;
+        position:relative;
+        overflow:hidden;
+        box-shadow: inset 0 0 25px rgba(0,0,0,0.6), 0 8px 18px rgba(0,0,0,0.45);
+    }
+    .glass-shine{
+        position:absolute;
+        top:0; left:10px;
+        width:26px; height:100%;
+        background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.02));
+        border-radius:20px;
+        pointer-events:none;
+        z-index:5;
+    }
+
+    .full-flash{
+        position:absolute;
+        inset:0;
+        border-radius:10px 10px 20px 20px;
+        pointer-events:none;
+        box-shadow: inset 0 0 0 0 rgba(57,255,136,0);
+        transition: box-shadow 0.4s ease;
+        z-index:6;
+    }
+    .full-flash.on{
+        box-shadow: inset 0 0 24px 6px rgba(57,255,136,0.55);
+        animation: pulseGlow 0.9s ease-in-out infinite;
+    }
+    @keyframes pulseGlow{
+        0%,100%{ box-shadow: inset 0 0 18px 4px rgba(57,255,136,0.35); }
+        50%{ box-shadow: inset 0 0 30px 8px rgba(57,255,136,0.7); }
+    }
+
+    .liquid-wrap{
+        position:absolute;
+        bottom:0;
+        left:0;
+        width:100%;
+        height:0%;
+        transition: height 0.12s linear;
+        overflow:visible;
+    }
+    .liquid-body{
+        position:absolute;
+        top:8px;
+        left:0;
+        width:100%;
+        height:100%;
+        background: linear-gradient(180deg, var(--amber-top), var(--amber-mid) 45%, var(--amber-deep));
+    }
+    .wave-layer{
+        position:absolute;
+        top:-9px;
+        left:0;
+        width:200%;
+        height:20px;
+    }
+    .wave-layer svg{ display:block; width:100%; height:100%; }
+    .wave1{ animation: waveMove 2.6s linear infinite; z-index:2; }
+    .wave2{ animation: waveMove 4.2s linear infinite reverse; opacity:0.55; z-index:1; top:-6px; }
+    @keyframes waveMove{
+        from{ transform: translateX(0); }
+        to{ transform: translateX(-50%); }
+    }
+
+    .bubble{
+        position:absolute;
+        bottom:4px;
+        width:5px;
+        height:5px;
+        border-radius:50%;
+        background: rgba(255,244,214,0.75);
+        animation: rise linear forwards;
+    }
+    @keyframes rise{
+        from{ transform: translateY(0) scale(1); opacity:0.85; }
+        to{ transform: translateY(-160px) scale(0.4); opacity:0; }
+    }
+
+    .ripple{
+        position:absolute;
+        top:-4px;
+        width:14px;
+        height:6px;
+        border:2px solid rgba(255,244,214,0.8);
+        border-radius:50%;
+        transform:translate(-50%,0) scale(0.3);
+        opacity:0.9;
+        animation: rippleOut 0.6s ease-out forwards;
+        pointer-events:none;
+    }
+    @keyframes rippleOut{
+        to{ transform: translate(-50%,0) scale(2.4); opacity:0; }
+    }
+
+    .drip{
+        position:absolute;
+        top:0;
+        left:50%;
+        width:6px;
+        height:10px;
+        background: linear-gradient(180deg, var(--amber-top), var(--amber-deep));
+        border-radius: 0 0 4px 4px;
+        animation: dripFall 0.9s ease-in forwards;
+        z-index:7;
+    }
+    @keyframes dripFall{
+        0%{ transform: translate(-50%,0); opacity:1; }
+        85%{ opacity:1; }
+        100%{ transform: translate(-50%, 60px); opacity:0; }
+    }
+
+    .percent-label{
+        margin-top:10px;
+        font-family:'Courier New', monospace;
+        font-size:13px;
+        color:#c9d2da;
+        letter-spacing:1px;
+    }
+
+    .action-slot{
+        margin-top:26px;
+        min-height:52px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+    }
+
+    .pill-btn{
+        border:none;
+        border-radius:999px;
+        padding:14px 28px;
+        font-size:14px;
+        font-weight:800;
+        letter-spacing:1px;
+        cursor:pointer;
+        display:flex;
+        align-items:center;
+        gap:10px;
+        touch-action:none;
+        user-select:none;
+        -webkit-user-select:none;
+        transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .pill-btn svg{ width:18px; height:18px; flex-shrink:0; }
+    .pill-btn:disabled{ opacity:0.5; cursor:default; }
+
+    .connect-btn{
+        background: linear-gradient(180deg,#5a6270,#3a3f47);
+        color:#eef2f5;
+        box-shadow: 0 6px 14px rgba(0,0,0,0.35);
+    }
+    .connect-btn:active:not(:disabled){ transform: scale(0.97); }
 
     .fill-btn{
-        width: 35%;
-        height: 10vh;
-        font-size: 20px;
-        font-family: Arial, Helvetica, sans-serif;
-        background-color: gray;
-        border: 3px solid black;
-        border-radius: 8px;
-        margin-top: 10vh;
+        display:none;
+        background: linear-gradient(180deg,#e6633f,#c94a26);
+        color:#fff6ee;
+        box-shadow: 0 6px 14px rgba(201,74,38,0.35);
+    }
+    .fill-btn.ready{ display:flex; }
+    .fill-btn.active{
+        background: linear-gradient(180deg,#c94a26,#a83a1c);
+        transform: scale(0.96);
+        box-shadow: 0 3px 8px rgba(201,74,38,0.35);
     }
 
+    .nozzle-caption{
+        margin-top:8px;
+        font-size:12px;
+        color:#8b94a0;
+        letter-spacing:0.5px;
+        text-align:center;
+    }
+
+    .reset-btn{
+        margin-top:14px;
+        background: transparent;
+        color:#8b94a0;
+        border:1px solid #444b54;
+        border-radius:8px;
+        padding:7px 16px;
+        font-size:12px;
+        font-weight:700;
+        letter-spacing:0.5px;
+        cursor:pointer;
+        opacity:0;
+        pointer-events:none;
+        transition: opacity 0.3s ease;
+    }
+    .reset-btn.show{ opacity:1; pointer-events:auto; }
 </style>
+</head>
 <body>
-    <div class="fuel-tank">
-        <div class="fuel" id="fuel"></div>
+    <div class="scene">
+        <div class="signage">FUEL GAS TANK</div>
+
+        <div class="console">
+            <div class="display-row">
+                <div class="gauge-box">
+                    <div class="gauge">
+                        <div class="tick e"></div>
+                        <div class="tick mid"></div>
+                        <div class="tick f"></div>
+                        <div class="needle" id="needle"></div>
+                    </div>
+                    <div class="gauge-labels"><span>E</span><span>F</span></div>
+                </div>
+
+                <div class="lcd">
+                    <div class="lcd-row">
+                        <span class="lcd-label">GALLONS</span>
+                        <span class="lcd-value" id="gallons">0.00</span>
+                    </div>
+                    <div class="lcd-row">
+                        <span class="lcd-label">LITERS</span>
+                        <span class="lcd-value" id="litre">0.00</span>
+                    </div>
+                    <div class="lcd-status" id="status">HOSE DISCONNECTED</div>
+                </div>
+            </div>
+
+            <div class="tank-unit">
+                <div class="hose-slot">
+                    <div class="hose disconnected" id="hose"></div>
+                </div>
+
+                <div class="tank-glass" id="tankGlass">
+                    <div class="port-cap" id="portCap"></div>
+                    <div class="liquid-wrap" id="liquidWrap">
+                        <div class="liquid-body"></div>
+                        <div class="wave-layer wave1">
+                            <svg viewBox="0 0 800 20" preserveAspectRatio="none">
+                                <path d="M0,10 Q100,-4 200,10 T400,10 T600,10 T800,10 L800,20 L0,20 Z" fill="#ffdb80"></path>
+                            </svg>
+                        </div>
+                        <div class="wave-layer wave2">
+                            <svg viewBox="0 0 800 20" preserveAspectRatio="none">
+                                <path d="M0,10 Q100,22 200,10 T400,10 T600,10 T800,10 L800,20 L0,20 Z" fill="#e08a1e"></path>
+                            </svg>
+                        </div>
+                        <div id="bubbles"></div>
+                        <div id="ripples"></div>
+                    </div>
+                    <div id="drips"></div>
+                    <div class="full-flash" id="fullFlash"></div>
+                    <div class="glass-shine"></div>
+                </div>
+
+                <div class="percent-label" id="percentLabel">0%</div>
+            </div>
+        </div>
+
+        <div class="action-slot">
+            <button class="pill-btn connect-btn" id="connectBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3v6M15 3v6M6 9h12l-1.5 12h-9L6 9z"/></svg>
+                Connect hose
+            </button>
+            <button class="pill-btn fill-btn" id="fillBtn" aria-label="Hold to fill tank">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v6M12 8c3 3 5 6 5 9a5 5 0 0 1-10 0c0-3 2-6 5-9z"/></svg>
+                Hold to fill
+            </button>
+        </div>
+        <div class="nozzle-caption" id="caption">Connect the hose to the tank before fueling</div>
+        <button class="reset-btn" id="resetBtn">Next customer</button>
     </div>
-    <button class="fill-btn" id="fill">
-        fill tank
-    </button>
 
-    <script>
-        const button = document.getElementById("fill");
-        const fuel = document.getElementById("fuel");
+<script>
+    const connectBtn = document.getElementById('connectBtn');
+    const fillBtn = document.getElementById('fillBtn');
+    const hoseEl = document.getElementById('hose');
+    const portCap = document.getElementById('portCap');
+    const liquidWrap = document.getElementById('liquidWrap');
+    const needle = document.getElementById('needle');
+    const gallonsEl = document.getElementById('gallons');
+    const litreEl = document.getElementById('litre');
+    const statusEl = document.getElementById('status');
+    const percentLabel = document.getElementById('percentLabel');
+    const bubblesLayer = document.getElementById('bubbles');
+    const ripplesLayer = document.getElementById('ripples');
+    const dripsLayer = document.getElementById('drips');
+    const fullFlash = document.getElementById('fullFlash');
+    const caption = document.getElementById('caption');
+    const resetBtn = document.getElementById('resetBtn');
 
-        let percentage = 0;
-        let margin = 50;
-        let interval;
+    const CAPACITY = 12.5;
+    const STORAGE_KEY = 'fill-rocket-status';
 
-        button.addEventListener("pointerdown", () => {
-            interval = setInterval(() => {
-                if (percentage < 50) {
-                    percentage++;
-                    margin--;
+    let percentage = 0;
+    let fillInterval = null;
+    let bubbleInterval = null;
+    let isFull = false;
+    let hoseConnected = false;
 
-                    fuel.style.height = `${percentage}vh`;
-                    fuel.style.marginTop = `${margin}vh`;
-                }
-            }, 50); // fills every 50ms while held
+    function persistStatus(filled){
+        fetch("/fill-rocket", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ filled, gallons: filled ? CAPACITY : 0 })
+        }).then(res => res.json()).then((data) => {
+            console.log('Tank status saved:', data);
         });
+    }
 
-        function stopFilling() {
-            clearInterval(interval);
+    function updateDisplay(){
+        liquidWrap.style.height = percentage + '%';
+        const gallons = (percentage / 100 * CAPACITY);
+        const litre = gallons * 3.7854;
+        gallonsEl.textContent = gallons.toFixed(2);
+        litreEl.textContent = litre.toFixed(2);
+        percentLabel.textContent = percentage + '%';
+        needle.style.transform = `translateX(-50%) rotate(${-80 + (percentage / 100 * 160)}deg)`;
+
+        gallonsEl.classList.remove('flicker');
+        litreEl.classList.remove('flicker');
+        void gallonsEl.offsetWidth;
+        gallonsEl.classList.add('flicker');
+        litreEl.classList.add('flicker');
+    }
+
+    function spawnBubble(){
+        const b = document.createElement('div');
+        b.className = 'bubble';
+        b.style.left = (10 + Math.random() * 80) + '%';
+        const dur = 1 + Math.random() * 0.8;
+        b.style.animationDuration = dur + 's';
+        bubblesLayer.appendChild(b);
+        setTimeout(() => b.remove(), dur * 1000);
+    }
+
+    function spawnRipple(){
+        const r = document.createElement('div');
+        r.className = 'ripple';
+        r.style.left = (30 + Math.random() * 40) + '%';
+        ripplesLayer.appendChild(r);
+        setTimeout(() => r.remove(), 650);
+    }
+
+    function spawnDrip(){
+        const d = document.createElement('div');
+        d.className = 'drip';
+        d.style.left = (45 + Math.random() * 10) + '%';
+        dripsLayer.appendChild(d);
+        setTimeout(() => d.remove(), 950);
+    }
+
+    connectBtn.addEventListener('click', () => {
+        connectBtn.disabled = true;
+        connectBtn.textContent = '';
+        connectBtn.append('Connecting\u2026');
+        statusEl.textContent = 'CONNECTING\u2026';
+        hoseEl.classList.remove('disconnected');
+        setTimeout(() => {
+            hoseConnected = true;
+            portCap.classList.add('hidden');
+            connectBtn.style.display = 'none';
+            fillBtn.classList.add('ready');
+            statusEl.textContent = 'READY';
+            caption.textContent = 'Press & hold the nozzle to fill';
+        }, 550);
+    });
+
+    function startFilling(){
+        if (isFull || !hoseConnected) return;
+        fillBtn.classList.add('active');
+        hoseEl.classList.add('flowing');
+        statusEl.textContent = 'FILLING...';
+
+        fillInterval = setInterval(() => {
+            if (percentage < 100){
+                percentage++;
+                updateDisplay();
+                if (percentage % 6 === 0) spawnRipple();
+            } else {
+                finishFilling();
+            }
+        }, 50);
+
+        bubbleInterval = setInterval(spawnBubble, 140);
+    }
+
+    function stopFilling(){
+        fillBtn.classList.remove('active');
+        hoseEl.classList.remove('flowing');
+        clearInterval(fillInterval);
+        clearInterval(bubbleInterval);
+        if (!isFull) statusEl.textContent = 'READY';
+    }
+
+    function finishFilling(){
+        clearInterval(fillInterval);
+        clearInterval(bubbleInterval);
+        isFull = true;
+        fillBtn.classList.remove('active');
+        fillBtn.disabled = true;
+        hoseEl.classList.remove('flowing');
+        statusEl.textContent = 'GO FUEL THE ENGINE';
+        statusEl.classList.add('full');
+        fullFlash.classList.add('on');
+        caption.textContent = 'Tank full \u2014 head to the rocket engine page';
+        for (let i = 0; i < 3; i++){
+            setTimeout(spawnDrip, i * 220);
         }
+        resetBtn.classList.add('show');
+        persistStatus(true);
+    }
 
-        button.addEventListener("pointerup", stopFilling);
-        button.addEventListener("pointerleave", stopFilling);
-        button.addEventListener("pointercancel", stopFilling);
-    </script>
+    fillBtn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        startFilling();
+    });
+    fillBtn.addEventListener('pointerup', stopFilling);
+    fillBtn.addEventListener('pointerleave', stopFilling);
+    fillBtn.addEventListener('pointercancel', stopFilling);
+
+    resetBtn.addEventListener('click', () => {
+        percentage = 0;
+        isFull = false;
+        hoseConnected = false;
+        fillBtn.disabled = false;
+        fillBtn.classList.remove('ready');
+        hoseEl.classList.add('disconnected');
+        portCap.classList.remove('hidden');
+        connectBtn.style.display = 'flex';
+        connectBtn.disabled = false;
+        connectBtn.textContent = '';
+        connectBtn.insertAdjacentHTML('afterbegin', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3v6M15 3v6M6 9h12l-1.5 12h-9L6 9z"/></svg>');
+        connectBtn.append('Connect hose');
+        statusEl.classList.remove('full');
+        fullFlash.classList.remove('on');
+        caption.textContent = 'Connect the hose to the tank before fueling';
+        resetBtn.classList.remove('show');
+        updateDisplay();
+        statusEl.textContent = 'HOSE DISCONNECTED';
+        persistStatus(false);
+    });
+
+    updateDisplay();
+</script>
 </body>
 </html>
