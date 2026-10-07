@@ -287,6 +287,17 @@
             box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
         }
 
+        .task-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+        .task-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.82rem;
+            padding: 8px 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.04); border: 1px solid #1e293b; }
+        .task-item .task-name { font-weight: 600; }
+        .task-item .task-loc { color: #94a3b8; font-size: 0.72rem; margin-top: 2px; }
+        .task-item .task-mark { color: #475569; font-size: 1rem; }
+        .task-item.done { opacity: 0.55; }
+        .task-item.done .task-name { text-decoration: line-through; }
+        .task-item.done .task-mark { color: var(--accent-green); }
+        .task-empty { color: #64748b; font-size: 0.8rem; text-align: center; padding: 6px 0; }
+
         .emergency-panel {
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid #1e293b;
@@ -492,6 +503,14 @@
 
                 <div class="task-card">
                     <div class="task-label">
+                        <span>My Tasks</span>
+                        <span id="taskListCount">0/0</span>
+                    </div>
+                    <ul id="taskList" class="task-list"><li class="task-empty">No tasks yet</li></ul>
+                </div>
+
+                <div class="task-card">
+                    <div class="task-label">
                         <span>Total Crew Tasks</span>
                         <span id="totalTasks">0/0</span>
                     </div>
@@ -576,7 +595,39 @@
 
             actionBtn.addEventListener('click', handleAction);
 
+            function renderTasks(tasks) {
+                var list = document.getElementById('taskList');
+                list.innerHTML = '';
+                if (!tasks.length) {
+                    var empty = document.createElement('li');
+                    empty.className = 'task-empty';
+                    empty.textContent = 'No tasks assigned';
+                    list.appendChild(empty);
+                    return;
+                }
+                tasks.forEach(function(t) {
+                    var li = document.createElement('li');
+                    li.className = 'task-item' + (t.done ? ' done' : '');
+                    var info = document.createElement('div');
+                    var name = document.createElement('div');
+                    name.className = 'task-name';
+                    name.textContent = t.name;
+                    var loc = document.createElement('div');
+                    loc.className = 'task-loc';
+                    loc.textContent = t.location;
+                    info.appendChild(name);
+                    info.appendChild(loc);
+                    var mark = document.createElement('span');
+                    mark.className = 'task-mark';
+                    mark.textContent = t.done ? '\u2713' : '\u25CB';
+                    li.appendChild(info);
+                    li.appendChild(mark);
+                    list.appendChild(li);
+                });
+            }
+
             socket.on('player_data_request', function(data) {
+                if (!data) return;
                 document.getElementById('usr').innerText = data.username || '---';
                 document.getElementById('id').innerText = data.id || '---';
 
@@ -593,8 +644,12 @@
                     shatter.classList.add('active');
                 }
 
-                var completed = data.tasksCompleted || 0;
-                var total = data.totalTasks || 0;
+                var tasks = Array.isArray(data.tasks) ? data.tasks : [];
+                renderTasks(tasks);
+                // Derived from the task list so an impostor's cover tasks look the same as a crewmate's.
+                var completed = tasks.length ? tasks.filter(function(t) { return t.done; }).length : (data.tasksCompleted || 0);
+                var total = tasks.length || data.totalTasks || 0;
+                document.getElementById('taskListCount').innerText = completed + '/' + total;
                 document.getElementById('tasksCompleted').innerText = completed + '/' + total;
                 var pct = total > 0 ? Math.min(100, (completed / total) * 100) : 0;
                 document.getElementById('personalTaskProgressBar').style.width = pct + '%';
@@ -615,7 +670,7 @@
                 }
             });
 
-            sokcet.on("restart_game", function(data){
+            socket.on("restart_game", function(data){
                 window.location.href = "/waiting";
             })
 

@@ -110,6 +110,15 @@
         }
 
         /* Progress Bar Styles */
+        .task-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+        .task-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.8rem;
+            padding: 6px 8px; border: 1px solid var(--rust-accent); border-radius: 4px; background: rgba(0, 0, 0, 0.35); }
+        .task-item .task-loc { opacity: 0.6; font-size: 0.7rem; }
+        .task-item .task-mark { opacity: 0.6; }
+        .task-item.done { opacity: 0.5; }
+        .task-item.done .task-name { text-decoration: line-through; }
+        .task-item.done .task-mark { color: var(--terminal-green); opacity: 1; }
+
         .task-container {
             margin-top: 10px;
             padding-top: 8px;
@@ -330,6 +339,14 @@
             
             <div class="task-container">
                 <div class="task-header">
+                    <span>Cover Tasks (don't count):</span>
+                    <span id="myTasksText">--/--</span>
+                </div>
+                <ul id="taskList" class="task-list"></ul>
+            </div>
+
+            <div class="task-container">
+                <div class="task-header">
                     <span>Crew Tasks:</span>
                     <span id="totalTasksText">--/--</span>
                 </div>
@@ -519,7 +536,34 @@
             window.location.href = "/win";
         });
 
+        function renderTasks(tasks) {
+            const list = document.getElementById("taskList");
+            list.innerHTML = "";
+            tasks.forEach((t) => {
+                const li = document.createElement("li");
+                li.className = "task-item" + (t.done ? " done" : "");
+                const info = document.createElement("div");
+                const name = document.createElement("div");
+                name.className = "task-name";
+                name.textContent = t.name;
+                const loc = document.createElement("div");
+                loc.className = "task-loc";
+                loc.textContent = t.location;
+                info.appendChild(name);
+                info.appendChild(loc);
+                const mark = document.createElement("span");
+                mark.className = "task-mark";
+                mark.textContent = t.done ? "\u2713" : "\u25CB";
+                li.appendChild(info);
+                li.appendChild(mark);
+                list.appendChild(li);
+            });
+            document.getElementById("myTasksText").innerText = tasks.filter((t) => t.done).length + "/" + tasks.length;
+        }
+
         socket.on("player_data_request", (data) => {
+            if (!data) return;
+            renderTasks(Array.isArray(data.tasks) ? data.tasks : []);
             document.getElementById("usr").innerText = "username: " + data.username;
             document.getElementById("id").innerText = "id: " + data.id;
             document.getElementById("alive").innerText = data.alive ? "status: Alive" : "status: Dead";

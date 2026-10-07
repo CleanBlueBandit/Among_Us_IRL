@@ -209,6 +209,19 @@ Now that your server is upp and running (hopefully), you will need to set up the
 - Choose device functionality
 - Done
 
+## Tasks
+
+Tasks are QR codes placed around the play area; the server accepts or declines each scan.
+
+```bash
+npm run import:tasks -- tasks.json   # tasks + locations, see tasks.example.json
+npm run generate:tasks               # writes tasks.txt (one link per line) - make QR codes from these
+```
+
+At game start every player gets `tasks` random tasks (set in the host lobby) and sees them with their locations. Impostors get tasks too, but those don't count towards the crew total. More details: `/help?topic=tasks`.
+
+> Players must scan with the same browser they joined with (login is a cookie), and the links use `IP`/`PORT` from `.env`, so re-run `generate:tasks` if those change.
+
 ## Important security note
 This server is meant to be hosted on **localhost only**. Several serious vulnerabilities are present intentionally, because I didnt bother to fix them. (It aint like im building this for a megacorporation or something)
 

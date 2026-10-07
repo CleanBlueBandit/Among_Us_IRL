@@ -1,0 +1,9 @@
+[
+  { "name": "Fix the wires",       "location": "Electrical" },
+  { "name": "Calibrate power",     "location": "Generator room" },
+  { "name": "Refuel the tank",     "location": "Garage" },
+  { "name": "Fuel the engine",     "location": "Engine room" },
+  { "name": "Swipe card",          "location": "Admin office" },
+  { "name": "Empty the trash",     "location": "Kitchen" },
+  { "name": "Upload data",         "location": "Living room" }
+]

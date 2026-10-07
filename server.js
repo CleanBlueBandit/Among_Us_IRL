@@ -9,7 +9,8 @@ import { fileURLToPath } from 'url';
 import bcrypt from 'bcrypt';
 import 'dotenv/config';
 import { renderCrewmateWinHtml, renderImpostorWinHtml } from './winscreen.js';
-import { renderRoleRevealHtml } from './roleReveal.js';
+import { renderRoleRevealHtml } from './rolereveal.js';
+import { renderTaskResultHtml } from './taskresult.js';
 import { debuglog } from 'util';
 import { raw } from '@prisma/client/runtime/library.js';
 import { marked } from "marked";
@@ -197,6 +198,101 @@ try {
     logDebug(`game.json missing, copying data from default.json`);
 }
 
+const TASKS_FILE = path.join(__dirname, 'tasks.json');
+
+// Task library: { tasks: [{id,name,location}], links: [{token,taskId}] }
+// Produced by "npm run import:tasks" and "npm run generate:tasks".
+async function loadTaskLibrary() {
+    try {
+        const parsed = JSON.parse(await fs.readFile(TASKS_FILE, 'utf-8'));
+        return {
+            tasks: Array.isArray(parsed.tasks) ? parsed.tasks : [],
+            links: Array.isArray(parsed.links) ? parsed.links : []
+        };
+    } catch (error) {
+        if (error.code !== 'ENOENT') logError("Failed to read tasks.json:", error);
+        return { tasks: [], links: [] };
+    }
+}
+
+// Only tasks that actually have a generated link can be completed, so only those can be assigned.
+function eligibleTasks(library) {
+    const linked = new Set(library.links.map(l => l.taskId));
+    return library.tasks.filter(t => linked.has(t.id));
+}
+
+function pickRandomTasks(pool, count) {
+    const copy = [...pool];
+    for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy.slice(0, count).map(t => ({
+        id: t.id,
+        name: t.name,
+        location: t.location,
+        done: false
+    }));
+}
+
+// Crew wins once every crewmate task is done. Impostor tasks are never part of the total.
+function evaluateTaskWin(data) {
+    const gs = data.gameState;
+    if (!gs.started || gs.totalTasks <= 0 || gs.completedTasks < gs.totalTasks) return false;
+
+    gs.crewmatesWon = true;
+    gs.impostorsWon = false;
+    gs.started = false;
+    gs.winCondition = "THE CREW COMPLETED EVERY TASK";
+    clearAllSabotageTimers();
+    clearEmergencyMeetingTimer();
+    return true;
+}
+
+// Decides whether a scanned task link is accepted. Mutates `data` on success (caller saves it).
+// The wording is identical for crewmates and impostors so a scan never reveals the role.
+function processTaskScan(data, library, session, token) {
+    const decline = (message, next = '/dashboard', task = null) =>
+        ({ accepted: false, status: 403, title: 'Task declined', message, next, task });
+
+    const player = session ? data.players[session] : null;
+    if (!player) {
+        return decline('You are not part of this game. Join from the login page first.', '/');
+    }
+    if (!data.gameState.started) {
+        return decline('The game is not running.', '/waiting');
+    }
+    if (data.gameState.emergencyMeeting) {
+        return decline('No tasks during an emergency meeting.');
+    }
+    if (data.activeSabotages.o2.sabotaged || data.activeSabotages.reactor.sabotaged) {
+        return decline('A sabotage is in progress. Fix it first!');
+    }
+
+    const link = library.links.find(l => l.token === token);
+    const libTask = link ? library.tasks.find(t => t.id === link.taskId) : null;
+    if (!link || !libTask) {
+        return { ...decline('This code is not a valid task.'), status: 404 };
+    }
+
+    const mine = Array.isArray(player.tasks) ? player.tasks.find(t => t.id === libTask.id) : null;
+    const shown = { name: libTask.name, location: libTask.location };
+    if (!mine) {
+        return decline('This task is not assigned to you.', '/dashboard', shown);
+    }
+    if (mine.done) {
+        return decline('You already completed this task.', '/dashboard', shown);
+    }
+
+    mine.done = true;
+    if (!player.impostor) {
+        player.tasksCompleted = (player.tasksCompleted || 0) + 1;
+        data.gameState.completedTasks += 1;
+    }
+
+    return { accepted: true, status: 200, title: 'Task accepted', message: 'Task completed.', next: '/dashboard', task: shown };
+}
+
 async function loadGame() {
     try {
         
@@ -246,7 +342,10 @@ async function saveGame(data) {
 
     // I know this is insecure, but i dont want to write multiple step handshakes and authentication
     io.emit('sabotage_data_request', { sData: data.activeSabotages, endTime: sabEndTime });
-    io.emit('player_data_request', data.playerData);
+    // Each player has a private socket room named after their session id.
+    for (const [playerId, player] of Object.entries(data.players)) {
+        io.to(playerId).emit('player_data_request', player);
+    }
     logDebug("data saved and brodcasted");
 }
 
@@ -281,6 +380,7 @@ app.post('/enter', async (req, res) => {
                 alive: true,
                 tasksCompleted: 0,
                 totalTasks: data.settings.tasks,
+                tasks: [],
             };
 
             data.players[UUID] = playerData;
@@ -361,6 +461,7 @@ app.post('/enter-host', async (req, res) => {
                 alive: true,
                 tasksCompleted: 0,
                 totalTasks: data.settings.tasks,
+                tasks: [],
             };
 
             data.players[UUID] = playerData;
@@ -417,6 +518,7 @@ app.get("/restart", async (req, res) => {
             p.alive = true;
             p.tasksCompleted = 0;
             p.totalTasks = wasDummy ? 0 : data.settings.tasks;
+            p.tasks = [];
         }
 
         const playerCount = Object.keys(data.players).length;
@@ -463,6 +565,7 @@ app.post("/restart", async (req, res) => {
             p.alive = true;
             p.tasksCompleted = 0;
             p.totalTasks = wasDummy ? 0 : data.settings.tasks;
+            p.tasks = [];
         }
 
         const playerCount = Object.keys(data.players).length;
@@ -554,6 +657,10 @@ app.get('/logout', async (req, res) => {
             // previously this ran unconditionally, silently under-counting whenever a dead
             // player (or an impostor) logged out.
             const wasAlive = leavingPlayer.alive !== false;
+            if (data.gameState.started && !leavingPlayer.impostor) {
+                data.gameState.totalTasks = Math.max(0, data.gameState.totalTasks - (leavingPlayer.totalTasks || 0));
+                data.gameState.completedTasks = Math.max(0, data.gameState.completedTasks - (leavingPlayer.tasksCompleted || 0));
+            }
             delete data.players[session];
             data.gameState.playerCount = Math.max(0, data.gameState.playerCount - 1);
 
@@ -567,6 +674,7 @@ app.get('/logout', async (req, res) => {
                     impostorWin: "THE IMPOSTORS OVERWHELMED THE CREW"
                 });
             }
+            evaluateTaskWin(data);
 
             await saveGame(data);
             io.emit('game_data_request', data.gameState);
@@ -1225,7 +1333,8 @@ app.post("/addDummyPlayers", async (req, res) => {
             role: "dummy",
             alive: true,
             tasksCompleted: 0,
-            totalTasks: data.settings.tasks
+            totalTasks: data.settings.tasks,
+            tasks: []
         };
     }
 
@@ -1289,6 +1398,7 @@ io.on("connection", async (socket) => {
     const data = await loadGame();
     
     logDebug(`Client connected via socket (session: ${cookies.session || 'unknown'})`);
+    if (cookies.session) socket.join(cookies.session);
 
     try {
         if (data.players[cookies.session]) {
@@ -1742,6 +1852,17 @@ app.post("/start", async (req, res) => {
             return res.status(400).json({ message: "Invalid or missing settings.", failed: true });
         }
 
+        const taskLibrary = await loadTaskLibrary();
+        const taskPool = eligibleTasks(taskLibrary);
+        if (parsedSettings.tasks > 0 && taskPool.length === 0) {
+            logDebug("Game start blocked: no tasks with generated links.");
+            return res.status(202).json({ message: "Cant start the game - no tasks available. Run 'npm run import:tasks' and 'npm run generate:tasks' first (or set tasks to 0).", failed: true });
+        }
+        const tasksPerPlayer = Math.min(parsedSettings.tasks, taskPool.length);
+        const taskWarning = tasksPerPlayer < parsedSettings.tasks
+            ? ` (Only ${taskPool.length} tasks exist, so everyone got ${tasksPerPlayer} instead of ${parsedSettings.tasks}.)`
+            : '';
+
         logDebug(`Starting game with ${totalRealPlayers} players.`);
         
         clearEmergencyMeetingTimer();
@@ -1774,9 +1895,11 @@ app.post("/start", async (req, res) => {
             const assignedRole = roleDeck[index];
             data.players[id].impostor = (assignedRole === "impostor");
             data.players[id].role = assignedRole === "impostor" ? "impostor" : "crewmate";
-            data.players[id].totalTasks = data.settings.tasks;
+            data.players[id].totalTasks = tasksPerPlayer;
             data.players[id].tasksCompleted = 0;
-            totalTasks += data.settings.tasks;
+            data.players[id].tasks = pickRandomTasks(taskPool, tasksPerPlayer);
+            // Impostors get tasks too (cover), but theirs never count towards the crew total.
+            if (assignedRole !== "impostor") totalTasks += tasksPerPlayer;
             
             logDebug(`${id} is now ${assignedRole}`);
         });
@@ -1809,8 +1932,37 @@ app.post("/start", async (req, res) => {
         logDebug("Game successfully started.");
         io.emit("start", {started:true})
         io.emit("game_data_request", data.gameState);
-        return res.status(200).json({ message: "May a fine game take place, among us!", failed: false });
+        return res.status(200).json({ message: "May a fine game take place, among us!" + taskWarning, failed: false });
     });
+});
+
+// Players scan a generated QR code (tasks.txt) which opens this URL in their browser.
+app.get("/task/:token", async (req, res) => {
+    let outcome;
+    try {
+        await withGameLock(async () => {
+            const data = await loadGame();
+            const library = await loadTaskLibrary();
+            const session = req.cookies.session;
+
+            outcome = processTaskScan(data, library, session, String(req.params.token || ''));
+            logDebug(`Task scan by ${session || 'unknown'}: ${outcome.accepted ? 'ACCEPTED' : 'DECLINED'} - ${outcome.message}`);
+            if (!outcome.accepted) return;
+
+            const crewWon = evaluateTaskWin(data);
+            await saveGame(data);
+            io.emit('game_data_request', data.gameState);
+
+            if (crewWon) {
+                logDebug("All crew tasks completed. Crewmates win!");
+                io.emit('game_over', { winner: 'crewmates', reason: 'tasks' });
+            }
+        });
+    } catch (error) {
+        logError("Error processing task scan:", error);
+        outcome = { accepted: false, status: 500, title: 'Task declined', message: 'Server error, try scanning again.', next: '/dashboard' };
+    }
+    return res.status(outcome.status).send(renderTaskResultHtml(outcome));
 });
 
 app.get("/reset", async (req, res) => {

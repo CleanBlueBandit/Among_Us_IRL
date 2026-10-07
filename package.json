@@ -5,7 +5,10 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "import:tasks": "node scripts/importTasks.js",
+    "generate:tasks": "node scripts/generateTasks.js"
   },
   "keywords": [],
   "author": "",

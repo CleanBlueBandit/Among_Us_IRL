@@ -1,0 +1,12 @@
+[ERROR] [2026-07-30T11:43:48.331Z] Emergency error: ReferenceError: emergencyCooldown is not defined
+    at Socket.<anonymous> (file:///C:/Users/George/Documents/Among_Us_IRL/server.js:1312:33)
+    at Socket.emit (node:events:509:28)
+    at Socket.emitUntyped (C:\Users\George\Documents\Among_Us_IRL\node_modules\socket.io\dist\typed-events.js:69:22)
+    at C:\Users\George\Documents\Among_Us_IRL\node_modules\socket.io\dist\socket.js:697:39
+    at process.processTicksAndRejections (node:internal/process/task_queues:85:11)
+[ERROR] [2026-07-30T11:45:23.069Z] Emergency error: ReferenceError: emergencyCooldown is not defined
+    at Socket.<anonymous> (file:///C:/Users/George/Documents/Among_Us_IRL/server.js:1312:33)
+    at Socket.emit (node:events:509:28)
+    at Socket.emitUntyped (C:\Users\George\Documents\Among_Us_IRL\node_modules\socket.io\dist\typed-events.js:69:22)
+    at C:\Users\George\Documents\Among_Us_IRL\node_modules\socket.io\dist\socket.js:697:39
+    at process.processTicksAndRejections (node:internal/process/task_queues:85:11)
