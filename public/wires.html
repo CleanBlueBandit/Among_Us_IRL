@@ -333,6 +333,7 @@
             }
             if (ec === 0){
                 console.log("Wires task done!");
+                if (window.completeTask) window.completeTask(1500);
                 const correctDiv = document.getElementById("correct");
                 correctDiv.setAttribute("style", "");
                 correctDiv.setAttribute("class", "correct");

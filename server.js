@@ -10,9 +10,9 @@ import bcrypt from 'bcrypt';
 import 'dotenv/config';
 import { renderCrewmateWinHtml, renderImpostorWinHtml } from './winscreen.js';
 import { renderRoleRevealHtml } from './rolereveal.js';
-import { renderTaskResultHtml } from './taskresult.js';
+import { renderTaskResultHtml, renderTaskConfirmHtml } from './taskresult.js';
+import { MINIGAME_PAGES } from './scripts/minigames.js';
 import { debuglog } from 'util';
-import { raw } from '@prisma/client/runtime/library.js';
 import { marked } from "marked";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -165,6 +165,9 @@ const DEFAULT_GAME_STATE = {
     lastEjection: null
 };
 
+// Shared fuel tank used by the refuel_tank / fuel_engine minigames.
+const DEFAULT_TANK = { filled: false, gallons: 0 };
+
 const DEFAULT_SABOTAGES = {
     cooldown : 0,
     o2: { sabotaged: false, depleted: false, timeLeft: 0 },
@@ -216,9 +219,12 @@ async function loadTaskLibrary() {
 }
 
 // Only tasks that actually have a generated link can be completed, so only those can be assigned.
+// "fuel_engine" needs the tank refuelled first, so it is only usable when a "refuel_tank" task is linked too.
 function eligibleTasks(library) {
     const linked = new Set(library.links.map(l => l.taskId));
-    return library.tasks.filter(t => linked.has(t.id));
+    const linkedTasks = library.tasks.filter(t => linked.has(t.id));
+    const hasRefuel = linkedTasks.some(t => t.minigame === 'refuel_tank');
+    return linkedTasks.filter(t => t.minigame !== 'fuel_engine' || hasRefuel);
 }
 
 function pickRandomTasks(pool, count) {
@@ -227,7 +233,17 @@ function pickRandomTasks(pool, count) {
         const j = Math.floor(Math.random() * (i + 1));
         [copy[i], copy[j]] = [copy[j], copy[i]];
     }
-    return copy.slice(0, count).map(t => ({
+    const picked = copy.slice(0, count);
+
+    // Anyone who has to fuel the engine must also be able to refuel the tank first.
+    const refuel = pool.find(t => t.minigame === 'refuel_tank');
+    const fuel = picked.find(t => t.minigame === 'fuel_engine');
+    if (refuel && fuel && !picked.some(t => t.id === refuel.id)) {
+        const swap = picked.findIndex(t => t.minigame !== 'fuel_engine');
+        picked[swap >= 0 ? swap : picked.indexOf(fuel)] = refuel;
+    }
+
+    return picked.map(t => ({
         id: t.id,
         name: t.name,
         location: t.location,
@@ -249,11 +265,13 @@ function evaluateTaskWin(data) {
     return true;
 }
 
-// Decides whether a scanned task link is accepted. Mutates `data` on success (caller saves it).
-// The wording is identical for crewmates and impostors so a scan never reveals the role.
-function processTaskScan(data, library, session, token) {
+// Read-only validation of a scanned task link, shared by the GET (before showing a minigame / confirm
+// button) and the POST (which then applies it). Returns { outcome } when declined, otherwise
+// { player, libTask, mine, shown }. The wording is identical for crewmates and impostors so a scan
+// never reveals the role.
+function checkTaskScan(data, library, session, token) {
     const decline = (message, next = '/dashboard', task = null) =>
-        ({ accepted: false, status: 403, title: 'Task declined', message, next, task });
+        ({ outcome: { accepted: false, status: 403, title: 'Task declined', message, next, task } });
 
     const player = session ? data.players[session] : null;
     if (!player) {
@@ -272,7 +290,9 @@ function processTaskScan(data, library, session, token) {
     const link = library.links.find(l => l.token === token);
     const libTask = link ? library.tasks.find(t => t.id === link.taskId) : null;
     if (!link || !libTask) {
-        return { ...decline('This code is not a valid task.'), status: 404 };
+        const d = decline('This code is not a valid task.');
+        d.outcome.status = 404;
+        return d;
     }
 
     const mine = Array.isArray(player.tasks) ? player.tasks.find(t => t.id === libTask.id) : null;
@@ -283,6 +303,18 @@ function processTaskScan(data, library, session, token) {
     if (mine.done) {
         return decline('You already completed this task.', '/dashboard', shown);
     }
+    if (libTask.minigame === 'fuel_engine' && !(data.tank && data.tank.filled)) {
+        return decline('The fuel tank is empty. Refuel it first.', '/dashboard', shown);
+    }
+
+    return { player, libTask, mine, shown };
+}
+
+// Decides whether a scanned task link is accepted. Mutates `data` on success (caller saves it).
+function processTaskScan(data, library, session, token) {
+    const check = checkTaskScan(data, library, session, token);
+    if (check.outcome) return check.outcome;
+    const { player, libTask, mine, shown } = check;
 
     mine.done = true;
     if (!player.impostor) {
@@ -290,7 +322,22 @@ function processTaskScan(data, library, session, token) {
         data.gameState.completedTasks += 1;
     }
 
+    // The two tank minigames share state: refuelling fills it, fuelling the engine drains it.
+    if (libTask.minigame === 'refuel_tank') data.tank = { filled: true, gallons: 12.5 };
+    else if (libTask.minigame === 'fuel_engine') data.tank = { ...DEFAULT_TANK };
+
     return { accepted: true, status: 200, title: 'Task accepted', message: 'Task completed.', next: '/dashboard', task: shown };
+}
+
+// Injected into a minigame page: completeTask() POSTs the finished task back to the server once.
+function completeTaskSnippet(token) {
+    return `<script>window.TASK_TOKEN=${JSON.stringify(token)};window.completeTask=(function(){var sent=false;return function(delay){if(sent)return;sent=true;setTimeout(function(){var f=document.createElement('form');f.method='POST';f.action='/task/'+encodeURIComponent(window.TASK_TOKEN);document.body.appendChild(f);f.submit();},delay==null?1500:delay);};})();</script>`;
+}
+
+async function renderMinigameHtml(minigame, token) {
+    const html = await fs.readFile(path.join(__dirname, 'public', MINIGAME_PAGES[minigame]), 'utf-8');
+    const snippet = completeTaskSnippet(token);
+    return /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, m => m + snippet) : snippet + html;
 }
 
 async function loadGame() {
@@ -310,7 +357,9 @@ async function loadGame() {
             };
         }
         if (!data.servers) data.servers = {};
-        if (!data.settings) data.settings = { ...DEFAULT_SETTINGS };
+        // Merge over the defaults so older game.json files (missing newer keys) still work.
+        data.settings = { ...DEFAULT_SETTINGS, ...(data.settings || {}) };
+        data.tank = { ...DEFAULT_TANK, ...(data.tank || {}) };
         
         logDebug("data loaded");
         return data;
@@ -324,7 +373,8 @@ async function loadGame() {
                 reactor: { ...DEFAULT_SABOTAGES.reactor }
             },
             servers: {},
-            settings: { ...DEFAULT_SETTINGS }
+            settings: { ...DEFAULT_SETTINGS },
+            tank: { ...DEFAULT_TANK }
         };
     }
 }
@@ -481,7 +531,7 @@ app.post('/enter-host', async (req, res) => {
     }
 })
 
-app.get("/end", async (req, res) => {
+app.post("/end", async (req, res) => {
     const data = await loadGame();
     const session = req.cookies.session;
     if (!data.players[session] || data.players[session].username != data.gameState.host) {
@@ -495,53 +545,6 @@ app.get("/end", async (req, res) => {
     io.emit('game_data_request', data.gameState);
     res.sendStatus(200);
 })
-
-app.get("/restart", async (req, res) => {
-    await withGameLock(async () => {
-        const session = req.cookies.session;
-        const data = await loadGame();
-
-        if (!data.players[session] || data.players[session].username != data.gameState.host) {
-            logDebug(`Unauthorised game restart attempt by session: ${session}`);
-            return res.status(401).json({ message: "You are not the host.", failed: true });
-        }
-
-        logDebug("Host restarted the game.");
-        clearAllSabotageTimers();
-        clearEmergencyMeetingTimer();
-
-        for (const id of Object.keys(data.players)) {
-            const p = data.players[id];
-            const wasDummy = p.role === 'dummy';
-            p.impostor = false;
-            p.role = wasDummy ? 'dummy' : 'none';
-            p.alive = true;
-            p.tasksCompleted = 0;
-            p.totalTasks = wasDummy ? 0 : data.settings.tasks;
-            p.tasks = [];
-        }
-
-        const playerCount = Object.keys(data.players).length;
-
-        data.gameState = {
-            ...DEFAULT_GAME_STATE,
-            host: data.gameState.host,
-            playerCount,
-            alivePlayers: playerCount
-        };
-
-        data.activeSabotages = {
-            o2: { ...DEFAULT_SABOTAGES.o2 },
-            reactor: { ...DEFAULT_SABOTAGES.reactor }
-        };
-
-        await saveGame(data);
-        io.emit('restart_game', {});
-        io.emit('game_data_request', data.gameState);
-
-        return res.redirect("/waiting")
-    });
-});
 
 app.post("/restart", async (req, res) => {
     await withGameLock(async () => {
@@ -581,6 +584,8 @@ app.post("/restart", async (req, res) => {
             o2: { ...DEFAULT_SABOTAGES.o2 },
             reactor: { ...DEFAULT_SABOTAGES.reactor }
         };
+
+        data.tank = { ...DEFAULT_TANK };
 
         await saveGame(data);
         io.emit('restart_game', {});
@@ -754,18 +759,6 @@ app.get("/reactor", async (req, res) => {
     return res.status(200).sendFile(publicPath("reactor"));
 })
 
-app.get("/control%20panel", async (req, res) => {
-    const data = await loadGame();
-    if (!validateServer(data.servers, req.cookies.session)) {
-        return res.status(401).json({ err: "401 unauthorised" })
-        
-    }
-    if(data.servers[req.cookies.session] != "control panel"){
-            return res.redirect(data.servers[req.cookies.session])
-        }
-    return res.status(200).sendFile(publicPath("control panel"));
-})
-
 app.get("/emergency", async (req, res) => {
     const data = await loadGame();
     if (!validateServer(data.servers, req.cookies.session)) {
@@ -818,6 +811,9 @@ async function startSabotageCountdown(type, seconds) {
                 sabotageTimers.delete(type);
                 return;
             }
+
+            // Sabotage countdowns pause while a meeting is running and carry on afterwards.
+            if (d.gameState.emergencyMeeting) return;
 
             sab.timeLeft = Math.max(0, sab.timeLeft - 1);
             await saveGame(d);
@@ -1000,7 +996,6 @@ async function startEmergencyMeeting() {
 
 
     logDebug("Emergency meeting started.");
-    clearAllSabotageTimers();
     clearEmergencyMeetingTimer();
     emergencyVotes = {};
 
@@ -1429,7 +1424,7 @@ io.on("connection", async (socket) => {
             }
         }
         else if (validateServer(data.servers, cookies.session)) {
-            // Previously server/room devices (o2, reactor, emergency, control panel) fell through
+            // Previously server/room devices (o2, reactor, emergency) fell through
             // to the "username not found" branch below and got an unwarranted Err on every connect.
             logDebug(`Server device connected via socket (session: ${cookies.session}, role: ${data.servers[cookies.session]})`);
 
@@ -1457,48 +1452,55 @@ io.on("connection", async (socket) => {
         }
         
         socket.on("sabotage", async (sabdata) => {
-            if(!data.players[cookies.session].impostor){
-                logDebug(`Unauthorised sabotage start request from ${cookies.session}. requested sabotage: ${sabdata ? sabdata.type : 'unknown'}`);
-                socket.emit('Err', { error: 'You are not impostor' });
-                socket.emit('sabotage_ack', {ok:false, reason: 'You are not impostor'});
-                return;
-            }
-            logDebug(`Client (${cookies.session}) requested sabotage: ${sabdata ? sabdata.type : 'unknown'}`);
-            if(Date.now() < sabCooldownTime){
-                logDebug("Sabotage request denied, cooldown not over yet");
-                socket.emit('Err', { error: 'Premature request' });
-                socket.emit('sabotage_ack', {ok:false, reason: 'Premature request, cooldown not over yet'});
-                return;
-            }
+            const reject = (reason) => {
+                socket.emit('Err', { error: reason });
+                socket.emit('sabotage_ack', { ok: false, reason });
+            };
             try {
-                if (!sabdata || !sabdata.type || typeof sabdata.countdown !== 'number') {
-                    socket.emit('Err', { error: 'invalid sabotage payload' });
-                    socket.emit('sabotage_ack', {ok:false, reason:"invalid sabotage payload"});
-                    return;
-                }
+                // Fresh data (not the connection-time snapshot), and the session is checked
+                // inside the try so an unknown socket can't throw out of the handler.
                 const freshData = await loadGame();
-                if(freshData.activeSabotages.o2.sabotaged || freshData.activeSabotages.reactor.sabotaged || freshData.activeSabotages.reactor.meltdown || freshData.activeSabotages.o2.depleted){
-                    socket.emit('Err', { error: 'already sabotaged' });
-                    socket.emit('sabotage_ack', {ok:false, reason:"already sabotaged"})
-                    return;
+                const player = freshData.players[cookies.session];
+                if (!player || !player.impostor) {
+                    logDebug(`Unauthorised sabotage start request from ${cookies.session}. requested sabotage: ${sabdata ? sabdata.type : 'unknown'}`);
+                    return reject('You are not impostor');
                 }
-                await startSabotageCountdown(sabdata.type, sabdata.countdown);
-                socket.emit('sabotage_ack', { ok:true });
+                logDebug(`Client (${cookies.session}) requested sabotage: ${sabdata ? sabdata.type : 'unknown'}`);
+                if (!freshData.gameState.started) return reject('The game is not running');
+                if (freshData.gameState.emergencyMeeting) return reject('No sabotage during an emergency meeting');
+                if (!sabdata || (sabdata.type !== 'o2' && sabdata.type !== 'reactor') ||
+                    typeof sabdata.countdown !== 'number' || !Number.isFinite(sabdata.countdown)) {
+                    return reject('invalid sabotage payload');
+                }
+                if (Date.now() < sabCooldownTime) {
+                    logDebug("Sabotage request denied, cooldown not over yet");
+                    return reject('Premature request, cooldown not over yet');
+                }
+                if (freshData.activeSabotages.o2.sabotaged || freshData.activeSabotages.reactor.sabotaged ||
+                    freshData.activeSabotages.reactor.meltdown || freshData.activeSabotages.o2.depleted) {
+                    return reject('already sabotaged');
+                }
+                // The delay is the impostor's choice, but the server keeps it in a sane range.
+                const countdown = Math.min(120, Math.max(5, Math.round(sabdata.countdown)));
+                await startSabotageCountdown(sabdata.type, countdown);
+                socket.emit('sabotage_ack', { ok: true });
             } catch (e) {
                 logError("Sabotage error:", e);
                 socket.emit('Err', { error: e.message });
             }
         });
-        
-        socket.on("emergency", async (payload) => {
-            logDebug(`Client (${cookies.session}) triggered emergency meeting.`);
+
+        socket.on("emergency", async () => {
             try {
-                const hasResults = payload && typeof payload === 'object' && payload.votes && typeof payload.votes === 'object';
-                if (hasResults) {
-                    await resolveEmergencyMeeting(payload);
+                // Only known sessions can call a meeting. Results are never accepted from a client:
+                // the server tallies votes itself (timer, or as soon as everyone has voted).
+                const d = await loadGame();
+                if (!d.players[cookies.session] && !validateServer(d.servers, cookies.session)) {
+                    logDebug(`Unauthorised emergency meeting request from ${cookies.session || 'unknown'}`);
+                    socket.emit('Err', { error: 'not part of this game' });
                     return;
                 }
-                // FIXED: Corrected condition to properly check if cooldown has elapsed
+                logDebug(`Client (${cookies.session}) triggered emergency meeting.`);
                 if (Date.now() >= cooldownTime) {
                     await startEmergencyMeeting();
                 } else {
@@ -1510,7 +1512,6 @@ io.on("connection", async (socket) => {
                 socket.emit('Err', { error: e.message });
             }
         });
-
 
         socket.on("settings_data_request", async (payload) => {
             const data = await loadGame();
@@ -1643,7 +1644,8 @@ io.on("connection", async (socket) => {
                 socket.emit('fix_ack', { ok: fixed });
 
                 const freshData = await loadGame();
-                const cooldownEndTime = Date.now() + (freshData.settings.sabotageCooldown * 1000);
+                const sabCooldownSeconds = btoActive ? betaTestingOverride.sabotageCooldown : freshData.settings.sabotageCooldown;
+                const cooldownEndTime = Date.now() + (sabCooldownSeconds * 1000);
                 sabCooldownTime = cooldownEndTime;
                 freshData.activeSabotages.cooldown = cooldownEndTime;
 
@@ -1735,7 +1737,7 @@ app.get("/waiting", async (req, res) => {
 function parseSettingsArray(rawSettings, playerCount) {
     if (!Array.isArray(rawSettings)) return null;
 
-    const [impostorsRaw, cdRaw, tasksRaw, emergencyRaw, sabotageCdRaw] = rawSettings;
+    const [impostorsRaw, cdRaw, tasksRaw, emergencyRaw, sabotageCdRaw, emergencyCdRaw] = rawSettings;
 
     const impostors = parseInt(impostorsRaw, 10);
     const meltdownCountdown = parseInt(cdRaw, 10);
@@ -1747,11 +1749,17 @@ function parseSettingsArray(rawSettings, playerCount) {
         ? DEFAULT_SETTINGS.sabotageCooldown
         : parseInt(sabotageCdRaw, 10);
 
-    if (isNaN(impostors) || isNaN(meltdownCountdown) || isNaN(tasks) || isNaN(emergencyCountdown)) return null;
-    if (impostors < 0 || meltdownCountdown < 0 || tasks < 0 || emergencyCountdown < 0) return null;
+    const emergencyCooldown = emergencyCdRaw === undefined
+        ? DEFAULT_SETTINGS.emergencyCooldown
+        : parseInt(emergencyCdRaw, 10);
+
+    if (isNaN(impostors) || isNaN(meltdownCountdown) || isNaN(tasks) || isNaN(emergencyCountdown) ||
+        isNaN(sabotageCooldown) || isNaN(emergencyCooldown)) return null;
+    if (impostors < 0 || meltdownCountdown < 0 || tasks < 0 || emergencyCountdown < 0 ||
+        sabotageCooldown < 0 || emergencyCooldown < 0) return null;
     if (playerCount !== undefined && impostors >= playerCount) return null;
 
-    return { impostors, meltdownCountdown, tasks, emergencyCountdown, sabotageCooldown };
+    return { impostors, meltdownCountdown, tasks, emergencyCountdown, sabotageCooldown, emergencyCooldown };
 }
 
 app.get("/help", async (req, res) => {
@@ -1824,10 +1832,6 @@ app.get("/help", async (req, res) => {
 })
 
 
-app.post("calibrate-power-done", async (req, res) => {
-    
-})
-
 app.post("/start", async (req, res) => {
     await withGameLock(async () => {
         const session = req.cookies.session;
@@ -1867,11 +1871,11 @@ app.post("/start", async (req, res) => {
         
         clearEmergencyMeetingTimer();
 
-        data.settings = parsedSettings;
+        data.settings = { ...DEFAULT_SETTINGS, ...data.settings, ...parsedSettings };
         const targetImpostors = data.settings.impostors;
-        meltdownCountdownSeconds = btoActive ? betaTestingOverride.meetingCooldown : data.settings.meltdownCountdown;
+        // No beta override exists for the meltdown countdown, so it always comes from the host's setting.
+        meltdownCountdownSeconds = data.settings.meltdownCountdown;
         emergencyCountdownSeconds = btoActive ? betaTestingOverride.emergencyCountdown : data.settings.emergencyCountdown;
-        emergencyCountdownSeconds = btoActive ? betaTestingOverride.sabotageCooldown : data.settings.sabotageCooldown;
 
         let roleDeck = [];
         for (let i = 0; i < allPlayerIds.length; i++) {
@@ -1905,6 +1909,7 @@ app.post("/start", async (req, res) => {
         });
 
 
+        data.tank = { ...DEFAULT_TANK };
         data.gameState.started = true;
         data.gameState.impostorsWon = false;
         data.gameState.crewmatesWon = false;
@@ -1937,7 +1942,32 @@ app.post("/start", async (req, res) => {
 });
 
 // Players scan a generated QR code (tasks.txt) which opens this URL in their browser.
+// GET validates the scan but never changes state, so link previewers, QR apps and prefetching can't
+// complete a task by accident. It then shows the task's minigame (if it has one) or a confirm page,
+// and either one POSTs back to the same URL to actually complete the task.
 app.get("/task/:token", async (req, res) => {
+    try {
+        const data = await loadGame();
+        const library = await loadTaskLibrary();
+        const token = String(req.params.token || '');
+        const check = checkTaskScan(data, library, req.cookies.session, token);
+        if (check.outcome) {
+            return res.status(check.outcome.status).send(renderTaskResultHtml(check.outcome));
+        }
+        const { libTask } = check;
+        if (libTask.minigame && MINIGAME_PAGES[libTask.minigame]) {
+            return res.send(await renderMinigameHtml(libTask.minigame, token));
+        }
+        return res.send(renderTaskConfirmHtml({ name: libTask.name, location: libTask.location }, token));
+    } catch (error) {
+        logError("Error showing task page:", error);
+        return res.status(500).send(renderTaskResultHtml({
+            accepted: false, title: 'Task declined', message: 'Server error, try scanning again.', next: '/dashboard'
+        }));
+    }
+});
+
+app.post("/task/:token", async (req, res) => {
     let outcome;
     try {
         await withGameLock(async () => {
@@ -1965,7 +1995,16 @@ app.get("/task/:token", async (req, res) => {
     return res.status(outcome.status).send(renderTaskResultHtml(outcome));
 });
 
-app.get("/reset", async (req, res) => {
+// Read by the fuel_engine minigame to see whether the tank has been refuelled.
+app.get("/fill-rocket", async (req, res) => {
+    const data = await loadGame();
+    if (!data.players[req.cookies.session]) {
+        return res.status(401).json({ error: "401 unauthorised" });
+    }
+    return res.json({ filled: !!data.tank.filled, gallons: data.tank.gallons || 12.5 });
+});
+
+app.post("/reset", async (req, res) => {
     let data = await loadGame();
 
     if (!req.cookies.session || !data.players[req.cookies.session]) {
@@ -2017,7 +2056,8 @@ app.get("/reset", async (req, res) => {
             o2: { ...DEFAULT_SABOTAGES.o2 },
             reactor: { ...DEFAULT_SABOTAGES.reactor }
         },
-        settings: { ...DEFAULT_SETTINGS }
+        settings: { ...DEFAULT_SETTINGS },
+        tank: { ...DEFAULT_TANK }
     };
 
     await saveGame(data);

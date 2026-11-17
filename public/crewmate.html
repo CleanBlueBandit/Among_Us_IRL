@@ -683,13 +683,6 @@
                 window.location.href = '/win';
             });
 
-            if (socket.connected) {
-                socket.emit('request_player_data');
-            } else {
-                socket.once('connect', function() {
-                    socket.emit('request_player_data');
-                });
-            }
         })();
     </script>
 </body>

@@ -558,14 +558,9 @@
     let isFull = false;
     let hoseConnected = false;
 
+    // A full tank completes the task; the server marks the shared tank as filled when it accepts it.
     function persistStatus(filled){
-        fetch("/fill-rocket", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ filled, gallons: filled ? CAPACITY : 0 })
-        }).then(res => res.json()).then((data) => {
-            console.log('Tank status saved:', data);
-        });
+        if (filled) window.completeTask(2500);
     }
 
     function updateDisplay(){

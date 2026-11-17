@@ -1,8 +1,8 @@
 [
-  { "name": "Fix the wires",       "location": "Electrical" },
-  { "name": "Calibrate power",     "location": "Generator room" },
-  { "name": "Refuel the tank",     "location": "Garage" },
-  { "name": "Fuel the engine",     "location": "Engine room" },
+  { "name": "Fix the wires",       "location": "Electrical",     "minigame": "wires" },
+  { "name": "Calibrate power",     "location": "Generator room", "minigame": "calibrate_power" },
+  { "name": "Refuel the tank",     "location": "Garage",         "minigame": "refuel_tank" },
+  { "name": "Fuel the engine",     "location": "Engine room",    "minigame": "fuel_engine" },
   { "name": "Swipe card",          "location": "Admin office" },
   { "name": "Empty the trash",     "location": "Kitchen" },
   { "name": "Upload data",         "location": "Living room" }

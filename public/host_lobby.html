@@ -433,6 +433,33 @@
                         <button onclick="adjustValue('tasks_val', true, 20)">&gt;</button>
                     </div>
                 </div>
+
+                <div class="setting-row">
+                    <span class="setting-name">Meeting length (s)</span>
+                    <div class="stepper">
+                        <button onclick="adjustValue('em_val', false, 600, 10)">&lt;</button>
+                        <p id="em_val">120</p>
+                        <button onclick="adjustValue('em_val', true, 600, 10)">&gt;</button>
+                    </div>
+                </div>
+
+                <div class="setting-row">
+                    <span class="setting-name">Meeting cooldown (s)</span>
+                    <div class="stepper">
+                        <button onclick="adjustValue('emcd_val', false, 300, 5)">&lt;</button>
+                        <p id="emcd_val">30</p>
+                        <button onclick="adjustValue('emcd_val', true, 300, 5)">&gt;</button>
+                    </div>
+                </div>
+
+                <div class="setting-row">
+                    <span class="setting-name">Sabotage cooldown (s)</span>
+                    <div class="stepper">
+                        <button onclick="adjustValue('sabcd_val', false, 300, 5)">&lt;</button>
+                        <p id="sabcd_val">30</p>
+                        <button onclick="adjustValue('sabcd_val', true, 300, 5)">&gt;</button>
+                    </div>
+                </div>
             </div>
 
             <div class="section">
@@ -459,7 +486,7 @@
                 <div class="actions">
                     <button class="primary" onclick="post_start()">Start game</button>
                     <a href="/logout"><button>Leave</button></a>
-                    <a href="/reset"><button>Reset</button></a>
+                    <form method="POST" action="/reset" style="display:inline"><button type="submit">Reset</button></form>
                 </div>
                 <p class="fail-msg" id="fail"></p>
             </div>
@@ -489,7 +516,8 @@
         
 
         function post_start() {
-            const settingsIds = ['impostor_val', 'cd_val', 'tasks_val'];
+            // Order matters: it must match parseSettingsArray on the server.
+            const settingsIds = ['impostor_val', 'cd_val', 'tasks_val', 'em_val', 'sabcd_val', 'emcd_val'];
             const values = settingsIds.map(id => parseInt(get(id).innerText, 10));
 
             fetch('/start', {

@@ -463,14 +463,9 @@
             .then((data) => ({ filled: !!data.filled, gallons: data.gallons || 12.5 }));
     }
 
+    // Finishing the transfer completes the task; the server marks the tank as consumed when it accepts it.
     function persistConsumed(){
-        fetch("/fill-rocket", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ filled: false, gallons: 0 })
-        }).then(res => res.json()).then((data) => {
-            console.log('Tank marked as consumed:', data);
-        });
+        window.completeTask(2500);
     }
 
     function showLoading(){
