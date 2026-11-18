@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Waste chute</title>
+<style>
+  :root{
+    --panel-dark:#242527;
+    --panel-mid:#2f3033;
+    --panel-light:#3c3d41;
+    --bezel:#0e0e10;
+    --caution-yellow:#f2c14e;
+    --caution-black:#1a1a1c;
+    --text-label:#d3d4d9;
+    --text-dim:#8d8e93;
+    --good:#3ddc63;
+    --bad:#ff4433;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0; min-height:100%;
+    display:flex; align-items:center; justify-content:center;
+    padding:max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
+    background:radial-gradient(ellipse at 50% 0%, #2a2a2e 0%, #131315 60%, #0a0a0b 100%);
+    font-family:'Arial Narrow', Arial, Helvetica, sans-serif; color:var(--text-label);
+    user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; overflow:hidden;
+  }
+  .panel{
+    position:relative; width:100%; max-width:520px;
+    background:
+      repeating-linear-gradient(100deg, var(--panel-mid) 0 2px, var(--panel-light) 3px, var(--panel-mid) 4px),
+      linear-gradient(180deg, var(--panel-light), var(--panel-dark));
+    border-radius:14px; padding:18px 20px 16px;
+    box-shadow:0 20px 50px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.08), inset 0 0 0 6px var(--bezel), inset 0 0 0 8px #050506;
+  }
+  .rivet{ position:absolute; width:12px; height:12px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #eceef0, #a7a8ad 45%, #5f6065 80%);
+    box-shadow:0 1px 2px rgba(0,0,0,.8), inset 0 0 2px rgba(0,0,0,.6); }
+  .rivet.tl{ top:14px; left:14px; } .rivet.tr{ top:14px; right:14px; }
+  .rivet.bl{ bottom:14px; left:14px; } .rivet.br{ bottom:14px; right:14px; }
+  .caution{ height:9px; border-radius:3px; margin:0 18px 10px;
+    background:repeating-linear-gradient(-45deg, var(--caution-yellow) 0 10px, var(--caution-black) 10px 20px); }
+  h1{ margin:0 0 8px; text-align:center; font-size:clamp(18px, 5vw, 24px); letter-spacing:3px; color:#eceef0; text-shadow:0 2px 0 #000; }
+
+  /* fill gauge */
+  .gauge{ display:flex; align-items:center; gap:8px; margin:0 4px 10px; }
+  .gauge .lbl{ font-size:11px; letter-spacing:1px; color:var(--text-dim); width:34px; }
+  .segs{ flex:1; display:flex; gap:3px; }
+  .seg{ flex:1; height:12px; border-radius:2px; background:#1a1b1d; box-shadow:inset 0 0 0 1px #000; transition:background .15s, box-shadow .15s; }
+  .seg.on{ background:#d9a33a; box-shadow:0 0 6px rgba(217,163,58,.6), inset 0 0 0 1px #000; }
+  .seg.pop{ animation:segpop .25s ease-out; }
+  @keyframes segpop{ 0%{ transform:scaleY(1.6); background:#fff; } 100%{ transform:scaleY(1); } }
+  .gauge .pct{ font-family:'Courier New', monospace; font-weight:700; width:42px; text-align:right; color:#eceef0; }
+
+  .stage{ display:flex; gap:14px; align-items:stretch; height:clamp(230px, 58vh, 360px); }
+
+  /* bin */
+  .bin-col{ flex:1; display:flex; flex-direction:column; min-width:0; }
+  .bin{
+    position:relative; flex:1; border-radius:10px 10px 0 0; overflow:hidden;
+    background:linear-gradient(90deg, #1b1c1e, #2b2c30 30%, #2b2c30 70%, #1b1c1e);
+    box-shadow:inset 0 0 0 4px #0b0b0c, inset 0 8px 18px rgba(0,0,0,.7);
+  }
+  .bin::before{ /* glass reflection */
+    content:""; position:absolute; left:8%; top:4%; width:10%; bottom:10%; border-radius:6px;
+    background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,0)); pointer-events:none; z-index:3; }
+  .bin.rumble{ animation:rumble .12s linear infinite; }
+  @keyframes rumble{ 0%,100%{ transform:translate(0,0); } 25%{ transform:translate(-1.5px,.5px); } 75%{ transform:translate(1.5px,-.5px); } }
+  .item{ position:absolute; transition:bottom .12s ease-in; z-index:1; }
+  .item.stuck{ animation:wobble .3s ease-in-out infinite; z-index:2; }
+  @keyframes wobble{ 0%,100%{ transform:rotate(var(--r)) translateX(0); } 50%{ transform:rotate(calc(var(--r) + 12deg)) translateX(3px); } }
+  .paper{ background:radial-gradient(circle at 35% 30%, #f4f4f0, #c9c9c2 70%); border-radius:46% 54% 40% 60% / 55% 45% 55% 45%; box-shadow:inset -3px -3px 0 rgba(0,0,0,.12); }
+  .can{ background:linear-gradient(90deg, #8f1d1d, #e04848 45%, #8f1d1d); border-radius:4px; box-shadow:inset 0 3px 0 #ccc, inset 0 -3px 0 #ccc; }
+  .bottle{ background:linear-gradient(90deg, rgba(60,140,80,.75), rgba(140,220,150,.85) 45%, rgba(60,140,80,.75)); border-radius:6px 6px 4px 4px; }
+  .box{ background:linear-gradient(135deg, #b98a52, #8a5f30); border-radius:2px; box-shadow:inset 0 0 0 2px rgba(0,0,0,.15); }
+  .peel{ background:transparent; border-radius:50%; border:0 solid #e8c547; border-bottom-width:7px; border-left-width:3px; }
+
+  .hatch{ position:relative; height:16px; display:flex; overflow:hidden; background:#050506; }
+  .flap{ flex:1; height:100%; background:repeating-linear-gradient(-45deg, #55565b 0 6px, #45464b 6px 12px); box-shadow:inset 0 0 0 2px #0b0b0c; transition:transform .16s ease-out; }
+  .flap.l{ border-radius:0 0 0 6px; }
+  .flap.r{ border-radius:0 0 6px 0; }
+  .open .flap.l{ transform:translateX(-82%); }
+  .open .flap.r{ transform:translateX(82%); }
+  .exit{ position:relative; height:clamp(34px, 9vh, 56px); }
+  .exit-label{ position:absolute; left:0; right:0; bottom:2px; text-align:center; font-size:10px; letter-spacing:2px; color:var(--text-dim); }
+  .falling{ position:absolute; inset:0; pointer-events:none; overflow:visible; z-index:4; }
+
+  /* lever */
+  .lever-col{ width:clamp(70px, 20vw, 92px); display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .lever-lbl{ font-size:10px; letter-spacing:2px; color:var(--text-dim); text-align:center; }
+  .lever{
+    position:relative; flex:1; width:26px; border-radius:13px;
+    background:linear-gradient(90deg, #0b0b0c, #26272a 50%, #0b0b0c);
+    box-shadow:inset 0 0 0 2px #000, 0 1px 0 rgba(255,255,255,.08);
+    touch-action:none;
+  }
+  .lever .zone{ position:absolute; left:3px; right:3px; bottom:3px; height:15%; border-radius:10px;
+    background:repeating-linear-gradient(-45deg, rgba(242,193,78,.55) 0 5px, rgba(26,26,28,.55) 5px 10px); }
+  .knob{
+    position:absolute; left:50%; top:0; width:58px; height:58px; margin-left:-29px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #ff8a6a, #d23a22 55%, #7c1a0c);
+    box-shadow:0 5px 10px rgba(0,0,0,.6), inset 0 -3px 6px rgba(0,0,0,.4);
+    cursor:grab; touch-action:none; will-change:transform;
+    display:flex; align-items:center; justify-content:center; color:#fff; font-size:20px; font-weight:700; text-shadow:0 1px 0 #000;
+  }
+  .knob:active{ cursor:grabbing; }
+  .knob.hint{ animation:knobhint 1.4s ease-in-out infinite; }
+  @keyframes knobhint{ 0%,100%{ box-shadow:0 5px 10px rgba(0,0,0,.6), 0 0 0 0 rgba(255,138,106,.5); } 50%{ box-shadow:0 5px 10px rgba(0,0,0,.6), 0 0 0 10px rgba(255,138,106,0); } }
+  .knob.done{ background:radial-gradient(circle at 35% 30%, #a7f5b4, #3ddc63 55%, #1b6b30); }
+
+  .status{ position:relative; z-index:5; margin-top:10px; min-height:40px; text-align:center; padding:6px 10px; border-radius:6px;
+    background:#151617; box-shadow:inset 0 2px 5px rgba(0,0,0,.8);
+    font-family:'Courier New', monospace; font-weight:700; letter-spacing:1px; font-size:clamp(13px, 3.8vw, 16px); color:#9cf28a; }
+  .status.warn{ color:#ffb35a; animation:blink .5s steps(2) 3; }
+  .status.good{ color:var(--good); }
+  @keyframes blink{ 50%{ opacity:.2; } }
+
+  .flash{ position:fixed; inset:0; pointer-events:none; opacity:0; z-index:50; }
+  .flash.good{ background:#3ddc63; animation:flash .5s ease-out; }
+  .flash.warn{ background:#ffb35a; animation:flashw .3s ease-out; }
+  @keyframes flash{ 0%{ opacity:0; } 30%{ opacity:.55; } 100%{ opacity:0; } }
+  @keyframes flashw{ 0%{ opacity:0; } 30%{ opacity:.2; } 100%{ opacity:0; } }
+
+  @media (max-height:430px){
+    .panel{ padding:10px 16px 10px; }
+    h1{ font-size:17px; margin-bottom:4px; } .caution{ margin-bottom:6px; }
+    .gauge{ margin-bottom:6px; }
+    .stage{ height:calc(100vh - 170px); min-height:150px; }
+    .knob{ width:48px; height:48px; margin-left:-24px; }
+    .status{ margin-top:6px; min-height:30px; padding:4px 8px; }
+  }
+  @media (prefers-reduced-motion:reduce){
+    .bin.rumble, .item.stuck, .knob.hint, .status.warn{ animation:none; }
+    .flash.good, .flash.warn{ animation-duration:.01s; }
+  }
+</style>
+</head>
+<body>
+  <div class="flash" id="flash"></div>
+  <div class="panel">
+    <span class="rivet tl"></span><span class="rivet tr"></span><span class="rivet bl"></span><span class="rivet br"></span>
+    <div class="caution"></div>
+    <h1>WASTE CHUTE</h1>
+    <div class="gauge" aria-hidden="true">
+      <span class="lbl">FULL</span>
+      <div class="segs" id="segs"></div>
+      <span class="pct" id="pct">100%</span>
+    </div>
+
+    <div class="stage">
+      <div class="bin-col">
+        <div class="bin" id="bin"></div>
+        <div class="hatch" id="hatch"><div class="flap l"></div><div class="flap r"></div></div>
+        <div class="exit"><div class="falling" id="falling"></div><div class="exit-label">&#9660; EJECT &#9660;</div></div>
+      </div>
+      <div class="lever-col">
+        <div class="lever-lbl">PULL<br>&amp; HOLD</div>
+        <div class="lever" id="lever">
+          <div class="zone"></div>
+          <div class="knob hint" id="knob" role="slider" tabindex="0" aria-label="Chute lever" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">&#9660;</div>
+        </div>
+        <div class="lever-lbl">OPEN</div>
+      </div>
+    </div>
+
+    <div class="status" id="status" role="status" aria-live="polite">Pull the lever down and hold it</div>
+  </div>
+
+<script>
+(function(){
+  var EMPTY_TIME = 3.2;    // seconds of holding the lever to empty a full bin, whatever its size
+  var OPEN_AT = 0.85;      // lever travel (0 top .. 1 bottom) that opens the hatch
+  var RESET_AT = 0.3;      // lever must come back above this to clear a jam
+  var SEGMENTS = 10;
+
+  var bin = document.getElementById('bin');
+  var hatch = document.getElementById('hatch');
+  var falling = document.getElementById('falling');
+  var lever = document.getElementById('lever');
+  var knob = document.getElementById('knob');
+  var statusEl = document.getElementById('status');
+  var segsEl = document.getElementById('segs');
+  var pctEl = document.getElementById('pct');
+  var flash = document.getElementById('flash');
+
+  var reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function vibrate(p){ try{ if (navigator.vibrate) navigator.vibrate(p); }catch(e){} }
+
+  // ---------- junk ----------
+  var KINDS = [
+    { cls:'paper', w:[30,40], h:[26,34] },
+    { cls:'paper', w:[26,36], h:[24,30] },
+    { cls:'can', w:[18,22], h:[30,36] },
+    { cls:'bottle', w:[16,20], h:[40,48] },
+    { cls:'box', w:[30,42], h:[24,32] },
+    { cls:'peel', w:[30,36], h:[22,26] }
+  ];
+  function rnd(a, b){ return a + Math.random() * (b - a); }
+  // Enough junk to fill about 85% of the bin at this screen size.
+  var COLS = Math.max(3, Math.floor(bin.clientWidth / 44));
+  var ROW_H = 24;
+  var ITEM_COUNT = Math.max(18, Math.min(60, COLS * Math.floor((bin.clientHeight * 0.85) / ROW_H)));
+  var DROP_EVERY = EMPTY_TIME / ITEM_COUNT;
+  // The pile is a stack per column; dropping takes the bottom item of the fullest column and the
+  // items above it fall one row, so nothing slides sideways.
+  var columns = [];
+  for (var c = 0; c < COLS; c++) columns.push([]);
+  var items = { length: 0 };
+  for (var i = 0; i < ITEM_COUNT; i++){
+    var k = KINDS[Math.floor(Math.random() * KINDS.length)];
+    var el = document.createElement('div');
+    var r = Math.round(rnd(-40, 40));
+    el.className = 'item ' + k.cls;
+    el.style.width = Math.round(rnd(k.w[0], k.w[1])) + 'px';
+    el.style.height = Math.round(rnd(k.h[0], k.h[1])) + 'px';
+    el.style.setProperty('--r', r + 'deg');
+    el.style.transform = 'rotate(' + r + 'deg)';
+    el._jx = rnd(-6, 6); el._jy = rnd(-5, 5);
+    bin.appendChild(el);
+    columns[i % COLS].push(el);
+    items.length++;
+  }
+  function nextColumn(){
+    var best = -1, bestLen = 0;
+    for (var c = 0; c < COLS; c++){
+      var len = columns[c].length;
+      if (len > bestLen || (len === bestLen && len > 0 && Math.random() < 0.5)){ best = c; bestLen = len; }
+    }
+    return best;
+  }
+  var nextCol = nextColumn();
+  function nextItem(){ return nextCol >= 0 ? columns[nextCol][0] : null; }
+  function takeNext(){
+    var el = columns[nextCol].shift();
+    items.length--;
+    nextCol = nextColumn();
+    return el;
+  }
+  function layout(){
+    var w = bin.clientWidth, h = bin.clientHeight;
+    var cellW = (w - 8) / COLS;
+    var rowH = Math.max(14, Math.min(ROW_H, (h - 34) / Math.ceil(ITEM_COUNT / COLS)));
+    for (var c = 0; c < COLS; c++){
+      for (var row = 0; row < columns[c].length; row++){
+        var el = columns[c][row];
+        var off = (row % 2) ? cellW * 0.18 : -cellW * 0.08;
+        var left = 4 + c * cellW + (cellW - el.offsetWidth) / 2 + off + el._jx;
+        el.style.left = Math.round(Math.max(2, Math.min(w - el.offsetWidth - 2, left))) + 'px';
+        el.style.bottom = Math.round(row * rowH + 4 + el._jy) + 'px';
+      }
+    }
+  }
+
+  for (var s = 0; s < SEGMENTS; s++){ var seg = document.createElement('div'); seg.className = 'seg on'; segsEl.appendChild(seg); }
+  var segs = segsEl.children;
+  var litSegs = SEGMENTS;
+  function updateGauge(){
+    var pct = Math.round(items.length / ITEM_COUNT * 100);
+    pctEl.textContent = pct + '%';
+    var lit = Math.ceil(items.length / ITEM_COUNT * SEGMENTS);
+    if (lit !== litSegs){
+      for (var i = 0; i < SEGMENTS; i++) segs[i].classList.toggle('on', i < lit);
+      if (lit < litSegs && segs[lit]){ segs[lit].classList.remove('pop'); void segs[lit].offsetWidth; segs[lit].classList.add('pop'); }
+      litSegs = lit;
+    }
+  }
+
+  // ---------- jams: one always, sometimes a second ----------
+  var jamAt = [Math.round(ITEM_COUNT * rnd(0.45, 0.7))];
+  if (Math.random() < 0.5) jamAt.push(Math.round(ITEM_COUNT * rnd(0.15, 0.3)));
+
+  // ---------- lever ----------
+  var p = 0;               // lever travel 0..1
+  var holding = false, grabOffset = 0;
+  var jammed = false, armedForClear = false;
+  var done = false;
+  var dropTimer = 0;
+  var hinted = false;
+
+  function travel(){ return lever.clientHeight - knob.offsetHeight; }
+  function drawLever(){
+    knob.style.transform = 'translateY(' + (p * travel()) + 'px)';
+    knob.setAttribute('aria-valuenow', Math.round(p * 100));
+  }
+  function leverY(e){ return e.clientY - lever.getBoundingClientRect().top; }
+
+  knob.addEventListener('pointerdown', function(e){
+    if (done) return;
+    e.preventDefault();
+    try{ knob.setPointerCapture(e.pointerId); }catch(err){}
+    holding = true;
+    grabOffset = leverY(e) - p * travel();
+    if (!hinted){ hinted = true; knob.classList.remove('hint'); }
+  });
+  knob.addEventListener('pointermove', function(e){
+    if (!holding) return;
+    var t = travel();
+    p = t > 0 ? Math.min(1, Math.max(0, (leverY(e) - grabOffset) / t)) : 0;
+  });
+  function release(){ holding = false; keyHeld = false; }
+  knob.addEventListener('pointerup', release);
+  knob.addEventListener('pointercancel', release);
+  window.addEventListener('blur', release);
+  document.addEventListener('visibilitychange', function(){ if (document.hidden) release(); });
+
+  // Keyboard: hold Space / Down arrow to pull.
+  var keyHeld = false;
+  document.addEventListener('keydown', function(e){
+    if (e.code === 'Space' || e.code === 'ArrowDown' || e.code === 'KeyS'){ e.preventDefault(); if (!done){ keyHeld = true; if (!hinted){ hinted = true; knob.classList.remove('hint'); } } }
+  });
+  document.addEventListener('keyup', function(e){
+    if (e.code === 'Space' || e.code === 'ArrowDown' || e.code === 'KeyS') keyHeld = false;
+  });
+
+  function setStatus(text, kind){
+    statusEl.textContent = text;
+    statusEl.className = 'status' + (kind ? ' ' + kind : '');
+  }
+  function doFlash(kind){ flash.className = 'flash'; void flash.offsetWidth; flash.className = 'flash ' + kind; }
+
+  function dropOne(){
+    var el = takeNext();
+    var binRect = bin.getBoundingClientRect();
+    var fallRect = falling.getBoundingClientRect();
+    var r = el.getBoundingClientRect();
+    // Fly the item from where it sat in the pile out through the hatch.
+    el.classList.remove('stuck');
+    el.style.transition = 'none';
+    el.style.left = (r.left - fallRect.left) + 'px';
+    el.style.bottom = 'auto';
+    el.style.top = (r.top - fallRect.top) + 'px';
+    falling.appendChild(el);
+    var dx = (binRect.left + binRect.width / 2 - r.left - r.width / 2) * 0.6 + rnd(-20, 20);
+    var rot = rnd(-200, 200);
+    var anim = el.animate([
+      { transform:'translate(0,0) rotate(0deg)', opacity:1 },
+      { transform:'translate(' + dx + 'px,' + (fallRect.height + 120) + 'px) rotate(' + rot + 'deg)', opacity:0 }
+    ], { duration:reduceMotion ? 200 : 520, easing:'cubic-bezier(.5,0,.9,.6)' });
+    anim.onfinish = function(){ el.remove(); };
+    layout();
+    updateGauge();
+  }
+
+  var last = performance.now();
+  function frame(now){
+    var dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+
+    if (!holding){
+      // Spring back up when let go (frame-rate independent easing).
+      var target = keyHeld ? 1 : 0;
+      p += (target - p) * (1 - Math.exp(-(keyHeld ? 10 : 14) * dt));
+      if (Math.abs(target - p) < 0.002) p = target;
+    }
+    drawLever();
+
+    var open = !done && p >= OPEN_AT;
+    hatch.classList.toggle('open', open && !jammed);
+
+    if (jammed){
+      if (p < RESET_AT) armedForClear = true;
+      if (armedForClear && open){
+        jammed = false; armedForClear = false;
+        if (nextItem()) nextItem().classList.remove('stuck');
+        setStatus('Unjammed! Keep holding', null);
+        vibrate(30);
+        dropTimer = 0.2;
+      }
+    } else if (open && items.length){
+      if (jamAt.length && items.length === jamAt[0]){
+        jamAt.shift();
+        jammed = true; armedForClear = false;
+        if (nextItem()) nextItem().classList.add('stuck');
+        setStatus('JAMMED! Let go, then pull again', 'warn');
+        doFlash('warn');
+        vibrate([80, 50, 80]);
+      } else {
+        dropTimer -= dt;
+        if (dropTimer <= 0){
+          dropTimer += DROP_EVERY;
+          dropOne();
+          if (!items.length){ finish(); }
+        }
+      }
+    } else if (!done && !jammed){
+      dropTimer = 0;
+      if (items.length < ITEM_COUNT && items.length > 0 && p < OPEN_AT) setStatus('Hatch closed - hold the lever down', null);
+    }
+    if (!done && open && !jammed && items.length && statusEl.textContent.indexOf('Emptying') !== 0 && statusEl.textContent.indexOf('Unjammed') !== 0) setStatus('Emptying...', null);
+
+    bin.classList.toggle('rumble', !reduceMotion && open && !jammed && items.length > 0);
+    requestAnimationFrame(frame);
+  }
+
+  function finish(){
+    done = true;
+    holding = false; keyHeld = false;
+    knob.classList.add('done');
+    knob.innerHTML = '&#10003;';
+    setStatus('BIN EMPTY - nice work', 'good');
+    doFlash('good');
+    vibrate(40);
+    if (window.completeTask) window.completeTask(1500);
+  }
+
+  layout();
+  drawLever();
+  window.addEventListener('resize', function(){ layout(); drawLever(); });
+  requestAnimationFrame(function(t){ last = t; frame(t); });
+})();
+</script>
+</body>
+</html>

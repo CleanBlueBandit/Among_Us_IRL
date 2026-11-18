@@ -1,7 +1,8 @@
 // Usage: npm run import:tasks -- path/to/locations.json
 // Accepts either an array, or { "tasks": [...] }, of:
 //   { "id": "wires-electrical", "name": "Fix wires", "location": "Electrical", "minigame": "wires" }
-// "minigame" is optional: one of calibrate_power, refuel_tank, fuel_engine, wires. Tasks with one open that
+// "minigame" is optional: one of calibrate_power, refuel_tank, fuel_engine, wires,
+// swipe_card, empty_trash, upload_data. Tasks with one open that
 // minigame when scanned; completing it completes the task. fuel_engine needs a refuel_tank task too.
 // "id" is optional (derived from the name). Re-importing replaces the task list;
 // existing generated links are kept if their task id still exists.

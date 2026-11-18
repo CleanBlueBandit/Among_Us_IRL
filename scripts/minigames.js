@@ -4,5 +4,8 @@ export const MINIGAME_PAGES = {
     calibrate_power: 'Calibrate_power.html',
     refuel_tank: 'Refuel-tank.html',
     fuel_engine: 'fuel_engine.html',
-    wires: 'wires.html'
+    wires: 'wires.html',
+    swipe_card: 'swipe_card.html',
+    empty_trash: 'empty_trash.html',
+    upload_data: 'upload_data.html'
 };
