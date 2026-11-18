@@ -7,5 +7,9 @@ export const MINIGAME_PAGES = {
     wires: 'wires.html',
     swipe_card: 'swipe_card.html',
     empty_trash: 'empty_trash.html',
-    upload_data: 'upload_data.html'
+    upload_data: 'upload_data.html',
+    clear_asteroids: 'clear_asteroids.html',
+    cool_reactor: 'cool_reactor.html',
+    keypad_code: 'keypad_code.html',
+    prime_shields: 'prime_shields.html'
 };

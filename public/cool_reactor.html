@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="location" content="Reactor"><title>Cool reactor</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;color:#e2e8f0;font-family:system-ui,sans-serif;user-select:none;-webkit-user-select:none;touch-action:none;overflow:hidden;background:radial-gradient(ellipse at 50% 30%,#162235,#0b1017 70%)}
+body:after{content:"";position:fixed;inset:0;pointer-events:none;z-index:30;background:repeating-linear-gradient(0deg,#0000 0 3px,#0000000d 3px 4px),radial-gradient(transparent 55%,#000a)}
+.w{width:min(94vw,540px);padding:18px;border:2px solid #334155;border-radius:18px;background:#0f1722cc;box-shadow:0 0 0 4px #0b1017,0 0 40px #5eead422 inset;text-align:center;position:relative}
+h1{margin:0 0 4px;font-size:1.3rem;letter-spacing:.2em;color:#5eead4;text-shadow:0 0 12px #5eead488}
+.sub{font-size:.8rem;color:#94a3b8;margin-bottom:14px}
+#msg{margin-top:12px;min-height:1.6em;font-weight:800;letter-spacing:.06em}
+#ban{position:fixed;inset:0;display:none;place-items:center;z-index:20;background:#22c55e33;pointer-events:none}
+#ban b{font-size:clamp(1.5rem,6vw,2.5rem);letter-spacing:.2em;padding:16px 28px;border:3px solid #22c55e;background:#052e16ee;border-radius:14px;color:#86efac}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01s!important;transition-duration:.01s!important}}
+.row{display:flex;gap:30px;justify-content:center;align-items:center;margin:4px 0 8px}
+#core{width:190px;height:190px;border-radius:50%;border:4px solid #475569}
+.g{position:relative;width:44px;height:240px;border:3px solid #475569;border-radius:10px;background:linear-gradient(#7f1d1d66,#0000 35%,#0000 65%,#1e3a8a66)}
+.z{position:absolute;left:0;right:0;bottom:40%;height:20%;background:#14532d99;border-top:2px dashed #22c55e;border-bottom:2px dashed #22c55e;font:700 10px system-ui;display:grid;place-items:center;color:#86efac}
+.g small{position:absolute;left:0;right:0;text-align:center;font:700 9px system-ui;color:#94a3b8}
+#n{position:absolute;left:-12px;right:-12px;height:4px;background:#fb923c;bottom:0;box-shadow:0 0 8px #fb923c}
+#st{font-weight:800;letter-spacing:.12em;min-height:1.4em}
+.bar{height:12px;background:#111827;border:2px solid #334155;border-radius:8px;margin:10px 0 14px;overflow:hidden}#pb{height:100%;width:0;background:#5eead4}
+#v{padding:18px 40px;font-size:1.1rem;font-weight:800;letter-spacing:.1em;border:0;border-radius:12px;background:#38bdf8;color:#04202f;box-shadow:0 6px 0 #0369a1;touch-action:none;transition:transform .08s,box-shadow .08s}#v.on{transform:translateY(5px);box-shadow:0 1px 0 #0369a1;background:#7dd3fc}
+</style></head><body><div id="ban"></div>
+<div class="w"><h1>COOL REACTOR</h1><div class="sub">Hold VENT (or Space) to cool. Keep the needle in the SAFE zone.</div>
+<div class="row"><div id="core"></div><div class="g"><small style="top:3px">HOT</small><div class="z">SAFE</div><small style="bottom:3px">COLD</small><div id="n"></div></div></div>
+<div id="st"></div><div class="bar"><div id="pb"></div></div><button id="v" type="button">▼ HOLD TO VENT</button><div id="msg" aria-live="polite"></div></div>
+<script>
+const $=s=>document.querySelector(s),RM=matchMedia("(prefers-reduced-motion: reduce)").matches,R=(a,b)=>a+Math.random()*(b-a),W=$(".w");
+function shake(el=W,n=9){if(RM)return;el.animate([{transform:`translate(${n}px,0)`},{transform:`translate(${-n}px,${n/3}px)`},{transform:`translate(${n/2}px,${-n/3}px)`},{transform:`translate(${-n/3}px,0)`},{transform:"none"}],{duration:300,easing:"ease-out"})}
+function pop(x,y,t,c="#5eead4"){const e=document.createElement("div");e.textContent=t;e.style.cssText=`position:fixed;left:${x}px;top:${y}px;color:${c};font:800 20px system-ui;text-shadow:0 2px 0 #000,0 0 8px #000;pointer-events:none;z-index:9`;document.body.append(e);e.animate([{transform:"translate(-50%,0) scale(.5)",opacity:0},{transform:"translate(-50%,-18px) scale(1.25)",opacity:1,offset:.25},{transform:"translate(-50%,-56px) scale(1)",opacity:0}],{duration:800,easing:"ease-out"}).onfinish=()=>e.remove()}
+function burst(x,y,c="#5eead4",n=16){if(RM)n=4;for(let i=0;i<n;i++){const e=document.createElement("i"),a=R(0,6.28),d=R(30,90),s=R(4,9);e.style.cssText=`position:fixed;left:${x}px;top:${y}px;width:${s}px;height:${s}px;background:${c};border-radius:${i%2?"50%":"2px"};pointer-events:none;z-index:9`;document.body.append(e);e.animate([{transform:"translate(-50%,-50%)",opacity:1},{transform:`translate(calc(-50% + ${Math.cos(a)*d}px),calc(-50% + ${Math.sin(a)*d+25}px)) rotate(${R(-360,360)}deg)`,opacity:0}],{duration:R(450,800),easing:"cubic-bezier(.1,.7,.3,1)"}).onfinish=()=>e.remove()}}
+function msg(t,c="#5eead4"){const m=$("#msg");m.textContent=t;m.style.color=c}
+let _w=0;function win(t="TASK COMPLETE"){if(_w)return;_w=1;const b=$("#ban");b.innerHTML="<b>✓ "+t+"</b>";b.style.display="grid";b.animate([{opacity:0,transform:"scale(1.3)"},{opacity:1,transform:"none"}],{duration:300,easing:"ease-out",fill:"forwards"});window.completeTask&&window.completeTask(1500)}
+const core=$("#core"),nd=$("#n"),pb=$("#pb"),stt=$("#st"),vb=$("#v");
+let T=30,ok=0,vent=false,last=performance.now(),fin=false,sa=0,lt="";
+const on=v=>{vent=v;vb.classList.toggle("on",v)};
+vb.onpointerdown=e=>{e.preventDefault();on(true)};vb.onpointerup=vb.onpointerleave=vb.onpointercancel=()=>on(false);
+addEventListener("keydown",e=>{if(e.code==="Space"){e.preventDefault();on(true)}});addEventListener("keyup",e=>{if(e.code==="Space")on(false)});
+function steam(){const r=core.getBoundingClientRect(),e=document.createElement("i"),s=R(10,22);e.style.cssText=`position:fixed;left:${r.left+R(.2,.8)*r.width}px;top:${r.top}px;width:${s}px;height:${s}px;border-radius:50%;background:#e2e8f0;pointer-events:none;z-index:9`;document.body.append(e);e.animate([{transform:"translate(-50%,0) scale(.5)",opacity:.6},{transform:`translate(${R(-30,30)}px,-90px) scale(2)`,opacity:0}],{duration:900}).onfinish=()=>e.remove()}
+function frame(ts){const dt=Math.min(.05,(ts-last)/1000);last=ts;if(fin)return;
+ T=Math.max(0,T+(22+9*Math.sin(ts/700)-(vent?58:0))*dt);
+ if(T>=100){T=30;ok=0;const r=core.getBoundingClientRect();burst(r.left+95,r.top+95,"#f97316",30);shake();msg("⚠ OVERHEAT · restarting","#f87171")}
+ const inz=T>=40&&T<=60;ok=inz?ok+dt:Math.max(0,ok-dt*1.5);
+ const hue=200-T*2;core.style.background=`radial-gradient(circle at 40% 35%,hsl(${hue} 90% 75%),hsl(${hue} 85% 45%) 55%,hsl(${hue} 80% 20%))`;core.style.boxShadow=`0 0 ${20+T}px hsl(${hue} 90% 55% / .8)`;
+ core.style.transform=`translate(${T>80&&!RM?R(-3,3):0}px,${T>80&&!RM?R(-3,3):0}px) scale(${1+Math.sin(ts/(300-T*2))*.03})`;
+ nd.style.bottom=`calc(${T}% - 2px)`;pb.style.width=Math.min(100,ok/6*100)+"%";
+ const t=inz?"● STABLE":T>60?"▲ TOO HOT":"▼ TOO COLD";if(t!==lt){lt=t;stt.textContent=t;stt.style.color=inz?"#86efac":T>60?"#fb923c":"#7dd3fc"}
+ if(vent&&!RM&&ts-sa>70){sa=ts;steam()}
+ if(ok>=6){fin=true;core.style.transform="none";msg("✓ Reactor stable");win("REACTOR STABLE");return}
+ requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+</script></body></html>
