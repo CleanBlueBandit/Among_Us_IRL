@@ -1,0 +1,18 @@
+{
+  "locations": {
+    "calibrate_power": "Generator room",
+    "clear_asteroids": "Weapons",
+    "cool_reactor": "Reactor",
+    "empty_trash": "Cafeteria",
+    "fuel_engine": "Engine room",
+    "keypad_code": "Security",
+    "prime_shields": "Shields",
+    "refuel_tank": "Garage",
+    "swipe_card": "Admin",
+    "upload_data": "Communications",
+    "wires": "Electrical"
+  },
+  "binds": {
+    "refuel_tank": "fuel_engine"
+  }
+}

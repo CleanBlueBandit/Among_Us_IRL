@@ -15,13 +15,9 @@
     "lastEjection": null
   },
   "servers": {},
-  "tank": {
-    "filled": false,
-    "gallons": 0
-  },
   "players": {},
   "activeSabotages": {
-    "cooldown":0,
+    "cooldown": 0,
     "o2": {
       "sabotaged": false,
       "depleted": false,
@@ -38,7 +34,7 @@
     "meltdownCountdown": 30,
     "tasks": 5,
     "emergencyCountdown": 120,
-    "emergencyCooldown":30,
-    "sabotageCooldown":30
+    "emergencyCooldown": 30,
+    "sabotageCooldown": 30
   }
 }

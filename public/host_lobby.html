@@ -410,9 +410,9 @@
                 <div class="setting-row">
                     <span class="setting-name">Impostors</span>
                     <div class="stepper">
-                        <button onclick="adjustValue('impostor_val', false, 20)">&lt;</button>
+                        <button onclick="adjustValue('impostor_val', false, impostorMax())">&lt;</button>
                         <p id="impostor_val">2</p>
-                        <button onclick="adjustValue('impostor_val', true, 20)">&gt;</button>
+                        <button onclick="adjustValue('impostor_val', true, impostorMax())">&gt;</button>
                     </div>
                 </div>
 
@@ -504,6 +504,8 @@
 
         socket.on("game_data_request", (data) => {
             document.getElementById("players").innerText = "players: " + data.playerCount;
+            latestPlayerCount = data.playerCount || 0;
+            clampImpostors();
             if (data.started) {
                 window.location.href = "/dashboard";
             }
@@ -514,6 +516,17 @@
         });
 
         
+
+        // Impostors must be fewer than players, so never let the stepper go past that.
+        var latestPlayerCount = 0;
+        function impostorMax() {
+            return latestPlayerCount > 1 ? latestPlayerCount - 1 : 20;
+        }
+        function clampImpostors() {
+            var el = get('impostor_val');
+            var max = impostorMax();
+            if (parseInt(el.innerText, 10) > max) el.innerText = max;
+        }
 
         function post_start() {
             // Order matters: it must match parseSettingsArray on the server.
