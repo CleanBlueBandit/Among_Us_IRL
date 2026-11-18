@@ -2048,7 +2048,7 @@ app.get("/fill-rocket", async (req, res) => {
     return res.json({ filled, gallons: 12.5 });
 });
 
-app.post("/reset", async (req, res) => {
+async function reset(req, res){
     let data = await loadGame();
 
     if (!req.cookies.session || !data.players[req.cookies.session]) {
@@ -2124,6 +2124,18 @@ app.post("/reset", async (req, res) => {
 
     res.set('Content-Type', 'text/html');
     return res.send(dynamicHtml);
+}
+
+app.post("/reset", async (req, res) => {
+    return reset(req, res);
+})
+
+
+app.get("/reset", async (req, res) => {
+    if(!btoActive){
+        return res.sendStatus(405);
+    }
+    return reset(req, res);
 })
 
 // Directory scan defence
