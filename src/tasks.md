@@ -37,8 +37,10 @@ is nothing to import: add, rename or delete a file and the task list follows.
   itself (switched on, empty location), so you only have to fill in the locations.
   - `enabled`: `false` switches the task off. It is never handed out, a scan of it is declined, and it
     is left out of `tasks.txt`. Its QR code keeps working once you switch it back on.
-  - `location`: shown under the task name. When the server starts it warns how many tasks still have
-    no location.
+  - `location`: shown under the task name. While it is empty, the minigame's own
+    `<meta name="location" content="...">` (in its `<head>`) is used instead, if it has one. When the
+    server starts it warns how many tasks have no location in `tasks.json`, and which of those fall back to
+    the meta tag or have no location at all.
 - **binds**: `"refuel_tank": "fuel_engine"` means fuel_engine needs refuel_tank first.
   Whoever is given fuel_engine is also given refuel_tank, and scanning fuel_engine is declined
   until that player has done refuel_tank. One task can lead to several: `"a": ["b", "c"]`.

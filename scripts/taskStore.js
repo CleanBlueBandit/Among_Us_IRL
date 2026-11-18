@@ -12,7 +12,8 @@
 //     "binds": { "refuel_tank": "fuel_engine" }      // refuel_tank must be done before fuel_engine
 //   }
 // Every minigame gets an entry automatically (enabled, empty location) the first time the server sees
-// it, so the owner only has to fill in the locations. Disabled tasks are never handed out, can't be
+// it. A task's location is the "location" in tasks.json, or, while that is empty, the
+// <meta name="location" content="..."> in the minigame's <head>. Disabled tasks are never handed out, can't be
 // scanned and are left out of tasks.txt. A bind's value can also be a list: { "a": ["b", "c"] }.
 // Whoever gets a bound task also gets the task(s) it depends on.
 //
@@ -44,6 +45,20 @@ function warnOnce(msg) {
 function prettify(id) {
     const s = id.replace(/[-_]+/g, ' ').trim();
     return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// <meta name="location" content="..."> in the minigame's <head>: its default location.
+async function readMetaLocation(file) {
+    const fh = await fs.open(file, 'r');
+    try {
+        const buf = Buffer.alloc(4096);
+        const { bytesRead } = await fh.read(buf, 0, buf.length, 0);
+        const head = buf.toString('utf-8', 0, bytesRead);
+        const m = head.match(/<meta\s+name=["']location["']\s+content=["']([^"']*)["']/i);
+        return m ? m[1].trim() : '';
+    } finally {
+        await fh.close();
+    }
 }
 
 async function listMinigameIds() {
@@ -133,7 +148,8 @@ function parseBinds(binds) {
     return out;
 }
 
-// Returns [{ id, name, location, enabled, file, requires: [ids] }] sorted by id.
+// Returns [{ id, name, location, locationFrom, enabled, file, requires: [ids] }] sorted by id.
+// locationFrom is "tasks.json", "meta" or "" (no location anywhere).
 // `requires` lists the tasks that must be done before this one (from the binds in tasks.json).
 // New minigames are added to tasks.json here (enabled, empty location).
 export async function readTasks() {
@@ -151,10 +167,16 @@ export async function readTasks() {
         }
     }
 
-    const tasks = found.map(({ id, file }) => {
+    const tasks = [];
+    for (const { id, file } of found) {
         const entry = config.tasks[id] || { enabled: true, location: '' };
-        return { id, name: prettify(id), location: entry.location.trim(), enabled: entry.enabled, file, requires: [] };
-    });
+        let location = entry.location.trim(), locationFrom = location ? 'tasks.json' : '';
+        if (!location) {
+            location = await readMetaLocation(path.join(MINIGAMES_DIR, file));
+            if (location) locationFrom = 'meta';
+        }
+        tasks.push({ id, name: prettify(id), location, locationFrom, enabled: entry.enabled, file, requires: [] });
+    }
 
     const byId = new Map(tasks.map(t => [t.id, t]));
     for (const id of Object.keys(config.tasks)) {

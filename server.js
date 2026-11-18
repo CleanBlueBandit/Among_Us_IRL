@@ -433,9 +433,12 @@ httpServer.listen(PORT, () => {
         logDebug(`Tasks loaded from minigames/: ${usable.map(label).join(', ') || 'none'} (links in tasks.txt)`);
         if (off.length) logDebug(`Switched off in tasks.json: ${off.map(t => t.id).join(', ')}`);
         if (blocked.length) logWarn(`Not handed out because a task they need is missing or switched off: ${blocked.map(label).join(', ')}`);
+        const fromMeta = lib.tasks.filter(t => t.locationFrom === 'meta');
         const noLocation = lib.tasks.filter(t => !t.location);
-        if (noLocation.length) {
-            logWarn(`${noLocation.length} of ${lib.tasks.length} tasks have no location in tasks.json: ${noLocation.map(t => t.id).join(', ')}. Players will see them without a location until you fill these in.`);
+        if (fromMeta.length || noLocation.length) {
+            logWarn(`${fromMeta.length + noLocation.length} of ${lib.tasks.length} tasks have no location in tasks.json.`
+                + (fromMeta.length ? ` Using the minigame's <meta name="location"> for ${fromMeta.length}: ${fromMeta.map(t => `${t.id} (${t.location})`).join(', ')}.` : '')
+                + (noLocation.length ? ` No location at all for ${noLocation.length}: ${noLocation.map(t => t.id).join(', ')} - players will see them without one.` : ''));
         }
     });
 });
