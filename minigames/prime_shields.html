@@ -28,7 +28,7 @@ let _w=0;function win(){if(_w)return;_w=1;W.animate([{boxShadow:"0 0 0 4px #0b10
 const hx=$("#hx"),seg=$("#seg"),P=[[0,0],[96,0],[-96,0],[48,84],[-48,84],[48,-84],[-48,-84]],off=new Set(),cs=[],sg=[];
 while(off.size<4)off.add(Math.floor(Math.random()*7));
 const upd=()=>{const n=cs.filter(c=>c.classList.contains("on")).length;sg.forEach((s,i)=>s.classList.toggle("on",i<n));return n};
-const set=(c,on)=>{c.className="c "+(on?"on":"off");c.lastChild.innerHTML=on?"<u>✓</u>":"<u>✕</u>";c.setAttribute("aria-label",on?"Panel on":"Panel off, tap to turn on")};
+const set=(c,on)=>{c.className="c "+(on?"on":"off");c.setAttribute("aria-label",on?"Panel on":"Panel off, tap to turn on")};
 P.forEach((p,i)=>{seg.append(sg[i]=document.createElement("i"));const c=document.createElement("button");c.type="button";c.style.left=105+p[0]+"px";c.style.top=93+p[1]+"px";c.innerHTML="<i></i><b></b>";cs.push(c);set(c,!off.has(i));
  c.onpointerdown=e=>{if(c.classList.contains("on"))return;e.preventDefault();set(c,true);const r=c.getBoundingClientRect(),x=r.left+45,y=r.top+52;
   const g=document.createElement("div");g.style.cssText=`position:fixed;left:${x}px;top:${y}px;width:20px;height:20px;border:3px solid #86efac;border-radius:50%;pointer-events:none;z-index:9`;document.body.append(g);g.animate([{transform:"translate(-50%,-50%) scale(1)",opacity:1},{transform:"translate(-50%,-50%) scale(8)",opacity:0}],{duration:550,easing:"ease-out"}).onfinish=()=>g.remove();

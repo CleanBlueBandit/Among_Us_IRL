@@ -1,368 +1,283 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="location" content="Electrical">
-    <title>Wires task</title>
-</head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="location" content="Electrical">
+<title>Fix wiring</title>
 <style>
+  :root{
+    --panel-dark:#242527; --panel-mid:#2f3033; --panel-light:#3c3d41; --bezel:#0e0e10;
+    --caution-yellow:#f2c14e; --caution-black:#1a1a1c;
+    --text-label:#d3d4d9; --text-dim:#8d8e93;
+    --screen:#0d1a22; --screen-text:#7fd8ff; --screen-dim:#3f6f86;
+    --good:#3ddc63; --warn:#ffb35a; --bad:#ff5a4a;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0; min-height:100%;
+    display:flex; align-items:center; justify-content:center;
+    padding:max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
+    background:radial-gradient(ellipse at 50% 0%, #2a2a2e 0%, #131315 60%, #0a0a0b 100%);
+    font-family:'Arial Narrow', Arial, Helvetica, sans-serif; color:var(--text-label);
+    user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; overflow:hidden;
+  }
+  .panel{
+    position:relative; width:100%; max-width:560px;
+    background:
+      repeating-linear-gradient(100deg, var(--panel-mid) 0 2px, var(--panel-light) 3px, var(--panel-mid) 4px),
+      linear-gradient(180deg, var(--panel-light), var(--panel-dark));
+    border-radius:14px; padding:18px 20px 16px;
+    box-shadow:0 20px 50px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.08), inset 0 0 0 6px var(--bezel), inset 0 0 0 8px #050506;
+    transition:box-shadow .5s;
+  }
+  .panel.done{ box-shadow:0 20px 50px rgba(0,0,0,.6), 0 0 34px rgba(61,220,99,.35), inset 0 1px 0 rgba(255,255,255,.08), inset 0 0 0 6px #1b6b30, inset 0 0 0 8px #050506; }
+  .panel.shake{ animation:shake .32s linear; }
+  @keyframes shake{
+    0%,100%{ transform:translateX(0); } 20%{ transform:translateX(-7px); } 40%{ transform:translateX(6px); }
+    60%{ transform:translateX(-4px); } 80%{ transform:translateX(2px); }
+  }
+  .rivet{ position:absolute; width:12px; height:12px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #eceef0, #a7a8ad 45%, #5f6065 80%);
+    box-shadow:0 1px 2px rgba(0,0,0,.8), inset 0 0 2px rgba(0,0,0,.6); }
+  .rivet.tl{ top:14px; left:14px; } .rivet.tr{ top:14px; right:14px; }
+  .rivet.bl{ bottom:14px; left:14px; } .rivet.br{ bottom:14px; right:14px; }
+  .caution{ height:9px; border-radius:3px; margin:0 18px 10px;
+    background:repeating-linear-gradient(-45deg, var(--caution-yellow) 0 10px, var(--caution-black) 10px 20px); }
+  h1{ margin:0 0 10px; text-align:center; font-size:clamp(18px, 5vw, 24px); letter-spacing:3px; color:#eceef0; text-shadow:0 2px 0 #000; }
+  .screen{
+    position:relative; border-radius:8px; padding:10px 12px;
+    background:
+      repeating-linear-gradient(180deg, rgba(255,255,255,.025) 0 1px, rgba(0,0,0,0) 1px 3px),
+      radial-gradient(ellipse at 50% 40%, #12303d, var(--screen) 75%);
+    box-shadow:inset 0 0 0 3px #050506, inset 0 0 24px rgba(0,0,0,.8);
+    color:var(--screen-text);
+  }
+  .status{ margin-top:12px; min-height:34px; text-align:center; padding:6px 10px; border-radius:6px;
+    background:#151617; box-shadow:inset 0 2px 5px rgba(0,0,0,.8);
+    font-family:'Courier New', monospace; font-weight:700; letter-spacing:1px; font-size:clamp(13px, 3.8vw, 16px); color:var(--screen-text); }
+  .status.warn{ color:var(--warn); }
+  .status.good{ color:var(--good); }
+  .flash{ position:fixed; inset:0; pointer-events:none; opacity:0; z-index:50; }
+  .flash.good{ background:#3ddc63; animation:flash .5s ease-out; }
+  .flash.bad{ background:#ff5a4a; animation:flashb .3s ease-out; }
+  @keyframes flash{ 0%{ opacity:0; } 30%{ opacity:.5; } 100%{ opacity:0; } }
+  @keyframes flashb{ 0%{ opacity:0; } 30%{ opacity:.22; } 100%{ opacity:0; } }
+  @media (max-height:430px){
+    .panel{ padding:10px 16px 10px; }
+    h1{ font-size:17px; margin-bottom:6px; } .caution{ margin-bottom:6px; }
+    .status{ margin-top:6px; min-height:28px; padding:4px 8px; }
+  }
+  @media (prefers-reduced-motion:reduce){
+    .panel.shake{ animation:none; }
+    .flash.good, .flash.bad{ animation-duration:.01s; }
+  }
 
-    body{
-        background-color: #3d4b4c;
-        user-select: none;
-    }
-    .container{
-        position: relative;
-        justify-self: center;
-        width: 95%;
-        border: 10px solid gray;
-        border-radius: 8px;
-        height: 60vh;
-        display: flex;
-        flex-direction: row;
-        background-image: url(/wires.png);
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-        justify-content: left;
-    }
-
-    .subcontainer{
-        display: flex;
-        flex-direction: column;
-        width: 50%;
-        gap: 7.55vh;
-        margin-top: 10vh;
-    }
-
-    .left {
-        align-items: flex-start;
-    }
-
-    .right {
-        align-items: flex-end;
-    }
-    button{
-        width: 30%;
-        height: 5vh;
-        border: 0;
-        cursor: grab;
-        touch-action: none;
-    }
-
-    .left_btn{
-        border-radius: 0 8px 8px 0;
-    }
-    .right_btn{
-        border-radius: 8px 0 0 8px;
-    }
-    
-    .top-container{
-        width: 100%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 25vh;
-    }
-
-    h1{
-        font-family: Arial, Helvetica, sans-serif;
-    }
-
-
-    .wires-layer{
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-    }
-
-    .wire-line{
-        position: absolute;
-        height: 5vh;
-        border-radius: 0 8px 8px 0;
-        transform-origin: 0 50%;
-        pointer-events: none;
-        display: none;
-    }
-
-    .wire-handle{
-        position: absolute;
-        background: transparent;
-        transform: translate(-50%, -50%);
-        pointer-events: auto;
-        touch-action: none;
-        cursor: grab;
-        display: none;
-    }
-
-    .wire-handle:active{
-        cursor: grabbing;
-    }
-
-    @keyframes Correct {
-        0% { opacity: 0;}
-        50% { opacity: 1; }
-        100% { opacity: 0; }
-    }
-
-    .correct{
-        opacity: 0;
-        position: fixed;
-        width: 100%;
-        height: 100vh;
-        background-color: lime;
-        z-index: 1000;
-        animation: Correct 0.4s linear forwards;
-    }
+  /* ---- this game ---- */
+  .box{ position:relative; height:clamp(250px, 52vh, 360px); display:flex; justify-content:space-between; padding:14px 0; }
+  .wires{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:3; overflow:visible; }
+  .col{ position:relative; z-index:2; display:flex; flex-direction:column; justify-content:space-around; }
+  .plug, .sock{ border:0; padding:0; background:none; cursor:pointer; touch-action:none; min-height:48px; display:flex; align-items:center; }
+  .plug:focus-visible, .sock:focus-visible{ outline:3px solid #fff; outline-offset:2px; border-radius:8px; }
+  .plug{ gap:6px; }
+  .plug .stub{ width:clamp(46px, 13vw, 64px); height:18px; border-radius:0 9px 9px 0; background:var(--c);
+    box-shadow:inset 0 4px 0 rgba(255,255,255,.28), inset 0 -4px 0 rgba(0,0,0,.25), 0 2px 4px rgba(0,0,0,.5); }
+  .plug .tip{ width:14px; height:12px; margin-left:-8px; border-radius:2px 5px 5px 2px; background:linear-gradient(180deg, #e6e7ea, #8d8f95); box-shadow:0 1px 2px rgba(0,0,0,.6); }
+  .plug.used .tip{ visibility:hidden; }
+  .plug.picked .stub{ filter:brightness(1.35); }
+  .sym{ width:16px; height:16px; flex:none; }
+  .sock{ gap:8px; flex-direction:row-reverse; }
+  .sock .hole{ position:relative; width:34px; height:34px; border-radius:50%; background:radial-gradient(circle, #050506 38%, #2a2b2f 40%, #3c3d41 70%);
+    box-shadow:0 0 0 3px var(--c), 0 2px 5px rgba(0,0,0,.6); }
+  .sock .led{ width:10px; height:10px; border-radius:50%; background:#2a1416; box-shadow:inset 0 0 0 2px #0b0b0c; transition:background .15s, box-shadow .15s; }
+  .sock.on .led{ background:var(--good); box-shadow:0 0 10px var(--good); }
+  .sock.near .hole{ box-shadow:0 0 0 3px var(--c), 0 0 16px var(--c); }
+  .sock.bad{ animation:shake .32s linear; }
+  .spark{ position:absolute; width:4px; height:4px; border-radius:50%; background:#ffe08a; pointer-events:none; z-index:4; }
+  @media (max-height:430px){ .box{ height:calc(100vh - 150px); min-height:170px; padding:6px 0; } .plug, .sock{ min-height:40px; } .sock .hole{ width:28px; height:28px; } }
 
 </style>
+</head>
 <body>
-    <div style="display: none;" id="correct"></div>
-    <div class="top-container">
-        <h1>FIX WIRING</h1>
+  <div class="flash" id="flash"></div>
+  <div class="panel" id="panel">
+    <span class="rivet tl"></span><span class="rivet tr"></span><span class="rivet bl"></span><span class="rivet br"></span>
+    <div class="caution"></div>
+    <h1>FIX WIRING</h1>
+    <div class="screen box" id="box">
+      <svg class="wires" id="wires" aria-hidden="true"></svg>
+      <div class="col" id="left"></div>
+      <div class="col" id="right"></div>
     </div>
-    <div class="container">
-        <div class="left subcontainer"></div>
-        <div class="right subcontainer"></div>
-    </div>
+    <div class="status" id="status" role="status" aria-live="polite">Connect each wire to its colour</div>
+  </div>
+<script>
+(function(){
+  var panel = document.getElementById('panel');
+  var statusEl = document.getElementById('status');
+  var flashEl = document.getElementById('flash');
+  var reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function vibrate(p){ try{ if (navigator.vibrate) navigator.vibrate(p); }catch(e){} }
+  function rnd(a, b){ return a + Math.random() * (b - a); }
+  function clamp(v, a, b){ return v < a ? a : v > b ? b : v; }
+  function setStatus(text, kind){
+    var cls = 'status' + (kind ? ' ' + kind : '');
+    if (statusEl.textContent === text && statusEl.className === cls) return;
+    statusEl.textContent = text; statusEl.className = cls;
+  }
+  function doFlash(kind){ flashEl.className = 'flash'; void flashEl.offsetWidth; flashEl.className = 'flash ' + kind; }
+  function shakePanel(){ panel.classList.remove('shake'); void panel.offsetWidth; panel.classList.add('shake'); }
+  var finished = false;
+  // Finishing: the frame glows green and the task is reported; no banner or remarks.
+  function finish(){
+    if (finished) return;
+    finished = true;
+    panel.classList.add('done');
+    setStatus('✓', 'good');
+    doFlash('good');
+    vibrate(40);
+    if (window.completeTask) window.completeTask(1500);
+  }
 
-   <script>
-        const colors = ["red", "yellow", "blue", "magenta"];
+  // ---- this game ----
+  var COLORS = [
+    { c:'#ff5a4a', name:'red',     svg:'<circle cx="12" cy="12" r="10"/>' },
+    { c:'#f2c14e', name:'yellow',  svg:'<path d="M12 2 L22 21 L2 21 Z"/>' },
+    { c:'#4fb8e6', name:'blue',    svg:'<rect x="3" y="3" width="18" height="18" rx="2"/>' },
+    { c:'#d36bff', name:'magenta', svg:'<path d="M12 1 L23 12 L12 23 L1 12 Z"/>' }
+  ];
+  var NS = 'http://www.w3.org/2000/svg';
+  var box = document.getElementById('box'), svg = document.getElementById('wires');
+  var leftCol = document.getElementById('left'), rightCol = document.getElementById('right');
+  function shuffle(a){ for (var i = a.length - 1; i > 0; i--){ var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  var leftOrder = shuffle([0, 1, 2, 3]), rightOrder;
+  do { rightOrder = shuffle([0, 1, 2, 3]); } while (rightOrder.every(function(v, i){ return v === leftOrder[i]; }));
+  function symbol(c){ return '<svg class="sym" viewBox="0 0 24 24" aria-hidden="true" fill="' + c.c + '">' + c.svg + '</svg>'; }
 
-        const container = document.querySelector(".container");
-        const leftContainer = document.querySelector(".left");
-        const rightContainer = document.querySelector(".right");
+  var wires = COLORS.map(function(col, i){
+    var g = document.createElementNS(NS, 'g');
+    var shadow = document.createElementNS(NS, 'path'), body = document.createElementNS(NS, 'path'), shine = document.createElementNS(NS, 'path');
+    shadow.setAttribute('stroke', 'rgba(0,0,0,.55)'); shadow.setAttribute('stroke-width', '17');
+    body.setAttribute('stroke', col.c); body.setAttribute('stroke-width', '13');
+    shine.setAttribute('stroke', 'rgba(255,255,255,.32)'); shine.setAttribute('stroke-width', '3.5');
+    [shadow, body, shine].forEach(function(p){ p.setAttribute('fill', 'none'); p.setAttribute('stroke-linecap', 'round'); g.appendChild(p); });
+    g.style.display = 'none';
+    svg.appendChild(g);
+    return { paths:[shadow, body, shine], g:g, done:false };
+  });
+  var plugs = leftOrder.map(function(ci){
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'plug'; b.style.setProperty('--c', COLORS[ci].c);
+    b.setAttribute('aria-label', COLORS[ci].name + ' wire');
+    b.innerHTML = symbol(COLORS[ci]) + '<span class="stub"></span><span class="tip"></span>';
+    b._ci = ci;
+    leftCol.appendChild(b);
+    return b;
+  });
+  var socks = rightOrder.map(function(ci){
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'sock'; b.style.setProperty('--c', COLORS[ci].c);
+    b.setAttribute('aria-label', COLORS[ci].name + ' socket');
+    b.innerHTML = symbol(COLORS[ci]) + '<span class="led"></span><span class="hole"></span>';
+    b._ci = ci;
+    rightCol.appendChild(b);
+    return b;
+  });
 
-        const OFFSET_X_LEFT = 12; 
-        const OFFSET_X_RIGHT = 15; 
-        const OFFSET_Y = -23;
+  function rel(el, side){
+    var r = el.getBoundingClientRect(), br = box.getBoundingClientRect();
+    return { x:(side === 'right' ? r.right : side === 'center' ? r.left + r.width / 2 : r.left) - br.left, y:r.top + r.height / 2 - br.top };
+  }
+  function plugEnd(ci){ var p = plugs.find(function(b){ return b._ci === ci; }); return rel(p.querySelector('.stub'), 'right'); }
+  function sockEnd(ci){ var s = socks.find(function(b){ return b._ci === ci; }); return rel(s.querySelector('.hole'), 'center'); }
+  function draw(ci, to){
+    var a = plugEnd(ci), dx = Math.max(30, (to.x - a.x) * 0.45);
+    // a cable: leaves the plug sideways, sags a little, arrives sideways
+    var sag = Math.min(40, Math.abs(to.x - a.x) * 0.12);
+    var d = 'M' + a.x + ' ' + a.y + ' C' + (a.x + dx) + ' ' + (a.y + sag) + ' ' + (to.x - dx) + ' ' + (to.y + sag) + ' ' + to.x + ' ' + to.y;
+    wires[ci].paths.forEach(function(p){ p.setAttribute('d', d); });
+    wires[ci].g.style.display = '';
+  }
+  function hide(ci){ wires[ci].g.style.display = 'none'; }
+  function redrawAll(){ wires.forEach(function(w, ci){ if (w.done) draw(ci, sockEnd(ci)); }); }
 
-        let pool = [...colors];
-        while (pool.length > 0) {
-            let index = Math.floor(Math.random() * pool.length);
-            const el = pool[index];
-            pool.splice(index, 1);
+  function sparks(at){
+    if (reduceMotion) return;
+    for (var i = 0; i < 10; i++){
+      var s = document.createElement('i'); s.className = 'spark';
+      s.style.left = at.x + 'px'; s.style.top = at.y + 'px'; box.appendChild(s);
+      var a = rnd(0, 6.283), d = rnd(14, 34);
+      s.animate([{ transform:'translate(-50%,-50%)', opacity:1 }, { transform:'translate(' + (Math.cos(a) * d - 2) + 'px,' + (Math.sin(a) * d + 8) + 'px)', opacity:0 }], { duration:rnd(280, 480), easing:'ease-out' }).onfinish = (function(el){ return function(){ el.remove(); }; })(s);
+    }
+  }
+  function connect(ci){
+    var w = wires[ci]; w.done = true;
+    draw(ci, sockEnd(ci));
+    var s = socks.find(function(b){ return b._ci === ci; }), p = plugs.find(function(b){ return b._ci === ci; });
+    s.classList.add('on'); p.classList.add('used'); p.disabled = true; s.disabled = true;
+    sparks(sockEnd(ci)); vibrate(18);
+    if (wires.every(function(x){ return x.done; })) finish();
+  }
+  function reject(sock){
+    sock.classList.remove('bad'); void sock.offsetWidth; sock.classList.add('bad');
+    doFlash('bad'); vibrate([40, 30, 40]);
+    setStatus('Match the colours', 'warn');
+  }
+  function sockAt(x, y){
+    var best = null, bd = 46;
+    socks.forEach(function(s){ var c = rel(s.querySelector('.hole'), 'center'), d = Math.hypot(c.x - x, c.y - y); if (d < bd){ bd = d; best = s; } });
+    return best;
+  }
 
-            const button = document.createElement("button");
-            button.style.backgroundColor = el;
-            button.setAttribute("id", `${el}_left`);
-            button.setAttribute("class", "left_btn");
-            button.setAttribute("type", "button");
-            leftContainer.append(button);
-        }
+  // drag a wire from its plug
+  var drag = null, picked = null;
+  plugs.forEach(function(p){
+    p.addEventListener('pointerdown', function(e){
+      if (finished || wires[p._ci].done) return;
+      e.preventDefault();
+      try{ p.setPointerCapture(e.pointerId); }catch(err){}
+      drag = { ci:p._ci, plug:p, moved:false, sx:e.clientX, sy:e.clientY, near:null };
+    });
+    p.addEventListener('pointermove', function(e){
+      if (!drag || drag.plug !== p) return;
+      if (Math.abs(e.clientX - drag.sx) + Math.abs(e.clientY - drag.sy) > 6) drag.moved = true;
+      if (!drag.moved) return;
+      var br = box.getBoundingClientRect(), x = e.clientX - br.left, y = e.clientY - br.top;
+      draw(drag.ci, { x:x, y:y });
+      var n = sockAt(x, y);
+      if (n !== drag.near){ if (drag.near) drag.near.classList.remove('near'); if (n && !n.disabled) n.classList.add('near'); drag.near = n; }
+    });
+    function end(e){
+      if (!drag || drag.plug !== p) return;
+      var d = drag; drag = null;
+      if (d.near) d.near.classList.remove('near');
+      if (!d.moved){ select(p); return; }
+      var br = box.getBoundingClientRect(), s = sockAt(e.clientX - br.left, e.clientY - br.top);
+      if (s && !s.disabled && s._ci === d.ci) connect(d.ci);
+      else { hide(d.ci); if (s && !s.disabled) reject(s); }
+    }
+    p.addEventListener('pointerup', end);
+    p.addEventListener('pointercancel', function(){ if (drag && drag.plug === p){ hide(drag.ci); drag = null; } });
+    p.addEventListener('click', function(e){ if (e.detail === 0) select(p); });   // keyboard
+  });
+  // or tap a plug, then a socket
+  function select(p){
+    if (finished || wires[p._ci].done) return;
+    if (picked) picked.classList.remove('picked');
+    picked = picked === p ? null : p;
+    if (picked) picked.classList.add('picked');
+  }
+  socks.forEach(function(s){
+    s.addEventListener('click', function(){
+      if (!picked || s.disabled) return;
+      var ci = picked._ci; picked.classList.remove('picked'); picked = null;
+      if (s._ci === ci) connect(ci); else reject(s);
+    });
+  });
+  window.addEventListener('resize', redrawAll);
 
-        pool = [...colors];
-        while (pool.length > 0) {
-            let index = Math.floor(Math.random() * pool.length);
-            const el = pool[index];
-            pool.splice(index, 1);
-
-            const button = document.createElement("button");
-            button.style.backgroundColor = el;
-            button.setAttribute("id", `${el}_right`);
-            button.setAttribute("class", "right_btn");
-            button.setAttribute("type", "button");
-            rightContainer.append(button);
-        }
-
-        const wiresLayer = document.createElement("div");
-        wiresLayer.className = "wires-layer";
-        container.appendChild(wiresLayer);
-
-        const wires = {};
-        let connected = {};
-
-        colors.forEach(color => {
-            const line = document.createElement("div");
-            line.className = "wire-line";
-            line.style.backgroundColor = color;
-            wiresLayer.appendChild(line);
-
-            const handle = document.createElement("div");
-            handle.className = "wire-handle";
-            handle.style.backgroundColor = color;
-            wiresLayer.appendChild(handle);
-
-            wires[color] = {
-                connectedRight: null,
-                lineEl: line,
-                handleEl: handle
-            };
-            connected[color] = false;
-
-            handle.addEventListener("pointerdown", (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                beginDrag(color, pointFromEvent(e));
-            });
-
-            document.getElementById(`${color}_left`).addEventListener("pointerdown", (e) => {
-                e.preventDefault();
-                beginDrag(color, getLeftTip(color));
-            });
-        });
-
-        let zCounter = 1;
-        let activeDrag = null;
-
-        function getTipPoint(el, side){
-            const contRect = wiresLayer.getBoundingClientRect();
-            const rect = el.getBoundingClientRect();
-            
-            const offsetX = side === "right" ? OFFSET_X_RIGHT : OFFSET_X_LEFT;
-            const y = (rect.top + rect.height / 2 - contRect.top) + OFFSET_Y;
-            const x = (side === "right" ? rect.left - contRect.left : rect.left - contRect.left) + offsetX;
-            return { x, y };
-        }
-
-        function getLeftTip(color){
-            return getTipPoint(document.getElementById(`${color}_left`), "left");
-        }
-
-        function getRightTip(color){
-            return getTipPoint(document.getElementById(`${color}_right`), "right");
-        }
-
-        function pointFromEvent(e){
-            const contRect = wiresLayer.getBoundingClientRect();
-            return { x: e.clientX - contRect.left + OFFSET_X_LEFT, y: e.clientY - contRect.top + OFFSET_Y };
-        }
-
-        function isNearRightPort(point, color){
-            const btn = document.getElementById(`${color}_right`);
-            const contRect = wiresLayer.getBoundingClientRect();
-            const rect = btn.getBoundingClientRect();
-            const margin = 25;
-            
-            const left = rect.left - contRect.left - margin + OFFSET_X_RIGHT;
-            const right = rect.right - contRect.left + margin + OFFSET_X_RIGHT;
-            const top = rect.top - contRect.top - margin + OFFSET_Y;
-            const bottom = rect.bottom - contRect.top + margin + OFFSET_Y;
-            return point.x >= left && point.x <= right && point.y >= top && point.y <= bottom;
-        }
-
-        function findNearbyRightPort(point){
-            for (const color of colors){
-                if (isNearRightPort(point, color)) return color;
-            }
-            return null;
-        }
-
-        function drawLine(lineEl, p1, p2){
-            const dx = p2.x - p1.x;
-            const dy = p2.y - p1.y;
-            const length = Math.sqrt(dx * dx + dy * dy);
-            const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-            lineEl.style.width = `${length}px`;
-            lineEl.style.left = `${p1.x}px`;
-            lineEl.style.top = `${p1.y}px`;
-            lineEl.style.transform = `rotate(${angle}deg)`;
-        }
-
-        function renderWire(color, tip){
-            const wire = wires[color];
-            drawLine(wire.lineEl, getLeftTip(color), tip);
-            wire.handleEl.style.left = `${tip.x}px`;
-            wire.handleEl.style.top = `${tip.y}px`;
-        }
-
-        function beginDrag(color, initialTip){
-            document.removeEventListener("pointermove", onDragMove);
-
-            const wire = wires[color];
-            wire.connectedRight = null;
-
-            zCounter += 1;
-            wire.lineEl.style.zIndex = zCounter;
-            wire.handleEl.style.zIndex = zCounter;
-
-            wire.lineEl.style.display = "block";
-            wire.handleEl.style.display = "block";
-
-            activeDrag = color;
-            renderWire(color, initialTip);
-
-            document.addEventListener("pointermove", onDragMove);
-            document.addEventListener("pointerup", onDragEnd, { once: true });
-        }
-
-        function onDragMove(e){
-            if (!activeDrag) return;
-            renderWire(activeDrag, pointFromEvent(e));
-        }
-
-        function onDragEnd(e){
-            if (!activeDrag) return;
-            const color = activeDrag;
-            const wire = wires[color];
-            const releasePoint = pointFromEvent(e);
-            const nearRight = findNearbyRightPort(releasePoint);
-
-            document.removeEventListener("pointermove", onDragMove);
-
-            if (nearRight){
-                wire.connectedRight = nearRight;
-                renderWire(color, getRightTip(nearRight));
-            } else {
-                wire.connectedRight = null;
-                wire.lineEl.style.display = "none";
-                wire.handleEl.style.display = "none";
-            }
-
-            activeDrag = null;
-            updateConnectedStatus();
-        }
-
-        function updateConnectedStatus(){
-            colors.forEach(color => {
-                connected[color] = wires[color].connectedRight === color;
-            });
-            checkDone();
-        }
-
-        function checkDone(){
-            let ec = 0;
-            for (const [key, value] of Object.entries(connected)){
-                if (!value){
-                    console.log(`${key} isnt wired up correctly!`);
-                    ec += 1;
-                }
-            }
-            if (ec === 0){
-                console.log("Wires task done!");
-                if (window.completeTask) window.completeTask(1500);
-                const correctDiv = document.getElementById("correct");
-                correctDiv.setAttribute("style", "");
-                correctDiv.setAttribute("class", "correct");
-                return true;
-            }
-            return false;
-        }
-
-        function resetWires(){
-            colors.forEach(color => {
-                const wire = wires[color];
-                wire.connectedRight = null;
-                wire.lineEl.style.display = "none";
-                wire.handleEl.style.display = "none";
-                connected[color] = false;
-            });
-        }
-
-        window.addEventListener("resize", () => {
-            colors.forEach(color => {
-                const wire = wires[color];
-                if (wire.connectedRight){
-                    renderWire(color, getRightTip(wire.connectedRight));
-                }
-            });
-        });
-
-    </script>
-
+})();
+</script>
 </body>
 </html>
