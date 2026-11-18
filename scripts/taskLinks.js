@@ -9,5 +9,10 @@ if (tasks.length === 0) {
     process.exit(1);
 }
 
-console.log(`${tasks.length} links in tasks.txt (base: ${baseUrl()}):`);
-for (const t of tasks) console.log(`  ${t.id}  ->  ${baseUrl()}/task/${t.token}${t.location ? `   (${t.location})` : ''}`);
+const on = tasks.filter(t => t.enabled);
+const off = tasks.filter(t => !t.enabled);
+console.log(`${on.length} links in tasks.txt (base: ${baseUrl()}):`);
+for (const t of on) console.log(`  ${t.id}  ->  ${baseUrl()}/task/${t.token}   (${t.location || 'no location yet'})`);
+if (off.length) console.log(`Switched off in tasks.json (not in tasks.txt): ${off.map(t => t.id).join(', ')}`);
+const noLocation = tasks.filter(t => !t.location);
+if (noLocation.length) console.log(`${noLocation.length} of ${tasks.length} tasks still need a location in tasks.json.`);
