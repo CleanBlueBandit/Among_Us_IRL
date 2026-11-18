@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Waste chute</title>
+<!-- Trash sprites: Kenney "Food Kit" 3D models (CC0, www.kenney.nl), rendered to /img/trash_atlas.webp. -->
+<style>
+  :root{
+    --panel-dark:#242527;
+    --panel-mid:#2f3033;
+    --panel-light:#3c3d41;
+    --bezel:#0e0e10;
+    --caution-yellow:#f2c14e;
+    --caution-black:#1a1a1c;
+    --text-label:#d3d4d9;
+    --text-dim:#8d8e93;
+    --good:#3ddc63;
+    --warn:#ffb35a;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0; min-height:100%;
+    display:flex; align-items:center; justify-content:center;
+    padding:max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
+    background:radial-gradient(ellipse at 50% 0%, #2a2a2e 0%, #131315 60%, #0a0a0b 100%);
+    font-family:'Arial Narrow', Arial, Helvetica, sans-serif; color:var(--text-label);
+    user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; overflow:hidden;
+  }
+  .panel{
+    position:relative; width:100%; max-width:520px;
+    background:
+      repeating-linear-gradient(100deg, var(--panel-mid) 0 2px, var(--panel-light) 3px, var(--panel-mid) 4px),
+      linear-gradient(180deg, var(--panel-light), var(--panel-dark));
+    border-radius:14px; padding:18px 20px 16px;
+    box-shadow:0 20px 50px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.08), inset 0 0 0 6px var(--bezel), inset 0 0 0 8px #050506;
+  }
+  .rivet{ position:absolute; width:12px; height:12px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #eceef0, #a7a8ad 45%, #5f6065 80%);
+    box-shadow:0 1px 2px rgba(0,0,0,.8), inset 0 0 2px rgba(0,0,0,.6); }
+  .rivet.tl{ top:14px; left:14px; } .rivet.tr{ top:14px; right:14px; }
+  .rivet.bl{ bottom:14px; left:14px; } .rivet.br{ bottom:14px; right:14px; }
+  .caution{ height:9px; border-radius:3px; margin:0 18px 10px;
+    background:repeating-linear-gradient(-45deg, var(--caution-yellow) 0 10px, var(--caution-black) 10px 20px); }
+  h1{ margin:0 0 8px; text-align:center; font-size:clamp(18px, 5vw, 24px); letter-spacing:3px; color:#eceef0; text-shadow:0 2px 0 #000; }
+
+  /* fill gauge */
+  .gauge{ display:flex; align-items:center; gap:8px; margin:0 4px 10px; }
+  .gauge .lbl{ font-size:11px; letter-spacing:1px; color:var(--text-dim); width:34px; }
+  .segs{ flex:1; display:flex; gap:3px; }
+  .seg{ flex:1; height:12px; border-radius:2px; background:#1a1b1d; box-shadow:inset 0 0 0 1px #000; transition:background .15s, box-shadow .15s; }
+  .seg.on{ background:#d9a33a; box-shadow:0 0 6px rgba(217,163,58,.6), inset 0 0 0 1px #000; }
+  .seg.pop{ animation:segpop .25s ease-out; }
+  @keyframes segpop{ 0%{ transform:scaleY(1.6); background:#fff; } 100%{ transform:scaleY(1); } }
+  .gauge .pct{ font-family:'Courier New', monospace; font-weight:700; width:42px; text-align:right; color:#eceef0; font-variant-numeric:tabular-nums; }
+
+  .stage{ display:flex; gap:14px; align-items:stretch; height:clamp(260px, 60vh, 400px); }
+
+  /* bin + chute, drawn on a canvas */
+  .bin-col{ position:relative; flex:1; min-width:0; }
+  .bin-frame{ position:absolute; inset:0; border-radius:10px; box-shadow:inset 0 0 0 4px #0b0b0c; pointer-events:none; z-index:2; }
+  canvas{ position:absolute; inset:0; width:100%; height:100%; display:block; border-radius:10px; }
+  .bin-col.rumble{ animation:rumble .12s linear infinite; }
+  @keyframes rumble{ 0%,100%{ transform:translate(0,0); } 25%{ transform:translate(-1.5px,.5px); } 75%{ transform:translate(1.5px,-.5px); } }
+  .eject{ position:absolute; left:0; right:0; bottom:4px; text-align:center; font-size:10px; letter-spacing:2px; color:var(--text-dim); z-index:3; pointer-events:none; }
+
+  /* lever */
+  .lever-col{ width:clamp(70px, 20vw, 92px); display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .lever-lbl{ font-size:10px; letter-spacing:2px; color:var(--text-dim); text-align:center; }
+  .lever{
+    position:relative; flex:1; width:26px; border-radius:13px;
+    background:linear-gradient(90deg, #0b0b0c, #26272a 50%, #0b0b0c);
+    box-shadow:inset 0 0 0 2px #000, 0 1px 0 rgba(255,255,255,.08);
+    touch-action:none;
+  }
+  .lever .zone{ position:absolute; left:3px; right:3px; bottom:3px; height:15%; border-radius:10px;
+    background:repeating-linear-gradient(-45deg, rgba(242,193,78,.55) 0 5px, rgba(26,26,28,.55) 5px 10px); }
+  .knob{
+    position:absolute; left:50%; top:0; width:58px; height:58px; margin-left:-29px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #ff8a6a, #d23a22 55%, #7c1a0c);
+    box-shadow:0 5px 10px rgba(0,0,0,.6), inset 0 -3px 6px rgba(0,0,0,.4);
+    cursor:grab; touch-action:none; will-change:transform;
+    display:flex; align-items:center; justify-content:center; color:#fff; font-size:20px; font-weight:700; text-shadow:0 1px 0 #000;
+  }
+  .knob:active{ cursor:grabbing; }
+  .knob:focus-visible{ outline:3px solid #fff; outline-offset:3px; }
+  .knob.hint{ animation:knobhint 1.4s ease-in-out infinite; }
+  @keyframes knobhint{ 0%,100%{ box-shadow:0 5px 10px rgba(0,0,0,.6), 0 0 0 0 rgba(255,138,106,.5); } 50%{ box-shadow:0 5px 10px rgba(0,0,0,.6), 0 0 0 10px rgba(255,138,106,0); } }
+  .knob.done{ background:radial-gradient(circle at 35% 30%, #a7f5b4, #3ddc63 55%, #1b6b30); }
+
+  .status{ position:relative; z-index:5; margin-top:10px; min-height:40px; text-align:center; padding:6px 10px; border-radius:6px;
+    background:#151617; box-shadow:inset 0 2px 5px rgba(0,0,0,.8);
+    font-family:'Courier New', monospace; font-weight:700; letter-spacing:1px; font-size:clamp(13px, 3.8vw, 16px); color:#9cf28a; }
+  .status.warn{ color:var(--warn); animation:blink .5s steps(2) 3; }
+  .status.good{ color:var(--good); }
+  @keyframes blink{ 50%{ opacity:.2; } }
+
+  .flash{ position:fixed; inset:0; pointer-events:none; opacity:0; z-index:50; }
+  .flash.good{ background:#3ddc63; animation:flash .5s ease-out; }
+  .flash.warn{ background:#ffb35a; animation:flashw .3s ease-out; }
+  @keyframes flash{ 0%{ opacity:0; } 30%{ opacity:.55; } 100%{ opacity:0; } }
+  @keyframes flashw{ 0%{ opacity:0; } 30%{ opacity:.2; } 100%{ opacity:0; } }
+
+  @media (max-height:430px){
+    .panel{ padding:10px 16px 10px; }
+    h1{ font-size:17px; margin-bottom:4px; } .caution{ margin-bottom:6px; }
+    .gauge{ margin-bottom:6px; }
+    .stage{ height:calc(100vh - 160px); min-height:160px; }
+    .knob{ width:48px; height:48px; margin-left:-24px; }
+    .status{ margin-top:6px; min-height:30px; padding:4px 8px; }
+  }
+  @media (prefers-reduced-motion:reduce){
+    .bin-col.rumble, .knob.hint, .status.warn{ animation:none; }
+    .flash.good, .flash.warn{ animation-duration:.01s; }
+  }
+</style>
+</head>
+<body>
+  <div class="flash" id="flash"></div>
+  <div class="panel">
+    <span class="rivet tl"></span><span class="rivet tr"></span><span class="rivet bl"></span><span class="rivet br"></span>
+    <div class="caution"></div>
+    <h1>WASTE CHUTE</h1>
+    <div class="gauge" aria-hidden="true">
+      <span class="lbl">FULL</span>
+      <div class="segs" id="segs"></div>
+      <span class="pct" id="pct">100%</span>
+    </div>
+
+    <div class="stage">
+      <div class="bin-col" id="binCol">
+        <canvas id="cv"></canvas>
+        <div class="bin-frame"></div>
+        <div class="eject">&#9660; EJECT &#9660;</div>
+      </div>
+      <div class="lever-col">
+        <div class="lever-lbl">PULL<br>&amp; HOLD</div>
+        <div class="lever" id="lever">
+          <div class="zone"></div>
+          <div class="knob hint" id="knob" role="slider" tabindex="0" aria-label="Chute lever" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">&#9660;</div>
+        </div>
+        <div class="lever-lbl">OPEN</div>
+      </div>
+    </div>
+
+    <div class="status" id="status" role="status" aria-live="polite">Pull the lever down and hold it</div>
+  </div>
+
+<script>
+(function(){
+  // ---------- tuning ----------
+  var STEP = 1 / 60;          // fixed physics step
+  var SUBSTEPS = 2;
+  var ITER = 4;               // constraint passes per substep
+  var GRAVITY = 1900;         // px/s^2
+  var OPEN_AT = 0.85;         // lever travel (0 top .. 1 bottom) that opens the hatch
+  var RESET_AT = 0.3;         // lever must come back above this to clear a jam
+  var SEGMENTS = 10;
+
+  // Sprite atlas frames [x, y, w, h] in /img/trash_atlas.webp
+  var FRAMES = {"soda-can-crushed":[2,2,96,93],"soda-can":[102,2,62,96],"can-open":[202,2,64,96],"fish-bones":[302,2,96,65],"apple-half":[402,2,84,96],"banana":[2,102,96,69],"bag-flat":[102,102,96,57],"candy-bar-wrapper":[202,102,96,67],"chocolate-wrapper":[302,102,96,58],"styrofoam":[402,102,96,49],"fries-empty":[2,202,77,96],"carton-small":[102,202,73,96],"cup-coffee":[202,202,96,92],"soda-bottle":[302,202,34,96],"plate-broken":[402,202,96,58],"popsicle-stick":[2,302,21,96],"egg-half":[102,302,87,96],"chinese":[202,302,91,96],"bottle-ketchup":[302,302,48,96],"sausage-half":[402,302,96,81]};
+  var NAMES = Object.keys(FRAMES);
+
+  var binCol = document.getElementById('binCol');
+  var cv = document.getElementById('cv');
+  var ctx = cv.getContext('2d');
+  var lever = document.getElementById('lever');
+  var knob = document.getElementById('knob');
+  var statusEl = document.getElementById('status');
+  var segsEl = document.getElementById('segs');
+  var pctEl = document.getElementById('pct');
+  var flash = document.getElementById('flash');
+
+  var reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function vibrate(p){ try{ if (navigator.vibrate) navigator.vibrate(p); }catch(e){} }
+  function rnd(a, b){ return a + Math.random() * (b - a); }
+
+  var atlas = new Image();
+  var atlasOk = false;
+  atlas.onload = function(){ atlasOk = true; };
+  atlas.onerror = function(){ console.warn('empty_trash: could not load /img/trash_atlas.webp, drawing placeholders'); };
+  atlas.src = '/img/trash_atlas.webp';
+
+  // ---------- geometry (CSS px, rebuilt on resize) ----------
+  var W = 0, H = 0, DPR = 1;
+  var floorY, funnelTop, gapL, gapR, gapC, wallPad = 6, exitH;
+  function measure(){
+    var r = binCol.getBoundingClientRect();
+    W = r.width; H = r.height;
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+    exitH = Math.max(46, Math.min(80, H * 0.18));
+    floorY = H - exitH;
+    funnelTop = floorY - W * 0.2;
+    var gw = Math.max(W * 0.34, 80);
+    gapC = W / 2; gapL = gapC - gw / 2; gapR = gapC + gw / 2;
+  }
+
+  // ---------- bodies ----------
+  var bodies = [];
+  var R0 = 18;
+  function makeBody(x, y){
+    var name = NAMES[Math.floor(Math.random() * NAMES.length)];
+    var f = FRAMES[name];
+    var s = (2 * R0 * rnd(0.95, 1.2)) / 96;
+    var dw = f[2] * s, dh = f[3] * s;
+    return {
+      x:x, y:y, px:x, py:y, a:rnd(-Math.PI, Math.PI), pa:0, spin:rnd(-3, 3),
+      f:f, dw:dw, dh:dh, r:Math.max(10, (dw + dh) / 4 * 0.92), pinned:false
+    };
+  }
+  var total = 0;
+  function fill(){
+    bodies = [];
+    R0 = Math.max(14, Math.min(24, W / 11));
+    // Enough trash to fill most of the bin; extra is trimmed after it settles.
+    var area = W * (floorY * 0.85) - (W * (floorY - funnelTop)) / 2;
+    var n = Math.max(16, Math.min(80, Math.round(area * 1.05 / (Math.PI * R0 * R0 * 1.15))));
+    var cols = Math.max(3, Math.floor((W - 2 * wallPad) / (R0 * 2.1)));
+    for (var i = 0; i < n; i++){
+      var col = i % cols, row = Math.floor(i / cols);
+      bodies.push(makeBody(wallPad + R0 + col * (W - 2 * wallPad - 2 * R0) / Math.max(1, cols - 1) + rnd(-3, 3), floorY - R0 - row * R0 * 1.9));
+    }
+    for (var k = 0; k < 360; k++) physics(STEP, true);
+    // Keep the pile below the top edge of the bin.
+    bodies.sort(function(a, b){ return a.y - b.y; });
+    while (bodies.length && bodies[0].y - bodies[0].r < 8) bodies.shift();
+    for (var j = 0; j < bodies.length; j++){ bodies[j].px = bodies[j].x; bodies[j].py = bodies[j].y; bodies[j].pa = bodies[j].a; }
+    total = bodies.length;
+  }
+
+  // ---------- physics ----------
+  var hatchOpen = 0;     // 0 closed .. 1 open (animated)
+  var pin = null;        // body stuck in the hatch during a jam
+  function collideSegment(b, ax, ay, bx, by){
+    var dx = bx - ax, dy = by - ay;
+    var t = ((b.x - ax) * dx + (b.y - ay) * dy) / (dx * dx + dy * dy);
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    var qx = ax + dx * t, qy = ay + dy * t;
+    var ox = b.x - qx, oy = b.y - qy;
+    var d2 = ox * ox + oy * oy;
+    if (d2 >= b.r * b.r) return false;
+    // Only push out from the inside of the bin (above the plate).
+    var nx = -dy, ny = dx; var nl = Math.sqrt(nx * nx + ny * ny); nx /= nl; ny /= nl;
+    if (ny > 0){ nx = -nx; ny = -ny; }
+    if (t > 0 && t < 1 && (ox * nx + oy * ny) < 0) return false;
+    var d = Math.sqrt(d2) || 0.0001;
+    var push = b.r - d;
+    b.x += ox / d * push; b.y += oy / d * push;
+    // friction: bleed off sliding speed along the plate
+    var vx = b.x - b.px, vy = b.y - b.py;
+    var tx = dx / Math.sqrt(dx * dx + dy * dy), ty = dy / Math.sqrt(dx * dx + dy * dy);
+    var vt = vx * tx + vy * ty;
+    b.px += tx * vt * 0.08; b.py += ty * vt * 0.08;
+    return true;
+  }
+  function physics(dt, settling){
+    var h = dt / SUBSTEPS, g = GRAVITY * h * h;
+    var hatchSolid = settling || hatchOpen < 0.5 || jammed;
+    var shake = !settling && !hatchSolid;
+    for (var s = 0; s < SUBSTEPS; s++){
+      for (var i = 0; i < bodies.length; i++){
+        var b = bodies[i];
+        b.pa = b.a;
+        if (b.pinned) continue;
+        var vx = (b.x - b.px) * 0.995, vy = (b.y - b.py) * 0.995;
+        // speed cap: overlap fixes can't fling things around
+        var sp = vx * vx + vy * vy, cap = b.r * 0.6;
+        if (sp > cap * cap){ var k2 = cap / Math.sqrt(sp); vx *= k2; vy *= k2; }
+        b.px = b.x; b.py = b.y;
+        // Shaker: while the hatch is open the chute rumbles, which keeps trash from arching over the opening.
+        if (shake && b.y > floorY - b.r * 5 && b.y < floorY){
+          vx += (gapC - b.x) * 0.0025 + (Math.random() - 0.5) * 0.6;
+          vy += Math.random() * 0.25;
+        }
+        b.x += vx; b.y += vy + g;
+        // spin follows sideways motion, more freely while falling
+        b.spin = b.spin * 0.96 + vx / b.r * 0.6;
+        b.a += b.spin * 0.25;
+      }
+      for (var it = 0; it < ITER; it++){
+        for (var i2 = 0; i2 < bodies.length; i2++){
+          var p = bodies[i2];
+          for (var j = i2 + 1; j < bodies.length; j++){
+            var q = bodies[j];
+            var dx = q.x - p.x, dy = q.y - p.y, rr = p.r + q.r;
+            if (dx > rr || dx < -rr || dy > rr || dy < -rr) continue;
+            var d2 = dx * dx + dy * dy;
+            if (d2 >= rr * rr || d2 === 0) continue;
+            var d = Math.sqrt(d2), o = (rr - d) / d;
+            if (p.pinned){ q.x += dx * o; q.y += dy * o; }
+            else if (q.pinned){ p.x -= dx * o; p.y -= dy * o; }
+            else { o *= 0.5; p.x -= dx * o; p.y -= dy * o; q.x += dx * o; q.y += dy * o; }
+          }
+        }
+        for (var k = 0; k < bodies.length; k++){
+          var c = bodies[k];
+          if (c.pinned) continue;
+          if (c.y < floorY + c.r * 0.5){
+            if (c.x < wallPad + c.r) c.x = wallPad + c.r;
+            if (c.x > W - wallPad - c.r) c.x = W - wallPad - c.r;
+            collideSegment(c, wallPad, funnelTop, gapL, floorY);
+            collideSegment(c, W - wallPad, funnelTop, gapR, floorY);
+            if (hatchSolid) collideSegment(c, gapL - 1, floorY, gapR + 1, floorY);
+          } else {
+            // inside the chute below the hatch
+            var lo = gapL + Math.min(c.r, (gapR - gapL) / 2) , hi = gapR - Math.min(c.r, (gapR - gapL) / 2);
+            if (c.x < lo) c.x = lo; if (c.x > hi) c.x = hi;
+          }
+        }
+      }
+    }
+    for (var m = bodies.length - 1; m >= 0; m--){
+      if (bodies[m].y - bodies[m].r > H + 10) bodies.splice(m, 1);
+    }
+  }
+  function inBin(){
+    var n = 0;
+    for (var i = 0; i < bodies.length; i++) if (bodies[i].y < floorY || bodies[i].pinned) n++;
+    return n;
+  }
+
+  // ---------- drawing ----------
+  var plateGrad;
+  function drawPlate(ax, ay, bx, by, thick){
+    var dx = bx - ax, dy = by - ay, l = Math.sqrt(dx * dx + dy * dy);
+    ctx.save();
+    ctx.translate(ax, ay); ctx.rotate(Math.atan2(dy, dx));
+    ctx.fillStyle = '#4a4b50'; ctx.fillRect(0, 0, l, thick);
+    ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(0, 0, l, 2);
+    ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(0, thick - 2, l, 2);
+    ctx.restore();
+  }
+  function draw(alpha, t){
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    // back wall of the bin
+    var g = ctx.createLinearGradient(0, 0, W, 0);
+    g.addColorStop(0, '#17181a'); g.addColorStop(0.3, '#2b2c30'); g.addColorStop(0.7, '#2b2c30'); g.addColorStop(1, '#17181a');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, floorY + 4);
+    ctx.fillStyle = 'rgba(255,255,255,.035)';
+    for (var x = W / 8; x < W; x += W / 8) ctx.fillRect(Math.round(x), 0, 1, floorY);
+    // chute below the hatch
+    ctx.fillStyle = '#0c0c0d'; ctx.fillRect(0, floorY, W, H - floorY);
+    var cg = ctx.createLinearGradient(gapL, 0, gapR, 0);
+    cg.addColorStop(0, '#111214'); cg.addColorStop(0.5, '#1f2023'); cg.addColorStop(1, '#111214');
+    ctx.fillStyle = cg; ctx.fillRect(gapL, floorY, gapR - gapL, H - floorY);
+    ctx.fillStyle = 'rgba(242,193,78,.5)';
+    ctx.fillRect(gapL - 4, floorY + 8, 3, H - floorY - 8); ctx.fillRect(gapR + 1, floorY + 8, 3, H - floorY - 8);
+
+    // trash
+    for (var i = 0; i < bodies.length; i++){
+      var b = bodies[i];
+      var bx = b.px + (b.x - b.px) * alpha, by = b.py + (b.y - b.py) * alpha;
+      var ang = b.pa + (b.a - b.pa) * alpha;
+      if (b.pinned) ang += Math.sin(t * 22) * 0.12;
+      ctx.setTransform(DPR, 0, 0, DPR, bx * DPR, by * DPR);
+      ctx.rotate(ang);
+      if (atlasOk) ctx.drawImage(atlas, b.f[0], b.f[1], b.f[2], b.f[3], -b.dw / 2, -b.dh / 2, b.dw, b.dh);
+      else { ctx.fillStyle = '#8a8b90'; ctx.beginPath(); ctx.arc(0, 0, b.r, 0, 6.283); ctx.fill(); }
+    }
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+    // funnel plates and the sliding hatch doors
+    drawPlate(wallPad - 4, funnelTop, gapL, floorY, 8);
+    drawPlate(gapR, floorY, W - wallPad + 4, funnelTop, 8);
+    var half = (gapR - gapL) / 2, slide = hatchOpen * half * 0.95;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(gapL, floorY - 1, gapR - gapL, 10); ctx.clip();
+    for (var side = 0; side < 2; side++){
+      var x0 = side === 0 ? gapL - slide : gapC + slide;
+      ctx.fillStyle = '#55565b'; ctx.fillRect(x0, floorY, half, 8);
+      ctx.fillStyle = '#2f3034';
+      for (var sx = 0; sx < half; sx += 10) ctx.fillRect(x0 + sx, floorY, 5, 8);
+    }
+    ctx.restore();
+    // glass reflection
+    var rg = ctx.createLinearGradient(0, 0, 0, floorY);
+    rg.addColorStop(0, 'rgba(255,255,255,.08)'); rg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = rg; ctx.fillRect(W * 0.07, 6, W * 0.06, floorY * 0.8);
+  }
+
+  // ---------- gauge ----------
+  for (var s = 0; s < SEGMENTS; s++){ var seg = document.createElement('div'); seg.className = 'seg on'; segsEl.appendChild(seg); }
+  var segs = segsEl.children, litSegs = SEGMENTS;
+  function updateGauge(n){
+    var frac = total ? n / total : 0;
+    pctEl.textContent = Math.round(frac * 100) + '%';
+    var lit = Math.ceil(frac * SEGMENTS - 1e-6);
+    if (lit !== litSegs){
+      for (var i = 0; i < SEGMENTS; i++) segs[i].classList.toggle('on', i < lit);
+      if (lit < litSegs && segs[lit]){ segs[lit].classList.remove('pop'); void segs[lit].offsetWidth; segs[lit].classList.add('pop'); }
+      litSegs = lit;
+    }
+  }
+
+  // ---------- lever ----------
+  var p = 0, holding = false, keyHeld = false, grabOffset = 0, hinted = false;
+  function travel(){ return lever.clientHeight - knob.offsetHeight; }
+  function drawLever(){
+    knob.style.transform = 'translateY(' + (p * travel()) + 'px)';
+    knob.setAttribute('aria-valuenow', Math.round(p * 100));
+  }
+  function leverY(e){ return e.clientY - lever.getBoundingClientRect().top; }
+  function firstTouch(){ if (!hinted){ hinted = true; knob.classList.remove('hint'); } }
+  knob.addEventListener('pointerdown', function(e){
+    if (done) return;
+    e.preventDefault();
+    try{ knob.setPointerCapture(e.pointerId); }catch(err){}
+    holding = true;
+    grabOffset = leverY(e) - p * travel();
+    firstTouch();
+  });
+  knob.addEventListener('pointermove', function(e){
+    if (!holding) return;
+    var t = travel();
+    p = t > 0 ? Math.min(1, Math.max(0, (leverY(e) - grabOffset) / t)) : 0;
+  });
+  function release(){ holding = false; keyHeld = false; }
+  knob.addEventListener('pointerup', release);
+  knob.addEventListener('pointercancel', release);
+  window.addEventListener('blur', release);
+  document.addEventListener('visibilitychange', function(){ if (document.hidden) release(); });
+  function isPullKey(e){ return e.code === 'Space' || e.code === 'ArrowDown' || e.code === 'KeyS'; }
+  document.addEventListener('keydown', function(e){ if (isPullKey(e)){ e.preventDefault(); if (!done){ keyHeld = true; firstTouch(); } } });
+  document.addEventListener('keyup', function(e){ if (isPullKey(e)) keyHeld = false; });
+
+  // ---------- game state ----------
+  var done = false, jammed = false, armedForClear = false, mode = 'idle';
+  var jamAt = [];
+  function setStatus(text, kind){
+    statusEl.textContent = text;
+    statusEl.className = 'status' + (kind ? ' ' + kind : '');
+  }
+  function doFlash(kind){ flash.className = 'flash'; void flash.offsetWidth; flash.className = 'flash ' + kind; }
+
+  function tryJam(){
+    // The piece nearest the opening wedges itself in the hatch.
+    var best = null, bd = 1e9;
+    for (var i = 0; i < bodies.length; i++){
+      var b = bodies[i];
+      if (b.y < floorY - b.r * 2.5 || b.y > floorY + b.r) continue;
+      var d = Math.abs(b.x - gapC) + Math.abs(b.y - floorY);
+      if (d < bd){ bd = d; best = b; }
+    }
+    if (!best) return false;
+    // It stays where it is (lifted back into the opening if it had dropped through) and blocks the hatch.
+    pin = best; best.pinned = true;
+    if (best.y > floorY - best.r * 0.4){ best.y = floorY - best.r * 0.4; }
+    best.px = best.x; best.py = best.y;
+    jammed = true; armedForClear = false;
+    setStatus('JAMMED! Let go, then pull again', 'warn');
+    doFlash('warn');
+    vibrate([80, 50, 80]);
+    return true;
+  }
+  function clearJam(){
+    jammed = false; armedForClear = false;
+    if (pin){ pin.pinned = false; pin.py = pin.y - 4; pin = null; }
+    setStatus('Unjammed! Keep holding', null);
+    mode = 'unjammed';
+    vibrate(30);
+  }
+  function finish(){
+    done = true;
+    holding = false; keyHeld = false;
+    knob.classList.add('done');
+    knob.innerHTML = '&#10003;';
+    setStatus('BIN EMPTY - nice work', 'good');
+    doFlash('good');
+    vibrate(40);
+    if (window.completeTask) window.completeTask(1500);
+  }
+
+  var acc = 0, last = 0, clock = 0, lastCount = 1e9, stallTime = 0;
+  function thump(){
+    for (var i = 0; i < bodies.length; i++){
+      var b = bodies[i];
+      if (b.pinned || b.y < floorY - b.r * 4 || b.y > floorY) continue;
+      b.py = b.y + rnd(2, 5);                 // upward kick
+      b.px = b.x - (gapC - b.x) * 0.04 - rnd(-1.5, 1.5);
+    }
+    if (!reduceMotion){ binCol.animate([{ transform:'translateY(0)' }, { transform:'translateY(-4px)' }, { transform:'translateY(0)' }], { duration:140 }); }
+    vibrate(15);
+  }
+  function frame(now){
+    var dt = (now - last) / 1000; last = now;
+    if (dt > 0.25) dt = 0.25;
+    clock += dt;
+
+    if (!holding){
+      var target = keyHeld ? 1 : 0;
+      p += (target - p) * (1 - Math.exp(-(keyHeld ? 10 : 14) * dt));
+      if (Math.abs(target - p) < 0.002) p = target;
+    }
+    drawLever();
+    var leverOpen = !done && p >= OPEN_AT;
+    var wantOpen = (leverOpen && !jammed) || done;
+    hatchOpen += ((wantOpen ? 1 : 0) - hatchOpen) * (1 - Math.exp(-18 * dt));
+
+    acc += dt;
+    var steps = 0;
+    while (acc >= STEP && steps < 5){ physics(STEP, false); acc -= STEP; steps++; }
+    if (steps === 5) acc = 0;
+
+    var n = inBin();
+    updateGauge(n);
+
+    // Thump: if trash has wedged into an arch over the open hatch, kick the bottom of the pile.
+    if (n < lastCount){ lastCount = n; stallTime = 0; }
+    else if (hatchOpen > 0.9 && !jammed && !done && n > 0){
+      stallTime += dt;
+      if (stallTime > 0.5){ stallTime = 0; thump(); }
+    } else stallTime = 0;
+
+    if (!done){
+      if (jammed){
+        if (p < RESET_AT) armedForClear = true;
+        if (armedForClear && leverOpen) clearJam();
+      } else if (leverOpen){
+        if (jamAt.length && n <= jamAt[0] && tryJam()) jamAt.shift();
+        else if (mode !== 'unjammed' && mode !== 'emptying'){ setStatus('Emptying...', null); mode = 'emptying'; }
+      } else if (n < total && mode !== 'closed'){
+        setStatus('Hatch closed - hold the lever down', null); mode = 'closed';
+      }
+      if (n === 0) finish();
+    }
+    binCol.classList.toggle('rumble', !reduceMotion && leverOpen && !jammed && !done);
+    draw(acc / STEP, clock);
+    requestAnimationFrame(frame);
+  }
+
+  function start(){
+    measure();
+    fill();
+    // QA hook: ?qa=1 exposes the simulation for automated tests.
+    if (/[?&]qa=1/.test(location.search)) window.__trash = { bodies: function(){ return bodies; }, geo: function(){ return { W:W, H:H, floorY:floorY, gapL:gapL, gapR:gapR, hatchOpen:hatchOpen, jammed:jammed }; } };
+    // one jam always, a second one half the time
+    jamAt = [Math.round(total * rnd(0.45, 0.7))];
+    if (Math.random() < 0.5) jamAt.push(Math.round(total * rnd(0.12, 0.28)));
+    drawLever();
+    requestAnimationFrame(function(t){ last = t; frame(t); });
+  }
+  window.addEventListener('resize', function(){
+    var oldW = W, oldH = H;
+    measure();
+    if (!oldW) return;
+    var sx = W / oldW, sy = H / oldH;
+    for (var i = 0; i < bodies.length; i++){ var b = bodies[i]; b.x *= sx; b.px *= sx; b.y *= sy; b.py *= sy; }
+    drawLever();
+  });
+  if (document.readyState === 'complete') start(); else window.addEventListener('load', start);
+})();
+</script>
+</body>
+</html>

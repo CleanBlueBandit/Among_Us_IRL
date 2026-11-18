@@ -18,6 +18,22 @@ theirs never count towards the crew total.
 
 (optional `"id"` per entry; otherwise derived from name + location)
 
+Optional `"minigame"` per entry makes the scan open a minigame; finishing it completes the task:
+
+| Key | What the player does |
+| --- | --- |
+| `wires` | Drag each wire to the matching colour |
+| `calibrate_power` | Set the channel on the sticky note to its target amps |
+| `refuel_tank` | Hold the button to fill the fuel tank |
+| `fuel_engine` | Hold the button to fuel the engine from the tank (needs a `refuel_tank` task too) |
+| `swipe_card` | Take the card from the wallet and swipe it at the right speed (about 0.45 to 1.15 s) |
+| `empty_trash` | Pull and hold the lever until the trash has dropped out of the bin; when it jams, let go and pull again |
+| `upload_data` | Keep the antenna inside the drifting signal band until the upload finishes |
+| `clear_asteroids` | Shoot 20 asteroids; big ones split into fragments |
+| `cool_reactor` | Hold VENT (or Space) to keep the needle in the safe zone |
+| `keypad_code` | Copy the code from the note onto the keypad |
+| `prime_shields` | Activate every offline shield panel |
+
 2. `npm run import:tasks -- tasks.json`  - stores tasks and locations
 3. `npm run generate:tasks`  - writes `tasks.txt`, one link per line
    (`npm run generate:tasks -- 2` makes two links per task)

@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Card reader</title>
+<style>
+  :root{
+    --panel-dark:#242527;
+    --panel-mid:#2f3033;
+    --panel-light:#3c3d41;
+    --bezel:#0e0e10;
+    --caution-yellow:#f2c14e;
+    --caution-black:#1a1a1c;
+    --lcd-bg:#1d2a1a;
+    --lcd-text:#9cf28a;
+    --lcd-dim:#4f7a46;
+    --led-red:#ff4433;
+    --led-red-off:#3a1012;
+    --led-green:#3ddc63;
+    --led-green-off:#0f3318;
+    --text-label:#d3d4d9;
+    --text-dim:#8d8e93;
+    --card-a:#5b8def;
+    --card-b:#2e5bc4;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    min-height:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
+    background:radial-gradient(ellipse at 50% 0%, #2a2a2e 0%, #131315 60%, #0a0a0b 100%);
+    font-family:'Arial Narrow', Arial, Helvetica, sans-serif;
+    color:var(--text-label);
+    user-select:none;
+    -webkit-user-select:none;
+    -webkit-tap-highlight-color:transparent;
+    overflow:hidden;
+  }
+
+  .panel{
+    position:relative;
+    width:100%;
+    max-width:560px;
+    background:
+      repeating-linear-gradient(100deg, var(--panel-mid) 0 2px, var(--panel-light) 3px, var(--panel-mid) 4px),
+      linear-gradient(180deg, var(--panel-light), var(--panel-dark));
+    border-radius:14px;
+    padding:18px 20px 16px;
+    box-shadow:0 20px 50px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.08), inset 0 0 0 6px var(--bezel), inset 0 0 0 8px #050506;
+  }
+  .panel.shake{ animation:shake .32s linear; }
+  @keyframes shake{
+    0%,100%{ transform:translateX(0); }
+    20%{ transform:translateX(-7px); } 40%{ transform:translateX(6px); }
+    60%{ transform:translateX(-4px); } 80%{ transform:translateX(2px); }
+  }
+  .rivet{ position:absolute; width:12px; height:12px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #eceef0, #a7a8ad 45%, #5f6065 80%);
+    box-shadow:0 1px 2px rgba(0,0,0,.8), inset 0 0 2px rgba(0,0,0,.6); }
+  .rivet.tl{ top:14px; left:14px; } .rivet.tr{ top:14px; right:14px; }
+  .rivet.bl{ bottom:14px; left:14px; } .rivet.br{ bottom:14px; right:14px; }
+
+  .caution{ height:9px; border-radius:3px; margin:0 18px 10px;
+    background:repeating-linear-gradient(-45deg, var(--caution-yellow) 0 10px, var(--caution-black) 10px 20px); }
+  h1{ margin:0 0 10px; text-align:center; font-size:clamp(18px, 5vw, 24px); letter-spacing:3px; color:#eceef0;
+    text-shadow:0 2px 0 #000; }
+
+  /* LCD + LEDs */
+  .status-row{ display:flex; gap:12px; align-items:stretch; margin-bottom:14px; }
+  .lcd{
+    flex:1; min-height:58px; padding:8px 12px; border-radius:6px;
+    background:linear-gradient(180deg, #223320, var(--lcd-bg));
+    box-shadow:inset 0 2px 6px rgba(0,0,0,.8), 0 0 0 3px #0b0b0c;
+    font-family:'Courier New', monospace; color:var(--lcd-text); text-shadow:0 0 6px rgba(156,242,138,.45);
+    display:flex; flex-direction:column; justify-content:center; overflow:hidden;
+  }
+  .lcd .main{ font-size:clamp(15px, 4.4vw, 19px); font-weight:700; letter-spacing:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .lcd .sub{ font-size:clamp(11px, 3.2vw, 13px); color:var(--lcd-dim); margin-top:3px; min-height:1em; }
+  .lcd.bad .main{ color:#ff8a7a; text-shadow:0 0 6px rgba(255,120,100,.5); }
+  .lcd.blink .main{ animation:blink .5s steps(2) 2; }
+  @keyframes blink{ 50%{ opacity:.15; } }
+  .leds{ display:flex; flex-direction:column; justify-content:center; gap:8px; }
+  .led-wrap{ display:flex; align-items:center; gap:6px; font-size:11px; letter-spacing:1px; color:var(--text-dim); }
+  .led{ width:16px; height:16px; border-radius:50%; box-shadow:inset 0 -2px 3px rgba(0,0,0,.6), 0 0 0 2px #0b0b0c; transition:background .08s, box-shadow .08s; }
+  .led.red{ background:var(--led-red-off); } .led.green{ background:var(--led-green-off); }
+  .led.red.on{ background:var(--led-red); box-shadow:0 0 12px var(--led-red), 0 0 0 2px #0b0b0c; }
+  .led.green.on{ background:var(--led-green); box-shadow:0 0 12px var(--led-green), 0 0 0 2px #0b0b0c; }
+
+  /* Reader */
+  .reader{
+    position:relative; height:clamp(96px, 26vw, 128px); border-radius:10px;
+    background:linear-gradient(180deg, #4a4b50, #2a2b2e 55%, #1c1c1f);
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.08), 0 6px 14px rgba(0,0,0,.5);
+    padding:0 10px;
+  }
+  .reader-label{ position:absolute; top:6px; left:14px; font-size:10px; letter-spacing:2px; color:var(--text-dim); }
+  .reader-arrow{ position:absolute; top:5px; right:14px; font-size:10px; letter-spacing:2px; color:var(--caution-yellow); }
+  .track{
+    position:absolute; left:10px; right:10px; top:22px; bottom:20px;
+  }
+  .slot{
+    position:absolute; left:0; right:0; top:50%; height:10px; transform:translateY(-50%);
+    background:#050506; border-radius:5px; box-shadow:inset 0 2px 4px #000, 0 1px 0 rgba(255,255,255,.12);
+  }
+  .card{
+    position:absolute; left:0; top:0; height:100%; aspect-ratio:1.586;
+    border-radius:8px; touch-action:none; cursor:grab;
+    background:
+      linear-gradient(115deg, rgba(255,255,255,.28) 0 18%, rgba(255,255,255,0) 30%),
+      linear-gradient(135deg, var(--card-a), var(--card-b));
+    box-shadow:0 4px 10px rgba(0,0,0,.55), inset 0 0 0 2px rgba(255,255,255,.15);
+    will-change:transform;
+    transition:opacity .2s;
+  }
+  .card:active{ cursor:grabbing; }
+  .card .stripe{ position:absolute; left:0; right:0; top:18%; height:16%; background:#111; opacity:.85; }
+  .card .chip{ position:absolute; left:9%; top:44%; width:16%; height:24%; border-radius:4px;
+    background:linear-gradient(135deg, #f5d77a, #b8952f); box-shadow:inset 0 0 0 1px rgba(0,0,0,.35); }
+  .card .photo{ position:absolute; right:7%; top:42%; width:18%; height:44%; border-radius:4px; background:#cfd8e8;
+    box-shadow:inset 0 0 0 2px rgba(0,0,0,.15); overflow:hidden; }
+  .card .photo::before{ content:""; position:absolute; left:28%; top:16%; width:44%; height:38%; border-radius:50%; background:#7b8aa6; }
+  .card .photo::after{ content:""; position:absolute; left:14%; top:60%; width:72%; height:60%; border-radius:50% 50% 0 0; background:#7b8aa6; }
+  .card .name{ position:absolute; left:29%; right:28%; top:48%; font-size:clamp(7px, 2vw, 10px); color:#e8eefc; letter-spacing:.5px; font-weight:700; white-space:nowrap; overflow:hidden; }
+  .card .name small{ display:block; font-weight:400; opacity:.7; letter-spacing:.5px; }
+  .card.hidden{ opacity:0; pointer-events:none; }
+  .card.snap{ transition:transform .28s cubic-bezier(.3,1.5,.5,1), opacity .2s; }
+  .read-head{ position:absolute; right:12px; top:22px; bottom:20px; width:6px; border-radius:3px;
+    background:linear-gradient(180deg, #777, #333); box-shadow:0 0 0 1px #000; opacity:.6; }
+
+  /* Speed meter */
+  .meter-wrap{ margin:12px 2px 4px; }
+  .meter{ position:relative; height:16px; border-radius:8px; overflow:hidden; display:flex; box-shadow:inset 0 0 0 2px #0b0b0c; }
+  .meter .z{ height:100%; display:flex; align-items:center; justify-content:center; font-size:9px; letter-spacing:1px; color:rgba(0,0,0,.75); font-weight:700; }
+  .z.slow{ background:repeating-linear-gradient(-45deg, #8a6a2a 0 6px, #7a5c22 6px 12px); }
+  .z.ok{ background:#3a9d55; }
+  .z.fast{ background:repeating-linear-gradient(45deg, #8a3a2a 0 6px, #7a3022 6px 12px); }
+  .meter .marker{ position:absolute; top:-3px; width:4px; height:22px; margin-left:-2px; background:#fff; border-radius:2px;
+    box-shadow:0 0 6px #fff; opacity:0; transition:left .35s cubic-bezier(.3,1.4,.5,1), opacity .2s; }
+  .meter .marker.live{ transition:none; opacity:1; }
+  .meter .z.hot{ filter:brightness(1.45); }
+  .lcd .main .unit{ font-size:.7em; opacity:.75; margin-left:4px; }
+  .lcd .main, .lcd .sub{ font-variant-numeric:tabular-nums; }
+  .lcd.slow .main{ color:#ffd27a; } .lcd.fast .main{ color:#ff8a7a; }
+  .meter-labels{ display:flex; justify-content:space-between; font-size:10px; color:var(--text-dim); margin-top:3px; letter-spacing:1px; }
+
+  /* Wallet */
+  .wallet-row{ display:flex; justify-content:center; margin-top:12px; min-height:clamp(60px, 16vw, 84px); }
+  .wallet{
+    position:relative; width:clamp(150px, 46vw, 200px); height:clamp(60px, 16vw, 84px); border:0; padding:0; cursor:pointer;
+    background:transparent; touch-action:manipulation;
+  }
+  .wallet .peek{ position:absolute; left:16%; right:16%; top:0; height:60%; border-radius:6px 6px 0 0;
+    background:linear-gradient(135deg, var(--card-a), var(--card-b)); box-shadow:inset 0 0 0 2px rgba(255,255,255,.15);
+    transition:transform .25s; }
+  .wallet .body{ position:absolute; left:0; right:0; bottom:0; height:62%; border-radius:8px;
+    background:linear-gradient(180deg, #7a4d2b, #5a3519); box-shadow:0 4px 10px rgba(0,0,0,.5), inset 0 2px 0 rgba(255,255,255,.12); }
+  .wallet .body::after{ content:""; position:absolute; left:8px; right:8px; top:8px; bottom:8px; border:2px dashed rgba(255,220,180,.25); border-radius:5px; }
+  .wallet .hint{ position:absolute; left:0; right:0; bottom:14%; text-align:center; font-size:12px; letter-spacing:1px; color:#f4dcc0; font-weight:700; }
+  .wallet:hover .peek, .wallet:focus-visible .peek{ transform:translateY(-4px); }
+  .wallet:active .peek{ transform:translateY(-10px); }
+  .wallet.empty{ visibility:hidden; }
+  .wallet.attention .peek{ animation:bob 1.2s ease-in-out infinite; }
+  @keyframes bob{ 50%{ transform:translateY(-6px); } }
+
+  .flash{ position:fixed; inset:0; pointer-events:none; opacity:0; z-index:50; }
+  .flash.good{ background:#3ddc63; animation:flash .5s ease-out; }
+  .flash.bad{ background:#ff4433; animation:flashbad .3s ease-out; }
+  @keyframes flash{ 0%{ opacity:0; } 30%{ opacity:.55; } 100%{ opacity:0; } }
+  @keyframes flashbad{ 0%{ opacity:0; } 30%{ opacity:.25; } 100%{ opacity:0; } }
+
+  @media (max-height:430px){
+    .panel{ padding:12px 16px 10px; }
+    h1{ margin-bottom:6px; font-size:17px; }
+    .caution{ margin-bottom:6px; }
+    .status-row{ margin-bottom:8px; }
+    .lcd{ min-height:46px; }
+    .reader{ height:86px; }
+    .wallet-row{ margin-top:6px; min-height:54px; }
+    .wallet{ height:54px; }
+  }
+  @media (prefers-reduced-motion:reduce){
+    .panel.shake{ animation:none; }
+    .wallet.attention .peek{ animation:none; }
+    .flash.good, .flash.bad{ animation-duration:.01s; }
+  }
+</style>
+</head>
+<body>
+  <div class="flash" id="flash"></div>
+  <div class="panel" id="panel">
+    <span class="rivet tl"></span><span class="rivet tr"></span><span class="rivet bl"></span><span class="rivet br"></span>
+    <div class="caution"></div>
+    <h1>CARD READER</h1>
+
+    <div class="status-row">
+      <div class="lcd" id="lcd" role="status" aria-live="polite">
+        <div class="main" id="lcdMain">INSERT CARD</div>
+        <div class="sub" id="lcdSub">Tap your wallet</div>
+      </div>
+      <div class="leds">
+        <div class="led-wrap"><span class="led red" id="ledRed"></span>DENIED</div>
+        <div class="led-wrap"><span class="led green" id="ledGreen"></span>OK</div>
+      </div>
+    </div>
+
+    <div class="reader" id="reader">
+      <span class="reader-label">SWIPE</span>
+      <span class="reader-arrow">&#9654;&#9654;&#9654;</span>
+      <div class="track" id="track">
+        <div class="slot"></div>
+        <div class="read-head"></div>
+        <div class="card hidden" id="card">
+          <div class="stripe"></div>
+          <div class="chip"></div>
+          <div class="name">CREW ID<small>ACCESS LVL 2</small></div>
+          <div class="photo"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="meter-wrap" aria-hidden="true">
+      <div class="meter" id="meter">
+        <div class="z slow" id="zSlow">SLOW</div>
+        <div class="z ok" id="zOk">OK</div>
+        <div class="z fast" id="zFast">FAST</div>
+        <div class="marker" id="marker"></div>
+      </div>
+      <div class="meter-labels"><span>&#9664; slower</span><span id="meterLbl">swipe speed</span><span>faster &#9654;</span></div>
+    </div>
+
+    <div class="wallet-row">
+      <button class="wallet attention" id="wallet" type="button" aria-label="Take out your card">
+        <span class="peek"></span>
+        <span class="body"></span>
+        <span class="hint">TAP</span>
+      </button>
+    </div>
+  </div>
+
+<script>
+(function(){
+  // A swipe counts when the card travels the whole slot in this many seconds.
+  var MIN_TIME = 0.45, MAX_TIME = 1.15;
+  // The speed meter shows durations on a log scale between these bounds (left = slow, right = fast).
+  var METER_SLOW = 2.6, METER_FAST = 0.18;
+
+  var card = document.getElementById('card');
+  var track = document.getElementById('track');
+  var wallet = document.getElementById('wallet');
+  var lcd = document.getElementById('lcd');
+  var lcdMain = document.getElementById('lcdMain');
+  var lcdSub = document.getElementById('lcdSub');
+  var ledRed = document.getElementById('ledRed');
+  var ledGreen = document.getElementById('ledGreen');
+  var marker = document.getElementById('marker');
+  var panel = document.getElementById('panel');
+  var flash = document.getElementById('flash');
+
+  var state = 'wallet';           // wallet -> ready -> dragging -> (ready | done)
+  var x = 0, maxReached = 0, grabOffset = 0, startTime = 0, started = false;
+  var fails = 0;
+  var PX_PER_CM = 96 / 2.54;      // CSS pixels are defined as 96 per inch
+  var zones = { slow:document.getElementById('zSlow'), ok:document.getElementById('zOk'), fast:document.getElementById('zFast') };
+  // live speedometer state (px/s)
+  var lastX = 0, lastT = 0, rawSpeed = 0, shownSpeed = 0, lastMove = 0, rafId = 0;
+
+  function vibrate(p){ try{ if (navigator.vibrate) navigator.vibrate(p); }catch(e){} }
+
+  function maxX(){ return Math.max(0, track.clientWidth - card.offsetWidth); }
+  function setX(v, snap){
+    x = v;
+    card.classList.toggle('snap', !!snap);
+    card.style.transform = 'translateX(' + v + 'px)';
+  }
+
+  function say(main, sub, bad){
+    lcdMain.textContent = main;
+    lcdSub.textContent = sub || '';
+    lcd.classList.toggle('bad', !!bad);
+    lcd.classList.remove('blink');
+    void lcd.offsetWidth;
+    if (bad) lcd.classList.add('blink');
+  }
+
+  function pulseLed(el, ms){
+    el.classList.add('on');
+    clearTimeout(el._t);
+    if (ms) el._t = setTimeout(function(){ el.classList.remove('on'); }, ms);
+  }
+
+  function doFlash(kind){
+    flash.className = 'flash';
+    void flash.offsetWidth;
+    flash.className = 'flash ' + kind;
+  }
+
+  // Meter zones are sized from the timing window so the picture always matches the rule.
+  function meterPos(t){
+    var a = Math.log(METER_SLOW), b = Math.log(METER_FAST);
+    var p = (Math.log(Math.min(METER_SLOW, Math.max(METER_FAST, t))) - a) / (b - a);
+    return p * 100;
+  }
+  (function layoutMeter(){
+    var slowEnd = meterPos(MAX_TIME), okEnd = meterPos(MIN_TIME);
+    document.getElementById('zSlow').style.width = slowEnd + '%';
+    document.getElementById('zOk').style.width = (okEnd - slowEnd) + '%';
+    document.getElementById('zFast').style.width = (100 - okEnd) + '%';
+  })();
+  function showMarker(t){
+    marker.classList.remove('live');
+    marker.style.opacity = 1;
+    marker.style.left = meterPos(t) + '%';
+  }
+
+  // ---------- speedometer ----------
+  // Speed and swipe time are two views of the same rule: the slot length divided by the time.
+  function slotLen(){ return Math.max(1, maxX()); }
+  function cm(pxPerSec){ return pxPerSec / PX_PER_CM; }
+  function okRange(){ return [cm(slotLen() / MAX_TIME), cm(slotLen() / MIN_TIME)]; }
+  function zoneOf(pxPerSec){
+    var t = slotLen() / Math.max(1e-3, pxPerSec);
+    return t > MAX_TIME ? 'slow' : t < MIN_TIME ? 'fast' : 'ok';
+  }
+  function fmt(v){ return v < 10 ? v.toFixed(1) : Math.round(v).toString(); }
+  function lightZone(z){
+    for (var k in zones) zones[k].classList.toggle('hot', k === z);
+  }
+  function renderSpeed(){
+    var v = shownSpeed;
+    var z = v > 1 ? zoneOf(v) : 'slow';
+    lcdMain.innerHTML = fmt(cm(v)) + '<span class="unit">cm/s</span>';
+    var r = okRange();
+    lcdSub.textContent = (z === 'ok' ? 'GOOD SPEED' : z === 'fast' ? 'TOO FAST' : 'TOO SLOW') + ' | aim ' + fmt(r[0]) + '-' + fmt(r[1]);
+    lcd.classList.toggle('slow', z === 'slow'); lcd.classList.toggle('fast', z === 'fast');
+    marker.style.left = meterPos(slotLen() / Math.max(1, v)) + '%';
+    lightZone(v > 1 ? z : null);
+  }
+  function tick(now){
+    if (state !== 'dragging'){ rafId = 0; return; }
+    // With no pointer movement the needle falls back toward zero, like a real speedometer.
+    if (now - lastMove > 60) rawSpeed *= 0.88;
+    shownSpeed += (rawSpeed - shownSpeed) * 0.35;
+    if (started) renderSpeed();
+    rafId = requestAnimationFrame(tick);
+  }
+  function stopSpeedo(){
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = 0;
+    lcd.classList.remove('slow', 'fast');
+    lightZone(null);
+  }
+
+  wallet.addEventListener('click', function(){
+    if (state !== 'wallet') return;
+    wallet.classList.add('empty');
+    wallet.classList.remove('attention');
+    card.classList.remove('hidden');
+    setX(0, false);
+    state = 'ready';
+    say('SWIPE CARD', 'Drag it all the way right');
+    vibrate(15);
+  });
+
+  function pointerX(e){ return e.clientX - track.getBoundingClientRect().left; }
+
+  card.addEventListener('pointerdown', function(e){
+    if (state !== 'ready') return;
+    e.preventDefault();
+    try{ card.setPointerCapture(e.pointerId); }catch(err){}
+    state = 'dragging';
+    grabOffset = pointerX(e) - x;
+    maxReached = x;
+    started = false;
+    card.classList.remove('snap');
+    lastX = x; lastT = lastMove = performance.now(); rawSpeed = shownSpeed = 0;
+    if (!rafId) rafId = requestAnimationFrame(tick);
+  });
+
+  card.addEventListener('pointermove', function(e){
+    if (state !== 'dragging') return;
+    var nx = Math.min(maxX(), Math.max(0, pointerX(e) - grabOffset));
+    // The timer starts the moment the card leaves the left end, so a slow grab is never punished.
+    if (!started && nx > 6){
+      started = true; startTime = performance.now();
+      marker.classList.add('live'); lcd.classList.remove('bad', 'blink');
+    }
+    var now = performance.now(), dt = (now - lastT) / 1000;
+    if (dt > 0.004){
+      var v = Math.max(0, (nx - lastX) / dt);
+      rawSpeed += (v - rawSpeed) * (1 - Math.exp(-dt / 0.05));
+      lastX = nx; lastT = now; lastMove = now;
+    }
+    if (nx > maxReached) maxReached = nx;
+    setX(nx, false);
+    if (started && maxReached - nx > 28){ return fail('BAD READ', 'Keep the card moving right', null); }
+    if (started && nx >= maxX() - 2){ finish(); }
+  });
+
+  function endDrag(){
+    if (state !== 'dragging') return;
+    if (started) fail('BAD READ', 'Swipe through to the end', null);
+    else { state = 'ready'; setX(0, true); }
+  }
+  card.addEventListener('pointerup', endDrag);
+  card.addEventListener('pointercancel', endDrag);
+  window.addEventListener('blur', endDrag);
+
+  function finish(){
+    var t = (performance.now() - startTime) / 1000;
+    stopSpeedo();
+    showMarker(t);
+    var avg = cm(slotLen() / t), r = okRange();
+    var avgTxt = 'Average ' + fmt(avg) + ' cm/s';
+    if (t < MIN_TIME) return fail('TOO FAST', avgTxt + ' (aim ' + fmt(r[0]) + '-' + fmt(r[1]) + ')', t);
+    if (t > MAX_TIME) return fail('TOO SLOW', avgTxt + ' (aim ' + fmt(r[0]) + '-' + fmt(r[1]) + ')', t);
+    state = 'done';
+    say('ACCEPTED', avgTxt);
+    pulseLed(ledGreen, 0);
+    doFlash('good');
+    vibrate(40);
+    if (window.completeTask) window.completeTask(1500);
+  }
+
+  function fail(main, sub, t){
+    state = 'ready';
+    stopSpeedo();
+    if (t == null) marker.style.opacity = 0;
+    fails++;
+    // After a few misses, spell the target out.
+    if (fails >= 3 && t != null){ var r = okRange(); sub = sub.replace(/ \(aim .*\)$/, '') + ' - aim for ' + fmt((r[0] + r[1]) / 2) + ' cm/s'; }
+    say(main, sub, true);
+    pulseLed(ledRed, 700);
+    doFlash('bad');
+    panel.classList.remove('shake'); void panel.offsetWidth; panel.classList.add('shake');
+    vibrate([50, 40, 50]);
+    setX(0, true);
+  }
+
+  window.addEventListener('resize', function(){ if (state !== 'dragging') setX(state === 'done' ? maxX() : 0, false); });
+})();
+</script>
+</body>
+</html>

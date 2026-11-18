@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Data uplink</title>
+<style>
+  :root{
+    --panel-dark:#242527;
+    --panel-mid:#2f3033;
+    --panel-light:#3c3d41;
+    --bezel:#0e0e10;
+    --caution-yellow:#f2c14e;
+    --caution-black:#1a1a1c;
+    --text-label:#d3d4d9;
+    --text-dim:#8d8e93;
+    --screen:#0d1a22;
+    --screen-text:#7fd8ff;
+    --screen-dim:#3f6f86;
+    --band:#3ddc63;
+    --warn:#ffb35a;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0; min-height:100%;
+    display:flex; align-items:center; justify-content:center;
+    padding:max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
+    background:radial-gradient(ellipse at 50% 0%, #2a2a2e 0%, #131315 60%, #0a0a0b 100%);
+    font-family:'Arial Narrow', Arial, Helvetica, sans-serif; color:var(--text-label);
+    user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; overflow:hidden;
+  }
+  .panel{
+    position:relative; width:100%; max-width:560px;
+    background:
+      repeating-linear-gradient(100deg, var(--panel-mid) 0 2px, var(--panel-light) 3px, var(--panel-mid) 4px),
+      linear-gradient(180deg, var(--panel-light), var(--panel-dark));
+    border-radius:14px; padding:18px 20px 16px;
+    box-shadow:0 20px 50px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.08), inset 0 0 0 6px var(--bezel), inset 0 0 0 8px #050506;
+  }
+  .rivet{ position:absolute; width:12px; height:12px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #eceef0, #a7a8ad 45%, #5f6065 80%);
+    box-shadow:0 1px 2px rgba(0,0,0,.8), inset 0 0 2px rgba(0,0,0,.6); }
+  .rivet.tl{ top:14px; left:14px; } .rivet.tr{ top:14px; right:14px; }
+  .rivet.bl{ bottom:14px; left:14px; } .rivet.br{ bottom:14px; right:14px; }
+  .caution{ height:9px; border-radius:3px; margin:0 18px 10px;
+    background:repeating-linear-gradient(-45deg, var(--caution-yellow) 0 10px, var(--caution-black) 10px 20px); }
+  h1{ margin:0 0 10px; text-align:center; font-size:clamp(18px, 5vw, 24px); letter-spacing:3px; color:#eceef0; text-shadow:0 2px 0 #000; }
+
+  /* monitor */
+  .screen{
+    position:relative; border-radius:8px; padding:12px 14px;
+    background:
+      repeating-linear-gradient(180deg, rgba(255,255,255,.025) 0 1px, rgba(0,0,0,0) 1px 3px),
+      radial-gradient(ellipse at 50% 40%, #12303d, var(--screen) 75%);
+    box-shadow:inset 0 0 0 3px #050506, inset 0 0 24px rgba(0,0,0,.8);
+    font-family:'Courier New', monospace; color:var(--screen-text); text-shadow:0 0 6px rgba(127,216,255,.4);
+  }
+  .file-row{ display:flex; align-items:center; gap:10px; }
+  .folder{ position:relative; width:34px; height:26px; flex:none; border-radius:3px; background:linear-gradient(180deg, #f2c14e, #c9962c); }
+  .folder::before{ content:""; position:absolute; left:0; top:-5px; width:14px; height:7px; border-radius:3px 3px 0 0; background:#c9962c; }
+  .file-meta{ flex:1; min-width:0; }
+  .file-name{ font-weight:700; font-size:clamp(13px, 3.8vw, 16px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .file-sub{ font-size:11px; color:var(--screen-dim); margin-top:2px; }
+  .bars{ display:flex; align-items:flex-end; gap:3px; height:26px; flex:none; }
+  .bar{ width:6px; border-radius:1px; background:#1f3a47; transition:background .12s; }
+  .bar:nth-child(1){ height:25%; } .bar:nth-child(2){ height:50%; } .bar:nth-child(3){ height:75%; } .bar:nth-child(4){ height:100%; }
+  .bar.on{ background:var(--screen-text); box-shadow:0 0 6px rgba(127,216,255,.6); }
+  .sig-txt{ font-size:10px; width:46px; text-align:right; flex:none; color:var(--screen-dim); letter-spacing:1px; }
+  .sig-txt.lost{ color:var(--warn); }
+
+  .progress{ position:relative; margin-top:12px; height:22px; border-radius:4px; background:#081016; box-shadow:inset 0 0 0 2px #1f3a47; overflow:hidden; }
+  .progress .fill{ position:absolute; left:0; top:0; bottom:0; width:0%;
+    background:repeating-linear-gradient(90deg, #4fb8e6 0 10px, #3a9dcc 10px 14px); box-shadow:0 0 10px rgba(127,216,255,.55); }
+  .progress .fill::after{ content:""; position:absolute; right:0; top:0; bottom:0; width:8px; background:#e8f8ff; opacity:0; transition:opacity .15s; }
+  .progress.moving .fill::after{ opacity:.9; }
+  .progress .ptxt{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; color:#e8f8ff; text-shadow:0 1px 2px #000; }
+  .progress.bump{ animation:bump .25s ease-out; }
+  @keyframes bump{ 0%{ transform:scaleY(1.25); } 100%{ transform:scaleY(1); } }
+
+  /* tuner */
+  .tuner-lbl{ display:flex; justify-content:space-between; font-size:10px; letter-spacing:2px; color:var(--text-dim); margin:14px 2px 5px; }
+  .tuner{
+    position:relative; height:clamp(64px, 17vw, 84px); border-radius:10px;
+    background:
+      repeating-linear-gradient(90deg, rgba(255,255,255,.06) 0 1px, rgba(0,0,0,0) 1px 10%),
+      linear-gradient(180deg, #141516, #1f2023);
+    box-shadow:inset 0 0 0 3px #050506, inset 0 4px 10px rgba(0,0,0,.8);
+    touch-action:none; overflow:hidden; cursor:pointer;
+  }
+  .band{
+    position:absolute; top:4px; bottom:4px; border-radius:6px;
+    background:linear-gradient(180deg, rgba(61,220,99,.35), rgba(61,220,99,.18));
+    box-shadow:inset 0 0 0 2px rgba(61,220,99,.8), 0 0 14px rgba(61,220,99,.35);
+    display:flex; align-items:flex-start; justify-content:center; will-change:transform;
+  }
+  .band span{ font-size:9px; letter-spacing:2px; color:#bff5cb; margin-top:3px; transition:opacity .15s; }
+  .band.held span{ opacity:0; }
+  .band .core{ position:absolute; top:22%; bottom:22%; left:50%; width:2px; margin-left:-1px; background:rgba(191,245,203,.7); }
+  .band.storm{ animation:storm .14s linear infinite; background:linear-gradient(180deg, rgba(255,179,90,.4), rgba(255,179,90,.15)); box-shadow:inset 0 0 0 2px var(--warn); }
+  .band.storm span{ color:#ffe0b8; }
+  @keyframes storm{ 50%{ opacity:.45; } }
+  .antenna{
+    position:absolute; top:0; bottom:0; width:56px; margin-left:-28px; left:0; touch-action:none; cursor:grab; will-change:transform;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+  }
+  .antenna:active{ cursor:grabbing; }
+  .antenna .needle{ position:absolute; top:6px; bottom:6px; left:50%; width:4px; margin-left:-2px; border-radius:2px; background:#eceef0; box-shadow:0 0 8px rgba(255,255,255,.6); }
+  .antenna .grip{ position:relative; width:46px; height:46px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #eceef0, #a7a8ad 45%, #5f6065 85%);
+    box-shadow:0 4px 8px rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; color:#2a2b2e; font-size:16px; font-weight:700; }
+  .antenna.locked .grip{ background:radial-gradient(circle at 35% 30%, #c9f7d3, #3ddc63 55%, #1b6b30); color:#0c2a14; }
+  .antenna.hint .grip{ animation:hint 1.4s ease-in-out infinite; }
+  @keyframes hint{ 0%,100%{ box-shadow:0 4px 8px rgba(0,0,0,.6), 0 0 0 0 rgba(255,255,255,.4); } 50%{ box-shadow:0 4px 8px rgba(0,0,0,.6), 0 0 0 12px rgba(255,255,255,0); } }
+
+  .status{ margin-top:10px; min-height:36px; text-align:center; padding:6px 10px; border-radius:6px;
+    background:#151617; box-shadow:inset 0 2px 5px rgba(0,0,0,.8);
+    font-family:'Courier New', monospace; font-weight:700; letter-spacing:1px; font-size:clamp(13px, 3.8vw, 16px); color:var(--screen-text); }
+  .status.warn{ color:var(--warn); }
+  .status.good{ color:var(--band); }
+
+  .flash{ position:fixed; inset:0; pointer-events:none; opacity:0; z-index:50; }
+  .flash.good{ background:#3ddc63; animation:flash .5s ease-out; }
+  .flash.warn{ background:#ffb35a; animation:flashw .3s ease-out; }
+  @keyframes flash{ 0%{ opacity:0; } 30%{ opacity:.55; } 100%{ opacity:0; } }
+  @keyframes flashw{ 0%{ opacity:0; } 30%{ opacity:.18; } 100%{ opacity:0; } }
+
+  @media (max-height:430px){
+    .panel{ padding:10px 16px 10px; }
+    h1{ font-size:17px; margin-bottom:6px; } .caution{ margin-bottom:6px; }
+    .screen{ padding:8px 12px; }
+    .progress{ margin-top:8px; }
+    .tuner-lbl{ margin-top:8px; }
+    .tuner{ height:60px; }
+    .status{ margin-top:6px; min-height:28px; padding:4px 8px; }
+  }
+  @media (prefers-reduced-motion:reduce){
+    .band.storm, .antenna.hint .grip, .progress.bump{ animation:none; }
+    .flash.good, .flash.warn{ animation-duration:.01s; }
+  }
+</style>
+</head>
+<body>
+  <div class="flash" id="flash"></div>
+  <div class="panel">
+    <span class="rivet tl"></span><span class="rivet tr"></span><span class="rivet bl"></span><span class="rivet br"></span>
+    <div class="caution"></div>
+    <h1>DATA UPLINK</h1>
+
+    <div class="screen">
+      <div class="file-row">
+        <div class="folder"></div>
+        <div class="file-meta">
+          <div class="file-name" id="fileName">crew_logs.dat</div>
+          <div class="file-sub" id="fileSub">0.0 / 4.2 MB</div>
+        </div>
+        <div class="bars" id="bars" aria-hidden="true"><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+        <div class="sig-txt lost" id="sigTxt">NO SIG</div>
+      </div>
+      <div class="progress" id="progress">
+        <div class="fill" id="fill"></div>
+        <div class="ptxt" id="ptxt">0%</div>
+      </div>
+    </div>
+
+    <div class="tuner-lbl"><span>&#9664; TUNE</span><span>ANTENNA</span><span>TUNE &#9654;</span></div>
+    <div class="tuner" id="tuner">
+      <div class="band" id="band"><span>SIGNAL</span><div class="core"></div></div>
+      <div class="antenna hint" id="antenna" role="slider" tabindex="0" aria-label="Antenna" aria-valuemin="0" aria-valuemax="100">
+        <div class="needle"></div>
+        <div class="grip">&#8596;</div>
+      </div>
+    </div>
+
+    <div class="status" id="status" role="status" aria-live="polite">Drag the antenna into the green band</div>
+  </div>
+
+<script>
+(function(){
+  var FILES = ['crew_logs.dat', 'nav_charts.bin', 'med_scans.zip', 'ship_diag.log', 'comms_dump.raw'];
+  var FILE_MB = (3 + Math.random() * 3).toFixed(1);
+  var STEP = 1 / 60;            // fixed logic step
+  var BASE_RATE = 0.115;        // progress per second when perfectly centred (~9 s total)
+  var EDGE_RATE = 0.55;         // fraction of BASE_RATE at the edge of the band
+  var BAND_HALF = 0.12;         // half the band width, in track units (0..1)
+  var BAND_HALF_STORM = 0.095;  // after the interference burst the band is narrower
+  var STORM_AT = 0.6;           // progress at which the interference burst hits
+  var STORM_WARN = 0.8;         // seconds of warning before the band jumps
+  var KEY_SPEED = 0.9;          // track units per second with arrow keys
+
+  var tuner = document.getElementById('tuner');
+  var band = document.getElementById('band');
+  var antenna = document.getElementById('antenna');
+  var fill = document.getElementById('fill');
+  var ptxt = document.getElementById('ptxt');
+  var progressEl = document.getElementById('progress');
+  var fileSub = document.getElementById('fileSub');
+  var sigTxt = document.getElementById('sigTxt');
+  var bars = document.getElementById('bars').children;
+  var statusEl = document.getElementById('status');
+  var flash = document.getElementById('flash');
+  document.getElementById('fileName').textContent = FILES[Math.floor(Math.random() * FILES.length)];
+
+  var reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function vibrate(p){ try{ if (navigator.vibrate) navigator.vibrate(p); }catch(e){} }
+  function setStatus(text, kind){
+    if (statusEl.textContent === text && statusEl.className === 'status' + (kind ? ' ' + kind : '')) return;
+    statusEl.textContent = text;
+    statusEl.className = 'status' + (kind ? ' ' + kind : '');
+  }
+  function doFlash(kind){ flash.className = 'flash'; void flash.offsetWidth; flash.className = 'flash ' + kind; }
+
+  // ---------- state ----------
+  var t = 0;
+  var ph1 = Math.random() * 6.28, ph2 = Math.random() * 6.28;
+  var antennaX = 0.02;          // player's antenna, 0..1 (starts outside the band's reach)
+  var center = 0.5, prevCenter = 0.5;
+  var halfW = BAND_HALF;
+  var progress = 0;
+  var stormState = 'none';      // none -> warning -> done
+  var stormTimer = 0;
+  var lostFor = 0;
+  var touched = false;
+  var done = false;
+  var lastQuarter = 0;
+
+  function bandCenter(time){
+    // Two slow sines make the drift wander without looking mechanical; it speeds up a little as the upload advances.
+    var speed = 1 + progress * 0.7;
+    var v = 0.5 + 0.24 * Math.sin(time * 0.55 * speed + ph1) + 0.12 * Math.sin(time * 1.37 * speed + ph2);
+    // Kept clear of the edges so an antenna parked at either end never picks up signal.
+    return Math.min(1 - halfW - 0.08, Math.max(halfW + 0.08, v));
+  }
+
+  // ---------- input ----------
+  var dragging = false;
+  // Track units 0..1 map inside a padding so the grip never hangs off either end.
+  var PAD = 26;
+  function toPx(u, w){ return PAD + u * (w - 2 * PAD); }
+  function trackX(e){
+    var r = tuner.getBoundingClientRect();
+    return Math.min(1, Math.max(0, (e.clientX - r.left - PAD) / (r.width - 2 * PAD)));
+  }
+  function grab(e){
+    if (done) return;
+    e.preventDefault();
+    try{ tuner.setPointerCapture(e.pointerId); }catch(err){}
+    dragging = true;
+    antennaX = trackX(e);
+    if (!touched){ touched = true; antenna.classList.remove('hint'); }
+  }
+  tuner.addEventListener('pointerdown', grab);
+  tuner.addEventListener('pointermove', function(e){ if (dragging) antennaX = trackX(e); });
+  function drop(){ dragging = false; }
+  tuner.addEventListener('pointerup', drop);
+  tuner.addEventListener('pointercancel', drop);
+  var keys = { left:false, right:false };
+  function keyDir(e){
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') return 'left';
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') return 'right';
+    return null;
+  }
+  document.addEventListener('keydown', function(e){ var d = keyDir(e); if (d){ e.preventDefault(); keys[d] = true; if (!touched){ touched = true; antenna.classList.remove('hint'); } } });
+  document.addEventListener('keyup', function(e){ var d = keyDir(e); if (d) keys[d] = false; });
+  function releaseAll(){ dragging = false; keys.left = keys.right = false; }
+  window.addEventListener('blur', releaseAll);
+  document.addEventListener('visibilitychange', function(){ if (document.hidden) releaseAll(); });
+
+  // ---------- logic (fixed step) ----------
+  var quality = 0, inBand = false;
+  function step(){
+    if (done) return;
+    t += STEP;
+    if (keys.left) antennaX = Math.max(0, antennaX - KEY_SPEED * STEP);
+    if (keys.right) antennaX = Math.min(1, antennaX + KEY_SPEED * STEP);
+
+    if (stormState === 'none' && progress >= STORM_AT){
+      stormState = 'warning'; stormTimer = STORM_WARN;
+      band.classList.add('storm');
+      doFlash('warn');
+      vibrate([60, 40, 60]);
+    }
+    if (stormState === 'warning'){
+      stormTimer -= STEP;
+      if (stormTimer <= 0){
+        // The burst throws the signal to the mirror side of the track and tightens it.
+        stormState = 'done';
+        ph1 += Math.PI; ph2 += Math.PI;
+        halfW = BAND_HALF_STORM;
+        band.classList.remove('storm');
+        vibrate(30);
+      }
+    }
+
+    prevCenter = center;
+    center = bandCenter(t);
+    if (stormState === 'done' && Math.abs(center - prevCenter) > 0.1) prevCenter = center; // no smear across the jump
+
+    var dist = Math.abs(antennaX - center);
+    inBand = stormState !== 'warning' && dist <= halfW;
+    quality = inBand ? 1 - dist / halfW : 0;
+    if (inBand){
+      progress = Math.min(1, progress + BASE_RATE * (EDGE_RATE + (1 - EDGE_RATE) * quality) * STEP);
+      lostFor = 0;
+    } else {
+      lostFor += STEP; // progress is kept, never lost
+    }
+    if (progress >= 1) finish();
+  }
+
+  // ---------- drawing ----------
+  var lastBars = -1;
+  function draw(alpha){
+    var w = tuner.clientWidth;
+    var c = prevCenter + (center - prevCenter) * alpha;
+    var inner = w - 2 * PAD;
+    band.style.width = (halfW * 2 * inner) + 'px';
+    band.style.transform = 'translateX(' + toPx(c - halfW, w) + 'px)';
+    antenna.style.transform = 'translateX(' + toPx(antennaX, w) + 'px)';
+    antenna.setAttribute('aria-valuenow', Math.round(antennaX * 100));
+    antenna.classList.toggle('locked', inBand || done);
+    band.classList.toggle('held', inBand || done);
+
+    var pct = Math.floor(progress * 100);
+    fill.style.width = (progress * 100) + '%';
+    ptxt.textContent = pct + '%';
+    fileSub.textContent = (progress * FILE_MB).toFixed(1) + ' / ' + FILE_MB + ' MB';
+    progressEl.classList.toggle('moving', inBand && !done);
+    var q = Math.floor(progress * 4);
+    if (q > lastQuarter && !done){
+      lastQuarter = q;
+      if (!reduceMotion){ progressEl.classList.remove('bump'); void progressEl.offsetWidth; progressEl.classList.add('bump'); }
+      vibrate(12);
+    }
+
+    var nb = done ? 4 : inBand ? 1 + Math.round(quality * 3) : 0;
+    if (nb !== lastBars){
+      for (var i = 0; i < 4; i++) bars[i].classList.toggle('on', i < nb);
+      sigTxt.textContent = nb === 0 ? 'NO SIG' : nb === 4 ? 'STRONG' : nb >= 2 ? 'OK' : 'WEAK';
+      sigTxt.classList.toggle('lost', nb === 0);
+      lastBars = nb;
+    }
+
+    if (done) return;
+    if (stormState === 'warning') setStatus('INTERFERENCE! Signal is jumping...', 'warn');
+    else if (inBand) setStatus(quality > 0.6 ? 'Uploading - strong signal' : 'Uploading - centre the needle', null);
+    else if (!touched) setStatus('Drag the antenna into the green band', null);
+    else if (lostFor > 1.2) setStatus('Signal lost - follow the green band', 'warn');
+  }
+
+  function finish(){
+    done = true;
+    progress = 1;
+    band.classList.remove('storm');
+    setStatus('UPLOAD COMPLETE', 'good');
+    doFlash('good');
+    vibrate(40);
+    if (window.completeTask) window.completeTask(1500);
+  }
+
+  var acc = 0, last = performance.now();
+  function frame(now){
+    var dt = (now - last) / 1000;
+    last = now;
+    if (dt > 0.25) dt = 0.25;            // after a stall, don't try to catch up seconds of play
+    acc += dt;
+    var steps = 0;
+    while (acc >= STEP && steps < 5){ step(); acc -= STEP; steps++; }
+    if (steps === 5) acc = 0;
+    draw(acc / STEP);
+    requestAnimationFrame(frame);
+  }
+  center = prevCenter = bandCenter(0);
+  requestAnimationFrame(function(n){ last = n; frame(n); });
+})();
+</script>
+</body>
+</html>
