@@ -1,5 +1,6 @@
 {
   "tasks": {
+    "bleed_valve": { "enabled": true, "location": "" },
     "calibrate_power": { "enabled": true, "location": "" },
     "clear_asteroids": { "enabled": true, "location": "" },
     "cool_reactor": { "enabled": true, "location": "" },
@@ -7,8 +8,13 @@
     "fuel_engine": { "enabled": true, "location": "" },
     "keypad_code": { "enabled": true, "location": "" },
     "prime_shields": { "enabled": true, "location": "" },
+    "reboot_system": { "enabled": true, "location": "" },
     "refuel_tank": { "enabled": true, "location": "" },
+    "repair_hull": { "enabled": true, "location": "" },
+    "route_power": { "enabled": true, "location": "" },
+    "sort_samples": { "enabled": true, "location": "" },
     "swipe_card": { "enabled": true, "location": "" },
+    "tune_signal": { "enabled": true, "location": "" },
     "upload_data": { "enabled": true, "location": "" },
     "wires": { "enabled": true, "location": "" }
   },

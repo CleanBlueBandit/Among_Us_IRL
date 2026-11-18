@@ -8,9 +8,6 @@ body:after{content:"";position:fixed;inset:0;pointer-events:none;z-index:30;back
 .w{width:min(94vw,540px);padding:18px;border:2px solid #334155;border-radius:18px;background:#0f1722cc;box-shadow:0 0 0 4px #0b1017,0 0 40px #5eead422 inset;text-align:center;position:relative}
 h1{margin:0 0 4px;font-size:1.3rem;letter-spacing:.2em;color:#5eead4;text-shadow:0 0 12px #5eead488}
 .sub{font-size:.8rem;color:#94a3b8;margin-bottom:14px}
-#msg{margin-top:12px;min-height:1.6em;font-weight:800;letter-spacing:.06em}
-#ban{position:fixed;inset:0;display:none;place-items:center;z-index:20;background:#22c55e33;pointer-events:none}
-#ban b{font-size:clamp(1.5rem,6vw,2.5rem);letter-spacing:.2em;padding:16px 28px;border:3px solid #22c55e;background:#052e16ee;border-radius:14px;color:#86efac}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01s!important;transition-duration:.01s!important}}
 .hx{position:relative;height:290px;width:300px;margin:6px auto 0}
 .c{position:absolute;width:90px;height:104px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);border:0;padding:0;background:#ef4444;cursor:pointer;transition:transform .15s,background .2s;color:#fff;font:800 11px system-ui}
@@ -20,25 +17,23 @@ h1{margin:0 0 4px;font-size:1.3rem;letter-spacing:.2em;color:#5eead4;text-shadow
 .c.off{animation:fl 1.1s infinite}.c.on{background:#22c55e;cursor:default;animation:br 3s infinite}.c.on i{background:radial-gradient(#16a34a,#052e16)}
 @keyframes fl{50%{filter:brightness(1.7)}}@keyframes br{50%{filter:brightness(1.3)}}
 .seg{display:flex;gap:5px;justify-content:center;margin-bottom:4px}.seg i{width:30px;height:10px;border-radius:3px;background:#1e293b;transition:.2s}.seg i.on{background:#22c55e;box-shadow:0 0 8px #22c55e}
-</style></head><body><div id="ban"></div>
-<div class="w"><h1>PRIME SHIELDS</h1><div class="sub">Activate every offline panel</div><div class="seg" id="seg"></div><div id="cn" style="font:700 .75rem monospace;color:#94a3b8"></div>
-<div class="hx" id="hx"></div><div id="msg" aria-live="polite"></div></div>
+</style></head><body>
+<div class="w"><h1>PRIME SHIELDS</h1><div class="sub">Tap the red panels</div><div class="seg" id="seg"></div>
+<div class="hx" id="hx"></div></div>
 <script>
 const $=s=>document.querySelector(s),RM=matchMedia("(prefers-reduced-motion: reduce)").matches,R=(a,b)=>a+Math.random()*(b-a),W=$(".w");
 function shake(el=W,n=9){if(RM)return;el.animate([{transform:`translate(${n}px,0)`},{transform:`translate(${-n}px,${n/3}px)`},{transform:`translate(${n/2}px,${-n/3}px)`},{transform:`translate(${-n/3}px,0)`},{transform:"none"}],{duration:300,easing:"ease-out"})}
-function pop(x,y,t,c="#5eead4"){const e=document.createElement("div");e.textContent=t;e.style.cssText=`position:fixed;left:${x}px;top:${y}px;color:${c};font:800 20px system-ui;text-shadow:0 2px 0 #000,0 0 8px #000;pointer-events:none;z-index:9`;document.body.append(e);e.animate([{transform:"translate(-50%,0) scale(.5)",opacity:0},{transform:"translate(-50%,-18px) scale(1.25)",opacity:1,offset:.25},{transform:"translate(-50%,-56px) scale(1)",opacity:0}],{duration:800,easing:"ease-out"}).onfinish=()=>e.remove()}
 function burst(x,y,c="#5eead4",n=16){if(RM)n=4;for(let i=0;i<n;i++){const e=document.createElement("i"),a=R(0,6.28),d=R(30,90),s=R(4,9);e.style.cssText=`position:fixed;left:${x}px;top:${y}px;width:${s}px;height:${s}px;background:${c};border-radius:${i%2?"50%":"2px"};pointer-events:none;z-index:9`;document.body.append(e);e.animate([{transform:"translate(-50%,-50%)",opacity:1},{transform:`translate(calc(-50% + ${Math.cos(a)*d}px),calc(-50% + ${Math.sin(a)*d+25}px)) rotate(${R(-360,360)}deg)`,opacity:0}],{duration:R(450,800),easing:"cubic-bezier(.1,.7,.3,1)"}).onfinish=()=>e.remove()}}
-function msg(t,c="#5eead4"){const m=$("#msg");m.textContent=t;m.style.color=c}
-let _w=0;function win(t="TASK COMPLETE"){if(_w)return;_w=1;const b=$("#ban");b.innerHTML="<b>✓ "+t+"</b>";b.style.display="grid";b.animate([{opacity:0,transform:"scale(1.3)"},{opacity:1,transform:"none"}],{duration:300,easing:"ease-out",fill:"forwards"});window.completeTask&&window.completeTask(1500)}
+let _w=0;function win(){if(_w)return;_w=1;W.animate([{boxShadow:"0 0 0 4px #0b1017,0 0 40px #5eead422 inset"},{boxShadow:"0 0 0 4px #22c55e,0 0 60px #22c55e66 inset"},{boxShadow:"0 0 0 4px #0b1017,0 0 40px #22c55e33 inset"}],{duration:900,easing:"ease-out",fill:"forwards"});window.completeTask&&window.completeTask(1500)}
 const hx=$("#hx"),seg=$("#seg"),P=[[0,0],[96,0],[-96,0],[48,84],[-48,84],[48,-84],[-48,-84]],off=new Set(),cs=[],sg=[];
 while(off.size<4)off.add(Math.floor(Math.random()*7));
-const upd=()=>{const n=cs.filter(c=>c.classList.contains("on")).length;sg.forEach((s,i)=>s.classList.toggle("on",i<n));$("#cn").textContent="SHIELD INTEGRITY "+Math.round(n/7*100)+"%";return n};
-const set=(c,on)=>{c.className="c "+(on?"on":"off");c.lastChild.innerHTML=on?"<u>✓</u>ONLINE":"<u>✕</u>OFFLINE";c.setAttribute("aria-label",on?"Panel online":"Panel offline, activate")};
+const upd=()=>{const n=cs.filter(c=>c.classList.contains("on")).length;sg.forEach((s,i)=>s.classList.toggle("on",i<n));return n};
+const set=(c,on)=>{c.className="c "+(on?"on":"off");c.lastChild.innerHTML=on?"<u>✓</u>":"<u>✕</u>";c.setAttribute("aria-label",on?"Panel on":"Panel off, tap to turn on")};
 P.forEach((p,i)=>{seg.append(sg[i]=document.createElement("i"));const c=document.createElement("button");c.type="button";c.style.left=105+p[0]+"px";c.style.top=93+p[1]+"px";c.innerHTML="<i></i><b></b>";cs.push(c);set(c,!off.has(i));
  c.onpointerdown=e=>{if(c.classList.contains("on"))return;e.preventDefault();set(c,true);const r=c.getBoundingClientRect(),x=r.left+45,y=r.top+52;
   const g=document.createElement("div");g.style.cssText=`position:fixed;left:${x}px;top:${y}px;width:20px;height:20px;border:3px solid #86efac;border-radius:50%;pointer-events:none;z-index:9`;document.body.append(g);g.animate([{transform:"translate(-50%,-50%) scale(1)",opacity:1},{transform:"translate(-50%,-50%) scale(8)",opacity:0}],{duration:550,easing:"ease-out"}).onfinish=()=>g.remove();
-  burst(x,y,"#22c55e",16);pop(x,y-30,"ONLINE","#86efac");c.animate([{transform:"scale(.7)"},{transform:"scale(1.15)"},{transform:"none"}],{duration:280});
-  if(upd()===7){msg("✓ Shields primed");hx.animate([{transform:"scale(1)"},{transform:"scale(1.07)"},{transform:"scale(1)"}],{duration:500,iterations:2});win("SHIELDS PRIMED")}};
+  burst(x,y,"#22c55e",16);c.animate([{transform:"scale(.7)"},{transform:"scale(1.15)"},{transform:"none"}],{duration:280});
+  if(upd()===7){hx.animate([{transform:"scale(1)"},{transform:"scale(1.07)"},{transform:"scale(1)"}],{duration:500,iterations:2});win()}};
  hx.append(c)});
 upd();
 </script></body></html>
