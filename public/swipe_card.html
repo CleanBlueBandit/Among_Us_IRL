@@ -141,6 +141,11 @@
   .z.fast{ background:repeating-linear-gradient(45deg, #8a3a2a 0 6px, #7a3022 6px 12px); }
   .meter .marker{ position:absolute; top:-3px; width:4px; height:22px; margin-left:-2px; background:#fff; border-radius:2px;
     box-shadow:0 0 6px #fff; opacity:0; transition:left .35s cubic-bezier(.3,1.4,.5,1), opacity .2s; }
+  .meter .marker.live{ transition:none; opacity:1; }
+  .meter .z.hot{ filter:brightness(1.45); }
+  .lcd .main .unit{ font-size:.7em; opacity:.75; margin-left:4px; }
+  .lcd .main, .lcd .sub{ font-variant-numeric:tabular-nums; }
+  .lcd.slow .main{ color:#ffd27a; } .lcd.fast .main{ color:#ff8a7a; }
   .meter-labels{ display:flex; justify-content:space-between; font-size:10px; color:var(--text-dim); margin-top:3px; letter-spacing:1px; }
 
   /* Wallet */
@@ -225,7 +230,7 @@
         <div class="z fast" id="zFast">FAST</div>
         <div class="marker" id="marker"></div>
       </div>
-      <div class="meter-labels"><span>&#9664; slower</span><span>swipe speed</span><span>faster &#9654;</span></div>
+      <div class="meter-labels"><span>&#9664; slower</span><span id="meterLbl">swipe speed</span><span>faster &#9654;</span></div>
     </div>
 
     <div class="wallet-row">
@@ -259,6 +264,10 @@
   var state = 'wallet';           // wallet -> ready -> dragging -> (ready | done)
   var x = 0, maxReached = 0, grabOffset = 0, startTime = 0, started = false;
   var fails = 0;
+  var PX_PER_CM = 96 / 2.54;      // CSS pixels are defined as 96 per inch
+  var zones = { slow:document.getElementById('zSlow'), ok:document.getElementById('zOk'), fast:document.getElementById('zFast') };
+  // live speedometer state (px/s)
+  var lastX = 0, lastT = 0, rawSpeed = 0, shownSpeed = 0, lastMove = 0, rafId = 0;
 
   function vibrate(p){ try{ if (navigator.vibrate) navigator.vibrate(p); }catch(e){} }
 
@@ -303,8 +312,47 @@
     document.getElementById('zFast').style.width = (100 - okEnd) + '%';
   })();
   function showMarker(t){
+    marker.classList.remove('live');
     marker.style.opacity = 1;
     marker.style.left = meterPos(t) + '%';
+  }
+
+  // ---------- speedometer ----------
+  // Speed and swipe time are two views of the same rule: the slot length divided by the time.
+  function slotLen(){ return Math.max(1, maxX()); }
+  function cm(pxPerSec){ return pxPerSec / PX_PER_CM; }
+  function okRange(){ return [cm(slotLen() / MAX_TIME), cm(slotLen() / MIN_TIME)]; }
+  function zoneOf(pxPerSec){
+    var t = slotLen() / Math.max(1e-3, pxPerSec);
+    return t > MAX_TIME ? 'slow' : t < MIN_TIME ? 'fast' : 'ok';
+  }
+  function fmt(v){ return v < 10 ? v.toFixed(1) : Math.round(v).toString(); }
+  function lightZone(z){
+    for (var k in zones) zones[k].classList.toggle('hot', k === z);
+  }
+  function renderSpeed(){
+    var v = shownSpeed;
+    var z = v > 1 ? zoneOf(v) : 'slow';
+    lcdMain.innerHTML = fmt(cm(v)) + '<span class="unit">cm/s</span>';
+    var r = okRange();
+    lcdSub.textContent = (z === 'ok' ? 'GOOD SPEED' : z === 'fast' ? 'TOO FAST' : 'TOO SLOW') + ' | aim ' + fmt(r[0]) + '-' + fmt(r[1]);
+    lcd.classList.toggle('slow', z === 'slow'); lcd.classList.toggle('fast', z === 'fast');
+    marker.style.left = meterPos(slotLen() / Math.max(1, v)) + '%';
+    lightZone(v > 1 ? z : null);
+  }
+  function tick(now){
+    if (state !== 'dragging'){ rafId = 0; return; }
+    // With no pointer movement the needle falls back toward zero, like a real speedometer.
+    if (now - lastMove > 60) rawSpeed *= 0.88;
+    shownSpeed += (rawSpeed - shownSpeed) * 0.35;
+    if (started) renderSpeed();
+    rafId = requestAnimationFrame(tick);
+  }
+  function stopSpeedo(){
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = 0;
+    lcd.classList.remove('slow', 'fast');
+    lightZone(null);
   }
 
   wallet.addEventListener('click', function(){
@@ -329,13 +377,24 @@
     maxReached = x;
     started = false;
     card.classList.remove('snap');
+    lastX = x; lastT = lastMove = performance.now(); rawSpeed = shownSpeed = 0;
+    if (!rafId) rafId = requestAnimationFrame(tick);
   });
 
   card.addEventListener('pointermove', function(e){
     if (state !== 'dragging') return;
     var nx = Math.min(maxX(), Math.max(0, pointerX(e) - grabOffset));
     // The timer starts the moment the card leaves the left end, so a slow grab is never punished.
-    if (!started && nx > 6){ started = true; startTime = performance.now(); }
+    if (!started && nx > 6){
+      started = true; startTime = performance.now();
+      marker.classList.add('live'); lcd.classList.remove('bad', 'blink');
+    }
+    var now = performance.now(), dt = (now - lastT) / 1000;
+    if (dt > 0.004){
+      var v = Math.max(0, (nx - lastX) / dt);
+      rawSpeed += (v - rawSpeed) * (1 - Math.exp(-dt / 0.05));
+      lastX = nx; lastT = now; lastMove = now;
+    }
     if (nx > maxReached) maxReached = nx;
     setX(nx, false);
     if (started && maxReached - nx > 28){ return fail('BAD READ', 'Keep the card moving right', null); }
@@ -353,11 +412,14 @@
 
   function finish(){
     var t = (performance.now() - startTime) / 1000;
+    stopSpeedo();
     showMarker(t);
-    if (t < MIN_TIME) return fail('TOO FAST', 'Try again, a bit slower (' + t.toFixed(2) + 's)', t);
-    if (t > MAX_TIME) return fail('TOO SLOW', 'Try again, a bit faster (' + t.toFixed(2) + 's)', t);
+    var avg = cm(slotLen() / t), r = okRange();
+    var avgTxt = 'Average ' + fmt(avg) + ' cm/s';
+    if (t < MIN_TIME) return fail('TOO FAST', avgTxt + ' (aim ' + fmt(r[0]) + '-' + fmt(r[1]) + ')', t);
+    if (t > MAX_TIME) return fail('TOO SLOW', avgTxt + ' (aim ' + fmt(r[0]) + '-' + fmt(r[1]) + ')', t);
     state = 'done';
-    say('ACCEPTED', 'Thank you');
+    say('ACCEPTED', avgTxt);
     pulseLed(ledGreen, 0);
     doFlash('good');
     vibrate(40);
@@ -366,9 +428,11 @@
 
   function fail(main, sub, t){
     state = 'ready';
+    stopSpeedo();
+    if (t == null) marker.style.opacity = 0;
     fails++;
     // After a few misses, spell the target out.
-    if (fails >= 3) sub = (t == null ? sub : main === 'TOO FAST' ? 'Slower' : 'Faster') + ' - aim for about 0.8s';
+    if (fails >= 3 && t != null){ var r = okRange(); sub = sub.replace(/ \(aim .*\)$/, '') + ' - aim for ' + fmt((r[0] + r[1]) / 2) + ' cm/s'; }
     say(main, sub, true);
     pulseLed(ledRed, 700);
     doFlash('bad');
