@@ -165,8 +165,6 @@ const DEFAULT_GAME_STATE = {
     lastEjection: null
 };
 
-// Shared fuel tank used by the refuel_tank / fuel_engine minigames.
-const DEFAULT_TANK = { filled: false, gallons: 0 };
 
 const DEFAULT_SABOTAGES = {
     cooldown : 0,
@@ -203,9 +201,7 @@ try {
 
 // Tasks are the .html files in the minigames/ folder; the file name is the task.id (see scripts/taskStore.js).
 // Each task also gets a random token (made automatically) that goes in its QR link.
-// The two tank minigames share state, so they are recognised by their ids.
-const TANK_FILL_TASK = 'refuel_tank';
-const TANK_USE_TASK = 'fuel_engine';
+// tasks.json sets locations and binds: a bound task lists the tasks it needs first in task.requires.
 
 async function loadTaskLibrary() {
     try {
@@ -216,10 +212,15 @@ async function loadTaskLibrary() {
     }
 }
 
-// "fuel_engine" needs the tank refuelled first, so it is only usable when a "refuel_tank" task exists too.
+// A bound task is only usable when every task it needs first exists too (all the way down the chain).
 function eligibleTasks(library) {
-    const hasRefuel = library.tasks.some(t => t.id === TANK_FILL_TASK);
-    return library.tasks.filter(t => t.id !== TANK_USE_TASK || hasRefuel);
+    const byId = new Map(library.tasks.map(t => [t.id, t]));
+    const ok = (t, seen = new Set()) => {
+        if (seen.has(t.id)) return false;               // a bind loop can never be finished
+        seen.add(t.id);
+        return (t.requires || []).every(id => byId.has(id) && ok(byId.get(id), seen));
+    };
+    return library.tasks.filter(t => ok(t));
 }
 
 function pickRandomTasks(pool, count) {
@@ -230,15 +231,33 @@ function pickRandomTasks(pool, count) {
     }
     const picked = copy.slice(0, count);
 
-    // Anyone who has to fuel the engine must also be able to refuel the tank first.
-    const refuel = pool.find(t => t.id === TANK_FILL_TASK);
-    const fuel = picked.find(t => t.id === TANK_USE_TASK);
-    if (refuel && fuel && !picked.some(t => t.id === refuel.id)) {
-        const swap = picked.findIndex(t => t.id !== TANK_USE_TASK);
-        picked[swap >= 0 ? swap : picked.indexOf(fuel)] = refuel;
+    // Binds: whoever gets a bound task also gets the tasks it needs first. A missing one replaces a
+    // task nobody in the hand depends on (or, with no room left, the bound task itself).
+    const byId = new Map(pool.map(t => [t.id, t]));
+    for (let guard = 0; guard < 50; guard++) {
+        const has = new Set(picked.map(t => t.id));
+        const owner = picked.find(t => (t.requires || []).some(id => !has.has(id)));
+        if (!owner) break;
+        const needId = owner.requires.find(id => !has.has(id));
+        const needed = new Set(picked.flatMap(t => t.requires || []));
+        needed.add(owner.id);
+        let slot = picked.findIndex(t => !needed.has(t.id) && !(t.requires || []).length);
+        if (slot < 0) slot = picked.findIndex(t => !needed.has(t.id));
+        if (slot < 0) slot = picked.indexOf(owner);
+        picked[slot] = byId.get(needId);
     }
+    // List the tasks that must come first before the ones that depend on them.
+    const inHand = new Map(picked.map(t => [t.id, t]));
+    const ordered = [], placed = new Set();
+    const place = t => {
+        if (placed.has(t.id)) return;
+        placed.add(t.id);
+        for (const id of t.requires || []) if (inHand.has(id)) place(inHand.get(id));
+        ordered.push(t);
+    };
+    picked.forEach(place);
 
-    return picked.map(t => ({
+    return ordered.map(t => ({
         id: t.id,
         name: t.name,
         location: t.location,
@@ -297,8 +316,13 @@ function checkTaskScan(data, library, session, token) {
     if (mine.done) {
         return decline('You already completed this task.', '/dashboard', shown);
     }
-    if (libTask.id === TANK_USE_TASK && !(data.tank && data.tank.filled)) {
-        return decline('The fuel tank is empty. Refuel it first.', '/dashboard', shown);
+    // Binds: the tasks this one needs must be done first.
+    for (const needId of libTask.requires || []) {
+        const need = player.tasks.find(t => t.id === needId);
+        if (need && !need.done) {
+            const needTask = library.tasks.find(t => t.id === needId);
+            return decline(`Do "${needTask ? needTask.name : needId}" first${needTask && needTask.location ? ` (${needTask.location})` : ''}.`, '/dashboard', shown);
+        }
     }
 
     return { player, libTask, mine, shown };
@@ -315,10 +339,6 @@ function processTaskScan(data, library, session, token) {
         player.tasksCompleted = (player.tasksCompleted || 0) + 1;
         data.gameState.completedTasks += 1;
     }
-
-    // The two tank minigames share state: refuelling fills it, fuelling the engine drains it.
-    if (libTask.id === TANK_FILL_TASK) data.tank = { filled: true, gallons: 12.5 };
-    else if (libTask.id === TANK_USE_TASK) data.tank = { ...DEFAULT_TANK };
 
     return { accepted: true, status: 200, title: 'Task accepted', message: 'Task completed.', next: '/dashboard', task: shown };
 }
@@ -353,7 +373,6 @@ async function loadGame() {
         if (!data.servers) data.servers = {};
         // Merge over the defaults so older game.json files (missing newer keys) still work.
         data.settings = { ...DEFAULT_SETTINGS, ...(data.settings || {}) };
-        data.tank = { ...DEFAULT_TANK, ...(data.tank || {}) };
         
         logDebug("data loaded");
         return data;
@@ -367,8 +386,7 @@ async function loadGame() {
                 reactor: { ...DEFAULT_SABOTAGES.reactor }
             },
             servers: {},
-            settings: { ...DEFAULT_SETTINGS },
-            tank: { ...DEFAULT_TANK }
+            settings: { ...DEFAULT_SETTINGS }
         };
     }
 }
@@ -395,7 +413,7 @@ async function saveGame(data) {
 
 httpServer.listen(PORT, () => {
     logDebug(`Server connected. Express server running on ${protocol}://${IP}:${PORT}`);
-    loadTaskLibrary().then(lib => logDebug(`Tasks loaded from minigames/: ${lib.tasks.map(t => t.id).join(', ') || 'none'} (links in tasks.txt)`));
+    loadTaskLibrary().then(lib => logDebug(`Tasks loaded from minigames/: ${lib.tasks.map(t => t.requires.length ? `${t.id} (after ${t.requires.join(', ')})` : t.id).join(', ') || 'none'} (links in tasks.txt)`));
 });
 
 app.post('/enter', async (req, res) => {
@@ -579,8 +597,6 @@ app.post("/restart", async (req, res) => {
             o2: { ...DEFAULT_SABOTAGES.o2 },
             reactor: { ...DEFAULT_SABOTAGES.reactor }
         };
-
-        data.tank = { ...DEFAULT_TANK };
 
         await saveGame(data);
         io.emit('restart_game', {});
@@ -1909,7 +1925,6 @@ app.post("/start", async (req, res) => {
         });
 
 
-        data.tank = { ...DEFAULT_TANK };
         data.gameState.started = true;
         data.gameState.impostorsWon = false;
         data.gameState.crewmatesWon = false;
@@ -1990,13 +2005,20 @@ app.post("/task/:token", async (req, res) => {
     return res.status(outcome.status).send(renderTaskResultHtml(outcome));
 });
 
-// Read by the fuel_engine minigame to see whether the tank has been refuelled.
+// Read by the fuel_engine minigame: the tank counts as filled once this player has done every task
+// fuel_engine is bound to in tasks.json (normally refuel_tank).
 app.get("/fill-rocket", async (req, res) => {
     const data = await loadGame();
-    if (!data.players[req.cookies.session]) {
+    const player = data.players[req.cookies.session];
+    if (!player) {
         return res.status(401).json({ error: "401 unauthorised" });
     }
-    return res.json({ filled: !!data.tank.filled, gallons: data.tank.gallons || 12.5 });
+    const library = await loadTaskLibrary();
+    const engine = library.tasks.find(t => t.id === 'fuel_engine');
+    const needs = engine ? engine.requires || [] : [];
+    const mine = Array.isArray(player.tasks) ? player.tasks : [];
+    const filled = needs.length > 0 && needs.every(id => mine.some(t => t.id === id && t.done));
+    return res.json({ filled, gallons: 12.5 });
 });
 
 app.post("/reset", async (req, res) => {
@@ -2051,8 +2073,7 @@ app.post("/reset", async (req, res) => {
             o2: { ...DEFAULT_SABOTAGES.o2 },
             reactor: { ...DEFAULT_SABOTAGES.reactor }
         },
-        settings: { ...DEFAULT_SETTINGS },
-        tank: { ...DEFAULT_TANK }
+        settings: { ...DEFAULT_SETTINGS }
     };
 
     await saveGame(data);

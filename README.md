@@ -215,7 +215,9 @@ Tasks are QR codes placed around the play area; the server accepts or declines e
 
 Every `.html` file in the `minigames/` folder is a task, and its file name is the `task.id`. There is no import step: add, rename or delete a file and the task list changes.
 
-Each task is scanned through a random secret token. The server creates tokens by itself and saves them in `tokens.json`, so printed QR codes keep working across restarts. The links are written to `tasks.txt` (one per line) - make QR codes from those.
+`tasks.json` sets where each task is (`locations`) and which tasks need another one done first (`binds`, e.g. `"refuel_tank": "fuel_engine"`).
+
+Each task is scanned through a random secret token. The server creates tokens by itself and saves them in `tokens.json`, so printed QR codes keep working across restarts. The links are written to `tasks.txt` (each task's id, then its link on the next line) - make QR codes from those.
 
 ```bash
 npm run task-links           # show the links (the server already keeps tasks.txt up to date)
