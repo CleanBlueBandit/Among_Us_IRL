@@ -16,15 +16,16 @@ is nothing to import: add, rename or delete a file and the task list follows.
 - Files starting with `_` are ignored. Copy `minigames/_template.html` to make a new task.
 - A minigame tells the server it is finished by calling `window.completeTask()`.
 
-## Locations and binds (`tasks.json`)
+## Settings per task (`tasks.json`)
 
-`tasks.json` in the project root says where each task is and which tasks belong together:
+`tasks.json` in the project root switches tasks on and off, says where each one is, and binds tasks together:
 
 ```
 {
-  "locations": {
-    "refuel_tank": "Garage",
-    "fuel_engine": "Engine room"
+  "tasks": {
+    "refuel_tank": { "enabled": true, "location": "Garage" },
+    "fuel_engine": { "enabled": true, "location": "Engine room" },
+    "wires": { "enabled": false, "location": "" }
   },
   "binds": {
     "refuel_tank": "fuel_engine"
@@ -32,21 +33,26 @@ is nothing to import: add, rename or delete a file and the task list follows.
 }
 ```
 
-- **locations**: shown under the task name. A task missing here falls back to
-  `<meta name="location" content="...">` in its minigame's `<head>`, if it has one.
+- **tasks**: one entry per minigame, by task id. The server adds an entry for every new minigame by
+  itself (switched on, empty location), so you only have to fill in the locations.
+  - `enabled`: `false` switches the task off. It is never handed out, a scan of it is declined, and it
+    is left out of `tasks.txt`. Its QR code keeps working once you switch it back on.
+  - `location`: shown under the task name. When the server starts it warns how many tasks still have
+    no location.
 - **binds**: `"refuel_tank": "fuel_engine"` means fuel_engine needs refuel_tank first.
   Whoever is given fuel_engine is also given refuel_tank, and scanning fuel_engine is declined
   until that player has done refuel_tank. One task can lead to several: `"a": ["b", "c"]`.
-  A bound task whose first task has no minigame file is never handed out.
+  A bound task is never handed out when a task it needs is missing or switched off.
 
 Changes to `tasks.json` apply at the next scan or game start; no restart needed.
-The server log warns about entries that name a task with no minigame file.
+The server log warns about entries that name a task with no minigame file. If `tasks.json` has a
+typo, the server leaves it untouched and treats every task as switched on, with no location and no binds, until it is fixed.
 
 ## QR codes
 
 Each task is scanned through a random secret token, so a task link can't be guessed from its name.
 The server makes a token for every task by itself and keeps them in `tokens.json`, so printed codes
-stay valid across restarts. The links are in `tasks.txt`, each task as its id and then its link:
+stay valid across restarts. The links are in `tasks.txt`, each switched-on task as its id and then its link:
 
 ```
 wires:

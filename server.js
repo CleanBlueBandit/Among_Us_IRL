@@ -52,6 +52,13 @@ function logDebug(message) {
     fs.appendFile(DEBUG_LOG, logMsg + '\n', 'utf-8').catch(e => console.error("Logger error:", e));
 }
 
+function logWarn(message) {
+    const timestamp = new Date().toISOString();
+    const logMsg = `[WARN] [${timestamp}] ${message}`;
+    console.warn(logMsg);
+    fs.appendFile(DEBUG_LOG, logMsg + '\n', 'utf-8').catch(e => console.error("Logger error:", e));
+}
+
 function logError(message, error = "") {
     const timestamp = new Date().toISOString();
     const errorStr = error instanceof Error ? (error.stack || error.message) : String(error);
@@ -212,10 +219,12 @@ async function loadTaskLibrary() {
     }
 }
 
-// A bound task is only usable when every task it needs first exists too (all the way down the chain).
+// Only enabled tasks are handed out, and a bound task only when every task it needs first is
+// available too (all the way down the chain).
 function eligibleTasks(library) {
     const byId = new Map(library.tasks.map(t => [t.id, t]));
     const ok = (t, seen = new Set()) => {
+        if (t.enabled === false) return false;
         if (seen.has(t.id)) return false;               // a bind loop can never be finished
         seen.add(t.id);
         return (t.requires || []).every(id => byId.has(id) && ok(byId.get(id), seen));
@@ -310,6 +319,9 @@ function checkTaskScan(data, library, session, token) {
 
     const mine = Array.isArray(player.tasks) ? player.tasks.find(t => t.id === libTask.id) : null;
     const shown = { name: libTask.name, location: libTask.location };
+    if (libTask.enabled === false) {
+        return decline('This task is switched off.', '/dashboard', shown);
+    }
     if (!mine) {
         return decline('This task is not assigned to you.', '/dashboard', shown);
     }
@@ -413,7 +425,19 @@ async function saveGame(data) {
 
 httpServer.listen(PORT, () => {
     logDebug(`Server connected. Express server running on ${protocol}://${IP}:${PORT}`);
-    loadTaskLibrary().then(lib => logDebug(`Tasks loaded from minigames/: ${lib.tasks.map(t => t.requires.length ? `${t.id} (after ${t.requires.join(', ')})` : t.id).join(', ') || 'none'} (links in tasks.txt)`));
+    loadTaskLibrary().then(lib => {
+        const label = t => t.requires.length ? `${t.id} (after ${t.requires.join(', ')})` : t.id;
+        const usable = eligibleTasks(lib);
+        const off = lib.tasks.filter(t => !t.enabled);
+        const blocked = lib.tasks.filter(t => t.enabled && !usable.includes(t));
+        logDebug(`Tasks loaded from minigames/: ${usable.map(label).join(', ') || 'none'} (links in tasks.txt)`);
+        if (off.length) logDebug(`Switched off in tasks.json: ${off.map(t => t.id).join(', ')}`);
+        if (blocked.length) logWarn(`Not handed out because a task they need is missing or switched off: ${blocked.map(label).join(', ')}`);
+        const noLocation = lib.tasks.filter(t => !t.location);
+        if (noLocation.length) {
+            logWarn(`${noLocation.length} of ${lib.tasks.length} tasks have no location in tasks.json: ${noLocation.map(t => t.id).join(', ')}. Players will see them without a location until you fill these in.`);
+        }
+    });
 });
 
 app.post('/enter', async (req, res) => {
