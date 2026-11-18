@@ -215,7 +215,7 @@ Tasks are QR codes placed around the play area; the server accepts or declines e
 
 Every `.html` file in the `minigames/` folder is a task, and its file name is the `task.id`. There is no import step: add, rename or delete a file and the task list changes.
 
-`tasks.json` switches each task on or off and sets its location (`tasks`, filled in automatically for new minigames with empty locations), and says which tasks need another one done first (`binds`, e.g. `"refuel_tank": "fuel_engine"`). A task with an empty location uses the `<meta name="location">` in its minigame instead. The server warns at startup how many tasks have no location in `tasks.json`.
+`tasks.json` switches each task on or off, sets its location and how many QR codes it has (`tasks`: `"repeat": 3` makes one task out of three codes done in order), and chains tasks into one (`binds`, e.g. `"refuel_tank": "fuel_engine"`: the second appears once the first is done). A task with an empty location uses the `<meta name="location">` in its minigame instead. The server warns at startup how many tasks have no location in `tasks.json`.
 
 Each task is scanned through a random secret token. The server creates tokens by itself and saves them in `tokens.json`, so printed QR codes keep working across restarts. The links are written to `tasks.txt` (each task's id, then its link on the next line) - make QR codes from those.
 

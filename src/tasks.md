@@ -18,14 +18,17 @@ is nothing to import: add, rename or delete a file and the task list follows.
 
 ## Settings per task (`tasks.json`)
 
-`tasks.json` in the project root switches tasks on and off, says where each one is, and binds tasks together:
+`tasks.json` in the project root switches tasks on and off, says where each QR code is, makes tasks
+repeat and binds tasks together:
 
 ```
 {
   "tasks": {
-    "refuel_tank": { "enabled": true, "location": "Garage" },
-    "fuel_engine": { "enabled": true, "location": "Engine room" },
-    "wires": { "enabled": false, "location": "" }
+    "swipe_card":  { "enabled": true,  "repeat": 1, "location": "Admin" },
+    "wires":       { "enabled": true,  "repeat": 3, "location": ["Electrical", "Storage", "Kitchen"] },
+    "refuel_tank": { "enabled": true,  "repeat": 1, "location": "Garage" },
+    "fuel_engine": { "enabled": true,  "repeat": 1, "location": "Engine room" },
+    "keypad_code": { "enabled": false, "repeat": 1, "location": "" }
   },
   "binds": {
     "refuel_tank": "fuel_engine"
@@ -33,32 +36,38 @@ is nothing to import: add, rename or delete a file and the task list follows.
 }
 ```
 
-- **tasks**: one entry per minigame, by task id. The server adds an entry for every new minigame by
-  itself (switched on, empty location), so you only have to fill in the locations.
-  - `enabled`: `false` switches the task off. It is never handed out, a scan of it is declined, and it
-    is left out of `tasks.txt`. Its QR code keeps working once you switch it back on.
-  - `location`: shown under the task name. While it is empty, the minigame's own
-    `<meta name="location" content="...">` (in its `<head>`) is used instead, if it has one. When the
-    server starts it warns how many tasks have no location in `tasks.json`, and which of those fall back to
-    the meta tag or have no location at all.
-- **binds**: `"refuel_tank": "fuel_engine"` means fuel_engine needs refuel_tank first.
-  Whoever is given fuel_engine is also given refuel_tank, and scanning fuel_engine is declined
-  until that player has done refuel_tank. One task can lead to several: `"a": ["b", "c"]`.
-  A bound task is never handed out when a task it needs is missing or switched off.
+- **tasks**: one entry per minigame. The server adds an entry for every new minigame by itself
+  (switched on, repeat 1, empty location), so you only have to fill in the locations.
+  - `enabled`: `false` switches the task off. It is never handed out, a scan of it is declined, and its
+    QR codes are left out of `tasks.txt`. The codes keep working once you switch it back on.
+  - `repeat`: makes a repeating task. `3` gives it three QR codes (`wires#1`, `wires#2`, `wires#3` in
+    `tasks.txt`), hung in three places and done one after another. It counts as **one** task; the
+    tablet shows "Wires (1/3)", then (2/3), then (3/3), each with its own location.
+  - `location`: shown under the task name. For a repeating task it is a list with one place per QR
+    code (the server makes the list the right length). A location left empty falls back to the
+    minigame's own `<meta name="location" content="...">`, for tasks that don't repeat.
+    When the server starts it warns how many QR codes have no location in `tasks.json`.
+- **binds**: `"refuel_tank": "fuel_engine"` chains the two into **one** task. The tablet shows only
+  refuel_tank; once it is done, fuel_engine takes its place. Scanning fuel_engine before that is declined.
+  A list makes a longer chain: `"a": ["b", "c"]` is a, then b, then c. A task can be in only one
+  chain. A chain is never handed out when one of its tasks is missing or switched off.
 
 Changes to `tasks.json` apply at the next scan or game start; no restart needed.
 The server log warns about entries that name a task with no minigame file. If `tasks.json` has a
-typo, the server leaves it untouched and treats every task as switched on, with no location and no binds, until it is fixed.
+typo, the server leaves it untouched and treats every task as switched on, with no location, no
+repeats and no binds, until it is fixed.
 
 ## QR codes
 
 Each task is scanned through a random secret token, so a task link can't be guessed from its name.
 The server makes a token for every task by itself and keeps them in `tokens.json`, so printed codes
-stay valid across restarts. The links are in `tasks.txt`, each switched-on task as its id and then its link:
+stay valid across restarts. The links are in `tasks.txt`, every QR code as its name and then its link:
 
 ```
-wires:
+swipe_card:
 http://192.168.1.20:8812/task/9f1c0e...
+wires#1:
+http://192.168.1.20:8812/task/03ab7d...
 ```
 
 1. Start the server once (or run `npm run task-links`).

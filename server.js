@@ -11,7 +11,7 @@ import 'dotenv/config';
 import { renderCrewmateWinHtml, renderImpostorWinHtml } from './winscreen.js';
 import { renderRoleRevealHtml } from './rolereveal.js';
 import { renderTaskResultHtml } from './taskresult.js';
-import { readTasksWithTokens, MINIGAMES_DIR } from './scripts/taskStore.js';
+import { readLibrary, MINIGAMES_DIR } from './scripts/taskStore.js';
 import { debuglog } from 'util';
 import { marked } from "marked";
 
@@ -206,71 +206,57 @@ try {
     logDebug(`game.json missing, copying data from default.json`);
 }
 
-// Tasks are the .html files in the minigames/ folder; the file name is the task.id (see scripts/taskStore.js).
-// Each task also gets a random token (made automatically) that goes in its QR link.
-// tasks.json sets locations and binds: a bound task lists the tasks it needs first in task.requires.
+// Tasks are the .html files in the minigames/ folder (see scripts/taskStore.js). tasks.json can make a
+// minigame repeat (several QR codes, done in order) and bind minigames into chains. Either way the
+// player is handed "units", and each unit counts as ONE task.
+//
+// player.tasks entries (one per unit) keep the shape the tablets draw: { id, name, location, done },
+// where name/location are those of the step the player has to do next. Plus:
+//   steps: [{ task, n, of, name, location, done }]   one per QR code, in order
+//   step:  index of the next step to do
 
 async function loadTaskLibrary() {
     try {
-        return { tasks: await readTasksWithTokens() };
+        return await readLibrary();
     } catch (error) {
         logError("Failed to read the minigames folder:", error);
-        return { tasks: [] };
+        return { tasks: [], units: [], byId: new Map(), byToken: new Map() };
     }
 }
 
-// Only enabled tasks are handed out, and a bound task only when every task it needs first is
-// available too (all the way down the chain).
-function eligibleTasks(library) {
-    const byId = new Map(library.tasks.map(t => [t.id, t]));
-    const ok = (t, seen = new Set()) => {
-        if (t.enabled === false) return false;
-        if (seen.has(t.id)) return false;               // a bind loop can never be finished
-        seen.add(t.id);
-        return (t.requires || []).every(id => byId.has(id) && ok(byId.get(id), seen));
-    };
-    return library.tasks.filter(t => ok(t));
+// The units that can be handed out: every task in them switched on and present.
+function eligibleUnits(library) {
+    return library.units.filter(u => u.usable);
 }
 
-function pickRandomTasks(pool, count) {
-    const copy = [...pool];
+function stepName(task, n) {
+    return task.repeat > 1 ? `${task.name} (${n}/${task.repeat})` : task.name;
+}
+
+// Points the unit's name/location/done at the step the player has to do next.
+function refreshAssigned(entry) {
+    const i = entry.steps.findIndex(s => !s.done);
+    entry.done = i < 0;
+    entry.step = i < 0 ? entry.steps.length - 1 : i;
+    const cur = entry.steps[entry.step];
+    entry.name = cur.name;
+    entry.location = cur.location;
+    return entry;
+}
+
+function pickRandomTasks(library, units, count) {
+    const copy = [...units];
     for (let i = copy.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [copy[i], copy[j]] = [copy[j], copy[i]];
     }
-    const picked = copy.slice(0, count);
-
-    // Binds: whoever gets a bound task also gets the tasks it needs first. A missing one replaces a
-    // task nobody in the hand depends on (or, with no room left, the bound task itself).
-    const byId = new Map(pool.map(t => [t.id, t]));
-    for (let guard = 0; guard < 50; guard++) {
-        const has = new Set(picked.map(t => t.id));
-        const owner = picked.find(t => (t.requires || []).some(id => !has.has(id)));
-        if (!owner) break;
-        const needId = owner.requires.find(id => !has.has(id));
-        const needed = new Set(picked.flatMap(t => t.requires || []));
-        needed.add(owner.id);
-        let slot = picked.findIndex(t => !needed.has(t.id) && !(t.requires || []).length);
-        if (slot < 0) slot = picked.findIndex(t => !needed.has(t.id));
-        if (slot < 0) slot = picked.indexOf(owner);
-        picked[slot] = byId.get(needId);
-    }
-    // List the tasks that must come first before the ones that depend on them.
-    const inHand = new Map(picked.map(t => [t.id, t]));
-    const ordered = [], placed = new Set();
-    const place = t => {
-        if (placed.has(t.id)) return;
-        placed.add(t.id);
-        for (const id of t.requires || []) if (inHand.has(id)) place(inHand.get(id));
-        ordered.push(t);
-    };
-    picked.forEach(place);
-
-    return ordered.map(t => ({
-        id: t.id,
-        name: t.name,
-        location: t.location,
-        done: false
+    return copy.slice(0, count).map(u => refreshAssigned({
+        id: u.id,
+        steps: u.steps.map(s => {
+            const task = library.byId.get(s.task);
+            const step = task.steps[s.n - 1];
+            return { task: s.task, n: s.n, of: s.of, name: stepName(task, s.n), location: step.location, done: false };
+        })
     }));
 }
 
@@ -290,8 +276,8 @@ function evaluateTaskWin(data) {
 
 // Read-only validation of a scanned task link, shared by the GET (before showing the minigame)
 // and the POST (which then applies it). Returns { outcome } when declined, otherwise
-// { player, libTask, mine, shown }. The wording is identical for crewmates and impostors so a scan
-// never reveals the role.
+// { player, entry, stepIndex, libTask, shown }. The wording is identical for crewmates and impostors so
+// a scan never reveals the role.
 function checkTaskScan(data, library, session, token) {
     const decline = (message, next = '/dashboard', task = null) =>
         ({ outcome: { accepted: false, status: 403, title: 'Task declined', message, next, task } });
@@ -310,48 +296,56 @@ function checkTaskScan(data, library, session, token) {
         return decline('A sabotage is in progress. Fix it first!');
     }
 
-    const libTask = token ? library.tasks.find(t => t.token === token) : null;
-    if (!libTask) {
+    const hit = token ? library.byToken.get(token) : null;
+    if (!hit) {
         const d = decline('This code is not a valid task.');
         d.outcome.status = 404;
         return d;
     }
-
-    const mine = Array.isArray(player.tasks) ? player.tasks.find(t => t.id === libTask.id) : null;
-    const shown = { name: libTask.name, location: libTask.location };
+    const libTask = hit.task;
+    const shown = { name: stepName(libTask, hit.step.n), location: hit.step.location };
     if (libTask.enabled === false) {
         return decline('This task is switched off.', '/dashboard', shown);
     }
-    if (!mine) {
+
+    const mine = Array.isArray(player.tasks) ? player.tasks : [];
+    let entry = null, stepIndex = -1;
+    for (const e of mine) {
+        if (!Array.isArray(e.steps)) continue;
+        const i = e.steps.findIndex(s => s.task === libTask.id && s.n === hit.step.n);
+        if (i >= 0) { entry = e; stepIndex = i; break; }
+    }
+    if (!entry) {
         return decline('This task is not assigned to you.', '/dashboard', shown);
     }
-    if (mine.done) {
-        return decline('You already completed this task.', '/dashboard', shown);
+    if (entry.steps[stepIndex].done) {
+        return decline('You already did this one.', '/dashboard', shown);
     }
-    // Binds: the tasks this one needs must be done first.
-    for (const needId of libTask.requires || []) {
-        const need = player.tasks.find(t => t.id === needId);
-        if (need && !need.done) {
-            const needTask = library.tasks.find(t => t.id === needId);
-            return decline(`Do "${needTask ? needTask.name : needId}" first${needTask && needTask.location ? ` (${needTask.location})` : ''}.`, '/dashboard', shown);
-        }
+    // Steps go in order: only the next one can be done.
+    const next = entry.steps.findIndex(s => !s.done);
+    if (stepIndex !== next) {
+        const cur = entry.steps[next];
+        return decline(`Not yet. First: ${cur.name}${cur.location ? ` (${cur.location})` : ''}.`, '/dashboard', shown);
     }
 
-    return { player, libTask, mine, shown };
+    return { player, entry, stepIndex, libTask, shown };
 }
 
 // Decides whether a scanned task link is accepted. Mutates `data` on success (caller saves it).
 function processTaskScan(data, library, session, token) {
     const check = checkTaskScan(data, library, session, token);
     if (check.outcome) return check.outcome;
-    const { player, libTask, mine, shown } = check;
+    const { player, entry, stepIndex, shown } = check;
 
-    mine.done = true;
+    entry.steps[stepIndex].done = true;
+    refreshAssigned(entry);
+    if (!entry.done) {
+        return { accepted: true, status: 200, title: 'Step done', message: `Next: ${entry.name}${entry.location ? ` (${entry.location})` : ''}.`, next: '/dashboard', task: shown };
+    }
     if (!player.impostor) {
         player.tasksCompleted = (player.tasksCompleted || 0) + 1;
         data.gameState.completedTasks += 1;
     }
-
     return { accepted: true, status: 200, title: 'Task accepted', message: 'Task completed.', next: '/dashboard', task: shown };
 }
 
@@ -360,9 +354,9 @@ function completeTaskSnippet(token) {
     return `<script>window.TASK_TOKEN=${JSON.stringify(token)};window.completeTask=(function(){var sent=false;return function(delay){if(sent)return;sent=true;setTimeout(function(){var f=document.createElement('form');f.method='POST';f.action='/task/'+encodeURIComponent(window.TASK_TOKEN);document.body.appendChild(f);f.submit();},delay==null?1500:delay);};})();</script>`;
 }
 
-async function renderMinigameHtml(task) {   // task.token is the scan token
+async function renderMinigameHtml(task, token) {
     const html = await fs.readFile(path.join(MINIGAMES_DIR, task.file), 'utf-8');
-    const snippet = completeTaskSnippet(task.token);
+    const snippet = completeTaskSnippet(token);
     return /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, m => m + snippet) : snippet + html;
 }
 
@@ -426,19 +420,22 @@ async function saveGame(data) {
 httpServer.listen(PORT, () => {
     logDebug(`Server connected. Express server running on ${protocol}://${IP}:${PORT}`);
     loadTaskLibrary().then(lib => {
-        const label = t => t.requires.length ? `${t.id} (after ${t.requires.join(', ')})` : t.id;
-        const usable = eligibleTasks(lib);
+        const label = u => u.steps.length === 1 ? u.id
+            : u.tasks.map(id => { const t = lib.byId.get(id); return t.repeat > 1 ? `${id} x${t.repeat}` : id; }).join(' > ');
+        const usable = eligibleUnits(lib);
         const off = lib.tasks.filter(t => !t.enabled);
-        const blocked = lib.tasks.filter(t => t.enabled && !usable.includes(t));
-        logDebug(`Tasks loaded from minigames/: ${usable.map(label).join(', ') || 'none'} (links in tasks.txt)`);
+        const blocked = lib.units.filter(u => !u.usable && !(u.tasks.length === 1 && !lib.byId.get(u.tasks[0]).enabled));
+        logDebug(`Tasks loaded from minigames/: ${usable.map(label).join(', ') || 'none'} (QR links in tasks.txt)`);
         if (off.length) logDebug(`Switched off in tasks.json: ${off.map(t => t.id).join(', ')}`);
-        if (blocked.length) logWarn(`Not handed out because a task they need is missing or switched off: ${blocked.map(label).join(', ')}`);
-        const fromMeta = lib.tasks.filter(t => t.locationFrom === 'meta');
-        const noLocation = lib.tasks.filter(t => !t.location);
-        if (fromMeta.length || noLocation.length) {
-            logWarn(`${fromMeta.length + noLocation.length} of ${lib.tasks.length} tasks have no location in tasks.json.`
-                + (fromMeta.length ? ` Using the minigame's <meta name="location"> for ${fromMeta.length}: ${fromMeta.map(t => `${t.id} (${t.location})`).join(', ')}.` : '')
-                + (noLocation.length ? ` No location at all for ${noLocation.length}: ${noLocation.map(t => t.id).join(', ')} - players will see them without one.` : ''));
+        if (blocked.length) logWarn(`Not handed out: ${blocked.map(u => `${label(u)} (${u.problem})`).join(', ')}`);
+        // Locations are per QR code: a repeating task has one per code.
+        const codes = lib.tasks.filter(t => t.enabled).flatMap(t => t.steps.map(s => ({ t, s })));
+        const fromMeta = codes.filter(c => c.s.locationFrom === 'meta');
+        const none = codes.filter(c => !c.s.location);
+        if (fromMeta.length || none.length) {
+            logWarn(`${fromMeta.length + none.length} of ${codes.length} QR codes have no location in tasks.json.`
+                + (fromMeta.length ? ` Using the minigame's <meta name="location"> for ${fromMeta.length}: ${fromMeta.map(c => `${c.s.label} (${c.s.location})`).join(', ')}.` : '')
+                + (none.length ? ` No location at all for ${none.length}: ${none.map(c => c.s.label).join(', ')} - players will see them without one.` : ''));
         }
     });
 });
@@ -1900,7 +1897,7 @@ app.post("/start", async (req, res) => {
         }
 
         const taskLibrary = await loadTaskLibrary();
-        const taskPool = eligibleTasks(taskLibrary);
+        const taskPool = eligibleUnits(taskLibrary);
         if (parsedSettings.tasks > 0 && taskPool.length === 0) {
             logDebug("Game start blocked: no tasks with generated links.");
             return res.status(202).json({ message: "Cant start the game - no tasks available. Add minigame .html files to the minigames folder (or set tasks to 0).", failed: true });
@@ -1944,7 +1941,7 @@ app.post("/start", async (req, res) => {
             data.players[id].role = assignedRole === "impostor" ? "impostor" : "crewmate";
             data.players[id].totalTasks = tasksPerPlayer;
             data.players[id].tasksCompleted = 0;
-            data.players[id].tasks = pickRandomTasks(taskPool, tasksPerPlayer);
+            data.players[id].tasks = pickRandomTasks(taskLibrary, taskPool, tasksPerPlayer);
             // Impostors get tasks too (cover), but theirs never count towards the crew total.
             if (assignedRole !== "impostor") totalTasks += tasksPerPlayer;
             
@@ -1995,7 +1992,7 @@ app.get("/task/:token", async (req, res) => {
         if (check.outcome) {
             return res.status(check.outcome.status).send(renderTaskResultHtml(check.outcome));
         }
-        return res.send(await renderMinigameHtml(check.libTask));
+        return res.send(await renderMinigameHtml(check.libTask, String(req.params.token || '')));
     } catch (error) {
         logError("Error showing task page:", error);
         return res.status(500).send(renderTaskResultHtml({
@@ -2032,19 +2029,21 @@ app.post("/task/:token", async (req, res) => {
     return res.status(outcome.status).send(renderTaskResultHtml(outcome));
 });
 
-// Read by the fuel_engine minigame: the tank counts as filled once this player has done every task
-// fuel_engine is bound to in tasks.json (normally refuel_tank).
+// Read by the fuel_engine minigame: the tank counts as filled once this player has done every step
+// before fuel_engine in its task (normally refuel_tank, bound to it in tasks.json).
 app.get("/fill-rocket", async (req, res) => {
     const data = await loadGame();
     const player = data.players[req.cookies.session];
     if (!player) {
         return res.status(401).json({ error: "401 unauthorised" });
     }
-    const library = await loadTaskLibrary();
-    const engine = library.tasks.find(t => t.id === 'fuel_engine');
-    const needs = engine ? engine.requires || [] : [];
     const mine = Array.isArray(player.tasks) ? player.tasks : [];
-    const filled = needs.length > 0 && needs.every(id => mine.some(t => t.id === id && t.done));
+    let filled = false;
+    for (const e of mine) {
+        if (!Array.isArray(e.steps)) continue;
+        const i = e.steps.findIndex(s => s.task === 'fuel_engine');
+        if (i >= 0) { filled = e.steps.slice(0, i).every(s => s.done); break; }
+    }
     return res.json({ filled, gallons: 12.5 });
 });
 
