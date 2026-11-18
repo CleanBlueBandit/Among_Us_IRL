@@ -2,44 +2,34 @@
 
 Tasks are physical QR codes placed around the play area. Each player is assigned
 a random set of tasks at game start (the "tasks" setting in the host lobby) and
-sees them, with their locations, on their tablet. Impostors get tasks too, but
+sees them on the sticky note next to their tablet. Impostors get tasks too, but
 theirs never count towards the crew total.
 
-## Setup (before the game)
+## How tasks work
 
-1. Write a JSON file of tasks, e.g. `tasks.example.json`:
+Every `.html` file in the `minigames/` folder is one task. The file name (without
+`.html`) is the `task.id`, so `minigames/wires.html` is the task `wires`. There
+is nothing to import: add, rename or delete a file and the task list follows.
 
-```
-[
-  { "name": "Fix the wires", "location": "Electrical" },
-  { "name": "Refuel the tank", "location": "Garage" }
-]
-```
+- The name shown to players is made from the file name (`calibrate_power` becomes "Calibrate power").
+- Optional location, shown under the name: add `<meta name="location" content="Electrical">` to the file's `<head>`.
+- File names may only use letters, numbers, `-` and `_`.
+- Files starting with `_` are ignored. Copy `minigames/_template.html` to make a new task.
+- A minigame tells the server it is finished by calling `window.completeTask()`.
+- `refuel_tank` and `fuel_engine` share a fuel tank: `fuel_engine` only works after someone did `refuel_tank`, so keep both file names.
 
-(optional `"id"` per entry; otherwise derived from name + location)
+## QR codes
 
-Optional `"minigame"` per entry makes the scan open a minigame; finishing it completes the task:
+Each task is scanned through a random secret token, so a task link can't be guessed from its name.
+The server makes a token for every task by itself and keeps them in `tokens.json`, so printed codes
+stay valid across restarts. The links are in `tasks.txt`, one per line.
 
-| Key | What the player does |
-| --- | --- |
-| `wires` | Drag each wire to the matching colour |
-| `calibrate_power` | Set the channel on the sticky note to its target amps |
-| `refuel_tank` | Hold the button to fill the fuel tank |
-| `fuel_engine` | Hold the button to fuel the engine from the tank (needs a `refuel_tank` task too) |
-| `swipe_card` | Take the card from the wallet and swipe it at the right speed (about 0.45 to 1.15 s) |
-| `empty_trash` | Pull and hold the lever until the trash has dropped out of the bin; when it jams, let go and pull again |
-| `upload_data` | Keep the antenna inside the drifting signal band until the upload finishes |
-| `clear_asteroids` | Shoot 20 asteroids; big ones split into fragments |
-| `cool_reactor` | Hold VENT (or Space) to keep the needle in the safe zone |
-| `keypad_code` | Copy the code from the note onto the keypad |
-| `prime_shields` | Activate every offline shield panel |
+1. Start the server once (or run `npm run task-links`).
+2. Turn each line of `tasks.txt` into a QR code, print it and hang it at the task's location.
 
-2. `npm run import:tasks -- tasks.json`  - stores tasks and locations
-3. `npm run generate:tasks`  - writes `tasks.txt`, one link per line
-   (`npm run generate:tasks -- 2` makes two links per task)
-4. Turn each line of `tasks.txt` into a QR code, print it and hang it at the task's location.
-
-Re-run step 3 whenever `IP`/`PORT` in `.env` change, since the links contain them.
+A new minigame file gets its token the next time the server looks at the tasks (at the latest when a game starts),
+and its link is added to `tasks.txt`. The links contain `IP`/`PORT` from `.env`: if those change, run
+`npm run task-links -- --new` to rewrite them (this also issues new tokens, so reprint the codes).
 
 ## Scanning
 

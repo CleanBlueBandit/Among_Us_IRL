@@ -10,8 +10,8 @@ import bcrypt from 'bcrypt';
 import 'dotenv/config';
 import { renderCrewmateWinHtml, renderImpostorWinHtml } from './winscreen.js';
 import { renderRoleRevealHtml } from './rolereveal.js';
-import { renderTaskResultHtml, renderTaskConfirmHtml } from './taskresult.js';
-import { MINIGAME_PAGES } from './scripts/minigames.js';
+import { renderTaskResultHtml } from './taskresult.js';
+import { readTasksWithTokens, MINIGAMES_DIR } from './scripts/taskStore.js';
 import { debuglog } from 'util';
 import { marked } from "marked";
 
@@ -201,30 +201,25 @@ try {
     logDebug(`game.json missing, copying data from default.json`);
 }
 
-const TASKS_FILE = path.join(__dirname, 'tasks.json');
+// Tasks are the .html files in the minigames/ folder; the file name is the task.id (see scripts/taskStore.js).
+// Each task also gets a random token (made automatically) that goes in its QR link.
+// The two tank minigames share state, so they are recognised by their ids.
+const TANK_FILL_TASK = 'refuel_tank';
+const TANK_USE_TASK = 'fuel_engine';
 
-// Task library: { tasks: [{id,name,location}], links: [{token,taskId}] }
-// Produced by "npm run import:tasks" and "npm run generate:tasks".
 async function loadTaskLibrary() {
     try {
-        const parsed = JSON.parse(await fs.readFile(TASKS_FILE, 'utf-8'));
-        return {
-            tasks: Array.isArray(parsed.tasks) ? parsed.tasks : [],
-            links: Array.isArray(parsed.links) ? parsed.links : []
-        };
+        return { tasks: await readTasksWithTokens() };
     } catch (error) {
-        if (error.code !== 'ENOENT') logError("Failed to read tasks.json:", error);
-        return { tasks: [], links: [] };
+        logError("Failed to read the minigames folder:", error);
+        return { tasks: [] };
     }
 }
 
-// Only tasks that actually have a generated link can be completed, so only those can be assigned.
-// "fuel_engine" needs the tank refuelled first, so it is only usable when a "refuel_tank" task is linked too.
+// "fuel_engine" needs the tank refuelled first, so it is only usable when a "refuel_tank" task exists too.
 function eligibleTasks(library) {
-    const linked = new Set(library.links.map(l => l.taskId));
-    const linkedTasks = library.tasks.filter(t => linked.has(t.id));
-    const hasRefuel = linkedTasks.some(t => t.minigame === 'refuel_tank');
-    return linkedTasks.filter(t => t.minigame !== 'fuel_engine' || hasRefuel);
+    const hasRefuel = library.tasks.some(t => t.id === TANK_FILL_TASK);
+    return library.tasks.filter(t => t.id !== TANK_USE_TASK || hasRefuel);
 }
 
 function pickRandomTasks(pool, count) {
@@ -236,10 +231,10 @@ function pickRandomTasks(pool, count) {
     const picked = copy.slice(0, count);
 
     // Anyone who has to fuel the engine must also be able to refuel the tank first.
-    const refuel = pool.find(t => t.minigame === 'refuel_tank');
-    const fuel = picked.find(t => t.minigame === 'fuel_engine');
+    const refuel = pool.find(t => t.id === TANK_FILL_TASK);
+    const fuel = picked.find(t => t.id === TANK_USE_TASK);
     if (refuel && fuel && !picked.some(t => t.id === refuel.id)) {
-        const swap = picked.findIndex(t => t.minigame !== 'fuel_engine');
+        const swap = picked.findIndex(t => t.id !== TANK_USE_TASK);
         picked[swap >= 0 ? swap : picked.indexOf(fuel)] = refuel;
     }
 
@@ -265,8 +260,8 @@ function evaluateTaskWin(data) {
     return true;
 }
 
-// Read-only validation of a scanned task link, shared by the GET (before showing a minigame / confirm
-// button) and the POST (which then applies it). Returns { outcome } when declined, otherwise
+// Read-only validation of a scanned task link, shared by the GET (before showing the minigame)
+// and the POST (which then applies it). Returns { outcome } when declined, otherwise
 // { player, libTask, mine, shown }. The wording is identical for crewmates and impostors so a scan
 // never reveals the role.
 function checkTaskScan(data, library, session, token) {
@@ -287,9 +282,8 @@ function checkTaskScan(data, library, session, token) {
         return decline('A sabotage is in progress. Fix it first!');
     }
 
-    const link = library.links.find(l => l.token === token);
-    const libTask = link ? library.tasks.find(t => t.id === link.taskId) : null;
-    if (!link || !libTask) {
+    const libTask = token ? library.tasks.find(t => t.token === token) : null;
+    if (!libTask) {
         const d = decline('This code is not a valid task.');
         d.outcome.status = 404;
         return d;
@@ -303,7 +297,7 @@ function checkTaskScan(data, library, session, token) {
     if (mine.done) {
         return decline('You already completed this task.', '/dashboard', shown);
     }
-    if (libTask.minigame === 'fuel_engine' && !(data.tank && data.tank.filled)) {
+    if (libTask.id === TANK_USE_TASK && !(data.tank && data.tank.filled)) {
         return decline('The fuel tank is empty. Refuel it first.', '/dashboard', shown);
     }
 
@@ -323,8 +317,8 @@ function processTaskScan(data, library, session, token) {
     }
 
     // The two tank minigames share state: refuelling fills it, fuelling the engine drains it.
-    if (libTask.minigame === 'refuel_tank') data.tank = { filled: true, gallons: 12.5 };
-    else if (libTask.minigame === 'fuel_engine') data.tank = { ...DEFAULT_TANK };
+    if (libTask.id === TANK_FILL_TASK) data.tank = { filled: true, gallons: 12.5 };
+    else if (libTask.id === TANK_USE_TASK) data.tank = { ...DEFAULT_TANK };
 
     return { accepted: true, status: 200, title: 'Task accepted', message: 'Task completed.', next: '/dashboard', task: shown };
 }
@@ -334,9 +328,9 @@ function completeTaskSnippet(token) {
     return `<script>window.TASK_TOKEN=${JSON.stringify(token)};window.completeTask=(function(){var sent=false;return function(delay){if(sent)return;sent=true;setTimeout(function(){var f=document.createElement('form');f.method='POST';f.action='/task/'+encodeURIComponent(window.TASK_TOKEN);document.body.appendChild(f);f.submit();},delay==null?1500:delay);};})();</script>`;
 }
 
-async function renderMinigameHtml(minigame, token) {
-    const html = await fs.readFile(path.join(__dirname, 'public', MINIGAME_PAGES[minigame]), 'utf-8');
-    const snippet = completeTaskSnippet(token);
+async function renderMinigameHtml(task) {   // task.token is the scan token
+    const html = await fs.readFile(path.join(MINIGAMES_DIR, task.file), 'utf-8');
+    const snippet = completeTaskSnippet(task.token);
     return /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, m => m + snippet) : snippet + html;
 }
 
@@ -401,6 +395,7 @@ async function saveGame(data) {
 
 httpServer.listen(PORT, () => {
     logDebug(`Server connected. Express server running on ${protocol}://${IP}:${PORT}`);
+    loadTaskLibrary().then(lib => logDebug(`Tasks loaded from minigames/: ${lib.tasks.map(t => t.id).join(', ') || 'none'} (links in tasks.txt)`));
 });
 
 app.post('/enter', async (req, res) => {
@@ -1851,6 +1846,11 @@ app.post("/start", async (req, res) => {
         const totalRealPlayers = allPlayerIds.length;
 
         const parsedSettings = parseSettingsArray(req.body.settings, totalRealPlayers);
+        if (!parsedSettings && Array.isArray(req.body.settings) && parseInt(req.body.settings[0], 10) >= totalRealPlayers) {
+            const asked = parseInt(req.body.settings[0], 10);
+            logDebug(`Game start blocked: ${asked} impostors requested but only ${totalRealPlayers} players.`);
+            return res.status(400).json({ message: `Too many impostors: you set ${asked} but only ${totalRealPlayers} player${totalRealPlayers === 1 ? '' : 's'} joined. Impostors must be fewer than players.`, failed: true });
+        }
         if (!parsedSettings) {
             logDebug("Game start blocked: Invalid or missing settings.");
             return res.status(400).json({ message: "Invalid or missing settings.", failed: true });
@@ -1860,7 +1860,7 @@ app.post("/start", async (req, res) => {
         const taskPool = eligibleTasks(taskLibrary);
         if (parsedSettings.tasks > 0 && taskPool.length === 0) {
             logDebug("Game start blocked: no tasks with generated links.");
-            return res.status(202).json({ message: "Cant start the game - no tasks available. Run 'npm run import:tasks' and 'npm run generate:tasks' first (or set tasks to 0).", failed: true });
+            return res.status(202).json({ message: "Cant start the game - no tasks available. Add minigame .html files to the minigames folder (or set tasks to 0).", failed: true });
         }
         const tasksPerPlayer = Math.min(parsedSettings.tasks, taskPool.length);
         const taskWarning = tasksPerPlayer < parsedSettings.tasks
@@ -1941,24 +1941,19 @@ app.post("/start", async (req, res) => {
     });
 });
 
-// Players scan a generated QR code (tasks.txt) which opens this URL in their browser.
+// Players scan a QR code (links are in tasks.txt, made by the server) which opens /task/<token> in their browser.
 // GET validates the scan but never changes state, so link previewers, QR apps and prefetching can't
-// complete a task by accident. It then shows the task's minigame (if it has one) or a confirm page,
-// and either one POSTs back to the same URL to actually complete the task.
+// complete a task by accident. It then shows the task's minigame, which POSTs back to the same URL
+// (via completeTask()) to actually complete the task.
 app.get("/task/:token", async (req, res) => {
     try {
         const data = await loadGame();
         const library = await loadTaskLibrary();
-        const token = String(req.params.token || '');
-        const check = checkTaskScan(data, library, req.cookies.session, token);
+        const check = checkTaskScan(data, library, req.cookies.session, String(req.params.token || ''));
         if (check.outcome) {
             return res.status(check.outcome.status).send(renderTaskResultHtml(check.outcome));
         }
-        const { libTask } = check;
-        if (libTask.minigame && MINIGAME_PAGES[libTask.minigame]) {
-            return res.send(await renderMinigameHtml(libTask.minigame, token));
-        }
-        return res.send(renderTaskConfirmHtml({ name: libTask.name, location: libTask.location }, token));
+        return res.send(await renderMinigameHtml(check.libTask));
     } catch (error) {
         logError("Error showing task page:", error);
         return res.status(500).send(renderTaskResultHtml({

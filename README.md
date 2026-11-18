@@ -213,14 +213,18 @@ Now that your server is upp and running (hopefully), you will need to set up the
 
 Tasks are QR codes placed around the play area; the server accepts or declines each scan.
 
+Every `.html` file in the `minigames/` folder is a task, and its file name is the `task.id`. There is no import step: add, rename or delete a file and the task list changes.
+
+Each task is scanned through a random secret token. The server creates tokens by itself and saves them in `tokens.json`, so printed QR codes keep working across restarts. The links are written to `tasks.txt` (one per line) - make QR codes from those.
+
 ```bash
-npm run import:tasks -- tasks.json   # tasks + locations, see tasks.example.json
-npm run generate:tasks               # writes tasks.txt (one link per line) - make QR codes from these
+npm run task-links           # show the links (the server already keeps tasks.txt up to date)
+npm run task-links -- --new  # issue new tokens for every task (old QR codes stop working)
 ```
 
-At game start every player gets `tasks` random tasks (set in the host lobby) and sees them with their locations. Impostors get tasks too, but those don't count towards the crew total. More details: `/help?topic=tasks`.
+At game start every player gets `tasks` random tasks (set in the host lobby) and sees them on a sticky note next to their tablet. Impostors get tasks too, but those don't count towards the crew total. More details: `/help?topic=tasks`.
 
-> Players must scan with the same browser they joined with (login is a cookie), and the links use `IP`/`PORT` from `.env`, so re-run `generate:tasks` if those change.
+> Players must scan with the same browser they joined with (login is a cookie), and the links use `IP`/`PORT` from `.env`, so run `npm run task-links -- --new` (or delete `tokens.json` and restart) if those change.
 
 ## Important security note
 This server is meant to be hosted on **localhost only**. Several serious vulnerabilities are present intentionally, because I didnt bother to fix them. (It aint like im building this for a megacorporation or something)
