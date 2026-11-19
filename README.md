@@ -228,6 +228,19 @@ At game start every player gets `tasks` random tasks (set in the host lobby) and
 
 > Players must scan with the same browser they joined with (login is a cookie), and the links use `IP`/`PORT` from `.env`, so run `npm run task-links -- --new` (or delete `tokens.json` and restart) if those change.
 
+## Floor plan
+
+In the host lobby, **Floor plan** opens the editor (host only). Draw each floor with walls and doors, name every room, and drag every task into the room where its QR code hangs. Saving checks the plan and writes it to `map/map.json`; it also updates `tasks.json`: tasks placed on the plan are switched on with their room as location, tasks left off are switched off.
+
+- Every line end must touch another line (its end or anywhere along it).
+- A door sits in a gap between walls: each door end touches exactly one wall, and nothing touches a door's middle.
+- Every enclosed area is a room and needs a unique name; all rooms on a floor must be reachable through doors.
+- A bound or repeating task must have all its parts placed, or none.
+- A reference image (a photo or drawing of the plan) can be traced over; it is only shown in the editor.
+- The editor won't save while a game is running.
+
+`npm run verify:floorplan` checks the rules on sample plans.
+
 ## Important security note
 This server is meant to be hosted on **localhost only**. Several serious vulnerabilities are present intentionally, because I didnt bother to fix them. (It aint like im building this for a megacorporation or something)
 

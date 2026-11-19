@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Floor plan editor</title>
+<style>
+  /* Layout: top bar, tool strip on the left, canvas in the middle, inspector / tasks / problems on the right. */
+  :root{
+    --bg:#0a0c10; --panel:#14171d; --panel-2:#1b1f27; --line:#272c36; --line-2:#353b47;
+    --text:#e9ecf1; --dim:#9aa2ae; --faint:#677080;
+    --accent:#ffb02e; --accent-soft:rgba(255,176,46,.16);
+    --wall:#e6e9ee; --door:#4fb8e6; --room:rgba(79,184,230,.07); --room-sel:rgba(255,176,46,.12);
+    --bad:#ff5a4a; --bad-soft:rgba(255,90,74,.14); --good:#3ddc84;
+    --ui:-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
+    --mono:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color-scheme:dark;
+  }
+  *{ box-sizing:border-box; }
+  html, body{ height:100%; margin:0; }
+  body{ background:var(--bg); color:var(--text); font:13px/1.4 var(--ui); overflow:hidden;
+    display:grid; grid-template-rows:auto 1fr auto; grid-template-columns:52px 1fr 320px;
+    grid-template-areas:"top top top" "tools canvas side" "status status side"; }
+  button, input, select{ font:inherit; color:inherit; }
+  button{ cursor:pointer; }
+  :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+  /* top bar */
+  .top{ grid-area:top; display:flex; align-items:center; gap:10px; padding:8px 12px; background:var(--panel); border-bottom:1px solid var(--line); min-width:0; }
+  .brand{ font-weight:700; letter-spacing:.06em; text-transform:uppercase; font-size:12px; color:var(--dim); white-space:nowrap; }
+  .floors{ display:flex; align-items:center; gap:4px; overflow-x:auto; min-width:0; flex:1; scrollbar-width:thin; }
+  .ftab{ border:1px solid var(--line-2); background:var(--panel-2); border-radius:7px; padding:5px 10px; white-space:nowrap; color:var(--dim); }
+  .ftab.on{ color:var(--text); border-color:var(--accent); background:var(--accent-soft); }
+  .ftab .warn{ display:inline-block; min-width:16px; margin-left:6px; padding:0 4px; border-radius:8px; background:var(--bad); color:#fff; font-size:10px; font-weight:700; text-align:center; }
+  .ftab input{ width:120px; background:transparent; border:0; padding:0; outline:none; }
+  .icon-btn{ border:1px solid var(--line-2); background:var(--panel-2); border-radius:7px; width:30px; height:30px; display:inline-grid; place-items:center; padding:0; color:var(--dim); flex:none; }
+  .icon-btn:hover:not(:disabled){ color:var(--text); border-color:var(--faint); }
+  .icon-btn:disabled{ opacity:.35; cursor:default; }
+  .icon-btn svg{ width:16px; height:16px; }
+  .sep{ width:1px; height:22px; background:var(--line-2); flex:none; }
+  .save{ border:0; border-radius:7px; padding:7px 16px; background:var(--accent); color:#1a1205; font-weight:700; flex:none; }
+  .save:disabled{ opacity:.5; cursor:default; }
+  .dirty-dot{ width:8px; height:8px; border-radius:50%; background:var(--accent); flex:none; visibility:hidden; }
+  .dirty .dirty-dot{ visibility:visible; }
+  .back{ color:var(--dim); text-decoration:none; white-space:nowrap; flex:none; }
+  .back:hover{ color:var(--text); }
+
+  /* tools */
+  .tools{ grid-area:tools; background:var(--panel); border-right:1px solid var(--line); display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px 0; }
+  .tool{ width:38px; height:38px; border-radius:9px; border:1px solid transparent; background:transparent; color:var(--dim); display:grid; place-items:center; position:relative; padding:0; }
+  .tool svg{ width:20px; height:20px; }
+  .tool:hover{ color:var(--text); background:var(--panel-2); }
+  .tool.on{ color:var(--accent); background:var(--accent-soft); border-color:rgba(255,176,46,.5); }
+  .tool kbd{ position:absolute; right:2px; bottom:1px; font:9px var(--mono); color:var(--faint); }
+  .tools .gap{ flex:1; }
+
+  /* canvas */
+  .stage{ grid-area:canvas; position:relative; overflow:hidden; background:#0d1016; touch-action:none; }
+  #cv{ position:absolute; inset:0; width:100%; height:100%; display:block; user-select:none; -webkit-user-select:none; }
+  .stage.pan, .stage.pan *{ cursor:grab !important; }
+  .stage.panning, .stage.panning *{ cursor:grabbing !important; }
+  .stage.draw{ cursor:crosshair; }
+  .hint{ position:absolute; left:12px; top:10px; max-width:calc(100% - 24px); padding:6px 10px; border-radius:7px; background:rgba(20,23,29,.92); border:1px solid var(--line); color:var(--dim); pointer-events:none; }
+  .popname{ position:absolute; z-index:5; display:flex; gap:6px; padding:6px; border-radius:9px; background:var(--panel); border:1px solid var(--accent); box-shadow:0 8px 24px rgba(0,0,0,.5); }
+  .popname input{ width:180px; background:var(--panel-2); border:1px solid var(--line-2); border-radius:6px; padding:5px 8px; outline:none; }
+  .popname button{ border:0; border-radius:6px; padding:5px 10px; background:var(--accent); color:#1a1205; font-weight:700; }
+  .toast{ position:absolute; left:50%; bottom:16px; transform:translateX(-50%); max-width:min(560px, calc(100% - 32px)); padding:9px 14px; border-radius:9px; background:var(--panel); border:1px solid var(--line-2); box-shadow:0 8px 24px rgba(0,0,0,.5); opacity:0; transition:opacity .2s; pointer-events:none; }
+  .toast.show{ opacity:1; }
+  .toast.bad{ border-color:var(--bad); } .toast.good{ border-color:var(--good); }
+  .drag-ghost{ position:fixed; z-index:50; pointer-events:none; padding:4px 9px; border-radius:12px; background:var(--accent); color:#1a1205; font-weight:700; font-size:12px; transform:translate(-50%, -140%); white-space:nowrap; }
+
+  /* status bar */
+  .status{ grid-area:status; display:flex; align-items:center; gap:14px; padding:5px 12px; background:var(--panel); border-top:1px solid var(--line); color:var(--faint); font:11px var(--mono); white-space:nowrap; overflow:hidden; }
+  .status button{ border:1px solid var(--line-2); background:transparent; border-radius:5px; padding:1px 7px; color:var(--dim); font:11px var(--mono); }
+  .status button.on{ color:var(--accent); border-color:rgba(255,176,46,.5); }
+
+  /* side panel */
+  .side{ grid-area:side; background:var(--panel); border-left:1px solid var(--line); display:flex; flex-direction:column; min-height:0; }
+  .tabs{ display:flex; border-bottom:1px solid var(--line); }
+  .tabs button{ flex:1; border:0; background:transparent; padding:10px 6px; color:var(--dim); border-bottom:2px solid transparent; }
+  .tabs button.on{ color:var(--text); border-bottom-color:var(--accent); }
+  .tabs .count{ display:inline-block; min-width:18px; margin-left:4px; padding:0 5px; border-radius:9px; background:var(--panel-2); font-size:11px; }
+  .tabs .count.bad{ background:var(--bad); color:#fff; }
+  .pane{ flex:1; overflow-y:auto; padding:12px; display:none; min-height:0; }
+  .pane.on{ display:block; }
+  .sec{ margin-bottom:16px; }
+  .sec h3{ margin:0 0 8px; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); font-weight:700; }
+  .field{ display:flex; flex-direction:column; gap:4px; margin-bottom:10px; }
+  .field label{ color:var(--dim); font-size:12px; }
+  .field input[type=text], .field input[type=number]{ background:var(--panel-2); border:1px solid var(--line-2); border-radius:6px; padding:6px 8px; outline:none; width:100%; }
+  .field input:focus{ border-color:var(--accent); }
+  .row{ display:flex; gap:6px; flex-wrap:wrap; }
+  .btn{ border:1px solid var(--line-2); background:var(--panel-2); border-radius:6px; padding:5px 10px; color:var(--text); }
+  .btn:hover:not(:disabled){ border-color:var(--faint); }
+  .btn:disabled{ opacity:.4; cursor:default; }
+  .btn.danger{ color:#ffb3ab; }
+  .muted{ color:var(--faint); }
+  .kv{ display:flex; justify-content:space-between; color:var(--dim); padding:2px 0; }
+  .kv b{ color:var(--text); font-weight:600; }
+  input[type=range]{ width:100%; accent-color:var(--accent); }
+  .seg{ display:inline-flex; border:1px solid var(--line-2); border-radius:6px; overflow:hidden; }
+  .seg button{ border:0; background:var(--panel-2); padding:5px 12px; color:var(--dim); }
+  .seg button.on{ background:var(--accent-soft); color:var(--accent); }
+
+  /* tasks */
+  .unit{ border:1px solid var(--line); border-radius:9px; padding:8px; margin-bottom:8px; background:var(--panel-2); }
+  .unit-head{ display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .unit-name{ flex:1; font-weight:600; min-width:0; overflow-wrap:anywhere; }
+  .badge{ font-size:10px; font-weight:700; letter-spacing:.04em; padding:2px 6px; border-radius:6px; text-transform:uppercase; white-space:nowrap; }
+  .badge.on{ background:rgba(61,220,132,.15); color:var(--good); }
+  .badge.off{ background:var(--panel); color:var(--faint); }
+  .badge.part{ background:var(--bad-soft); color:var(--bad); }
+  .chips{ display:flex; flex-wrap:wrap; gap:6px; }
+  .chip{ display:inline-flex; align-items:center; gap:5px; border:1px dashed var(--faint); background:transparent; border-radius:14px; padding:3px 9px; color:var(--dim); touch-action:none; font-size:12px; }
+  .chip:hover{ border-color:var(--accent); color:var(--text); }
+  .chip.placed{ border-style:solid; border-color:rgba(61,220,132,.5); color:var(--text); }
+  .chip .dot{ width:7px; height:7px; border-radius:50%; background:var(--faint); }
+  .chip.placed .dot{ background:var(--good); }
+  .unit .note{ margin-top:6px; font-size:11px; color:var(--faint); }
+
+  /* problems */
+  .prob{ display:flex; gap:8px; width:100%; text-align:left; border:1px solid var(--line); background:var(--panel-2); border-radius:8px; padding:8px; margin-bottom:6px; color:var(--text); }
+  .prob:hover{ border-color:var(--bad); }
+  .prob .mark{ flex:none; width:18px; height:18px; border-radius:50%; background:var(--bad); color:#fff; display:grid; place-items:center; font-weight:800; font-size:12px; }
+  .prob small{ display:block; color:var(--faint); }
+  .allgood{ color:var(--good); padding:8px 0; }
+
+  /* help */
+  .help{ position:fixed; inset:0; z-index:60; display:none; place-items:center; background:rgba(0,0,0,.55); }
+  .help.on{ display:grid; }
+  .help-card{ width:min(640px, calc(100% - 32px)); max-height:calc(100% - 32px); overflow:auto; background:var(--panel); border:1px solid var(--line-2); border-radius:12px; padding:18px 20px; }
+  .help-card h2{ margin:0 0 4px; font-size:16px; }
+  .help-card table{ width:100%; border-collapse:collapse; margin-top:10px; }
+  .help-card td{ padding:4px 0; border-bottom:1px solid var(--line); color:var(--dim); vertical-align:top; }
+  .help-card td:first-child{ width:42%; color:var(--text); font:12px var(--mono); }
+  .help-card ul{ color:var(--dim); padding-left:18px; }
+
+  /* narrow screens: the side panel becomes a drawer */
+  .side-toggle{ display:none; }
+  @media (max-width:860px){
+    body{ grid-template-columns:52px 1fr; grid-template-areas:"top top" "tools canvas" "status status"; }
+    .side{ position:fixed; right:0; top:47px; bottom:28px; width:min(340px, 88vw); z-index:20; transform:translateX(100%); transition:transform .2s; box-shadow:-8px 0 24px rgba(0,0,0,.5); }
+    .side.open{ transform:none; }
+    .side-toggle{ display:inline-grid; }
+    .brand, .back span{ display:none; }
+  }
+  @media (prefers-reduced-motion:reduce){ .side, .toast{ transition:none; } }
+</style>
+</head>
+<body>
+  <header class="top">
+    <span class="brand">Floor plan</span>
+    <div class="floors" id="floors" role="tablist" aria-label="Floors"></div>
+    <button class="icon-btn" id="addFloor" title="Add a floor"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg></button>
+    <span class="sep"></span>
+    <button class="icon-btn" id="undo" title="Undo (Ctrl+Z)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3 2 6l3 3"/><path d="M2 6h7a4 4 0 0 1 0 8H6"/></svg></button>
+    <button class="icon-btn" id="redo" title="Redo (Ctrl+Shift+Z)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m11 3 3 3-3 3"/><path d="M14 6H7a4 4 0 0 0 0 8h3"/></svg></button>
+    <button class="icon-btn" id="helpBtn" title="Shortcuts (?)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6.5"/><path d="M6.2 6.2a1.9 1.9 0 1 1 2.6 1.8c-.5.2-.8.6-.8 1.2v.4"/><circle cx="8" cy="11.8" r=".4" fill="currentColor"/></svg></button>
+    <button class="icon-btn side-toggle" id="sideToggle" title="Panels"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M10 3v10"/></svg></button>
+    <span class="sep"></span>
+    <span class="dirty-dot" title="Unsaved changes"></span>
+    <button class="save" id="save" title="Save (Ctrl+S)">Save</button>
+    <a class="back" href="/waiting" title="Back to the lobby">&larr; <span>Lobby</span></a>
+  </header>
+
+  <nav class="tools" aria-label="Tools">
+    <button class="tool" data-tool="select" title="Select and move (V)"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M4 2.5l11 6.3-4.6 1.2 2.7 5-2 1-2.7-5L5 14.2z"/></svg><kbd>V</kbd></button>
+    <button class="tool" data-tool="wall" title="Draw walls (W)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M3 16V4h14"/></svg><kbd>W</kbd></button>
+    <button class="tool" data-tool="door" title="Draw a door (D)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 16h4M14 16h4" stroke-width="3"/><path d="M6 16h8" stroke-dasharray="2 2"/><path d="M6 16a8 8 0 0 1 8-8" stroke-width="1.4"/></svg><kbd>D</kbd></button>
+    <button class="tool" data-tool="room" title="Name a room (R)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="2.5" y="4" width="15" height="12" rx="1"/><path d="M6 9h8M6 12h5" stroke-linecap="round"/></svg><kbd>R</kbd></button>
+    <button class="tool" data-tool="pan" title="Pan (H, or hold Space)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10V4.5a1.2 1.2 0 0 1 2.4 0V9M9.4 9V3.5a1.2 1.2 0 0 1 2.4 0V9M11.8 9V4.5a1.2 1.2 0 0 1 2.4 0V11c0 3.5-2 6-5.2 6-2.4 0-3.6-1.3-4.8-3.5L3 10.8a1.2 1.2 0 0 1 2-1.3L7 12"/></svg><kbd>H</kbd></button>
+    <span class="gap"></span>
+    <button class="tool" id="fitBtn" title="Fit the floor in view (F)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4"/></svg><kbd>F</kbd></button>
+  </nav>
+
+  <main class="stage" id="stage">
+    <svg id="cv" aria-label="Floor plan canvas">
+      <defs>
+        <pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="10" height="10" fill="rgba(255,90,74,.06)"/><path d="M0 0v10" stroke="rgba(255,90,74,.35)" stroke-width="3"/></pattern>
+      </defs>
+      <g id="gGrid"></g>
+      <g id="world">
+        <g id="gRef"></g>
+        <g id="gFaces"></g>
+        <g id="gLines"></g>
+        <g id="gRooms"></g>
+        <g id="gPins"></g>
+        <g id="gProblems"></g>
+        <g id="gOverlay"></g>
+      </g>
+    </svg>
+    <div class="hint" id="hint"></div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </main>
+
+  <footer class="status">
+    <span id="stPos">x 0.00 m · y 0.00 m</span>
+    <span id="stZoom">100%</span>
+    <button id="gridBtn" class="on" title="Snap to grid (G)">Grid 25 cm</button>
+    <span id="stSel"></span>
+  </footer>
+
+  <aside class="side" id="side">
+    <div class="tabs" role="tablist">
+      <button class="on" data-pane="inspect">Inspector</button>
+      <button data-pane="tasks">Tasks <span class="count" id="taskCount">0</span></button>
+      <button data-pane="problems">Problems <span class="count" id="probCount">0</span></button>
+    </div>
+    <div class="pane on" id="pane-inspect"></div>
+    <div class="pane" id="pane-tasks"></div>
+    <div class="pane" id="pane-problems"></div>
+  </aside>
+
+  <div class="help" id="help" role="dialog" aria-modal="true" aria-label="Shortcuts">
+    <div class="help-card">
+      <h2>Drawing the floor plan</h2>
+      <ul>
+        <li>Draw walls corner to corner. Every line end must touch another line, at its end or anywhere along it.</li>
+        <li>Doors go in gaps: wall end, door, wall end. A door end touches exactly one wall, and nothing touches a door's middle.</li>
+        <li>Every enclosed area is a room: name it with the Room tool. All rooms on a floor must be reachable through doors.</li>
+        <li>Drag tasks from the Tasks tab into rooms. Tasks left off the plan are switched off when you save. Bound and repeating tasks need all their parts placed.</li>
+      </ul>
+      <table>
+        <tr><td>V W D R H</td><td>Select, Wall, Door, Room name, Pan</td></tr>
+        <tr><td>Space + drag, middle mouse</td><td>Pan</td></tr>
+        <tr><td>Wheel / pinch, + / -</td><td>Zoom</td></tr>
+        <tr><td>F</td><td>Fit the floor in view</td></tr>
+        <tr><td>Shift (while drawing)</td><td>Lock to 45° angles</td></tr>
+        <tr><td>Alt (while drawing or moving)</td><td>No snapping</td></tr>
+        <tr><td>Enter, Esc, double-click</td><td>Finish the wall you are drawing</td></tr>
+        <tr><td>Click, Shift+click, drag a box</td><td>Select, add to selection, select an area</td></tr>
+        <tr><td>Alt+click</td><td>Select one item inside a group</td></tr>
+        <tr><td>Arrows (Shift = ×10)</td><td>Nudge the selection</td></tr>
+        <tr><td>Ctrl+A</td><td>Select everything on this floor</td></tr>
+        <tr><td>Ctrl+C / X / V / D</td><td>Copy, cut, paste, duplicate</td></tr>
+        <tr><td>Ctrl+G / Ctrl+Shift+G</td><td>Group, ungroup</td></tr>
+        <tr><td>T</td><td>Switch selected lines between wall and door</td></tr>
+        <tr><td>Shift+R / Shift+H / Shift+V</td><td>Rotate 90°, flip horizontally, flip vertically</td></tr>
+        <tr><td>Delete / Backspace</td><td>Delete the selection</td></tr>
+        <tr><td>Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y</td><td>Undo, redo</td></tr>
+        <tr><td>G</td><td>Grid snap on/off</td></tr>
+        <tr><td>Ctrl+S</td><td>Save</td></tr>
+      </table>
+      <div class="row" style="margin-top:12px"><button class="btn" id="helpClose">Close</button></div>
+    </div>
+  </div>
+
+  <input type="file" id="refFile" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" hidden>
+  <script type="module" src="/editor/editor.js"></script>
+</body>
+</html>

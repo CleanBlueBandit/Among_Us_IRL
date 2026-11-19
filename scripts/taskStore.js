@@ -346,4 +346,23 @@ export function readLibrary({ rotate = false } = {}) {
     return result;
 }
 
+// Sets "enabled" and "location" of tasks in tasks.json (used by the floor plan editor's save).
+// updates: { [taskId]: { enabled: bool, location: string | string[] } }. Other entries and binds are kept.
+export function updateTaskConfig(updates) {
+    const run = async () => {
+        const raw = await readConfigFile();
+        if (raw === null) throw new Error('tasks.json has a syntax error; fix it before saving the floor plan.');
+        const found = await listMinigames();
+        const { config } = completeConfig(raw, found.map(f => f.id));
+        for (const [id, u] of Object.entries(updates)) {
+            const e = config.tasks[id] || normaliseEntry({});
+            config.tasks[id] = normaliseEntry({ ...e, enabled: u.enabled, location: u.location });
+        }
+        await fs.writeFile(CONFIG_FILE, formatConfig(config), 'utf-8');
+    };
+    const result = queue.then(run, run);
+    queue = result.catch(() => {});
+    return result;
+}
+
 export { baseUrl };
