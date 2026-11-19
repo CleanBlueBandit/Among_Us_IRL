@@ -7,7 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "task-links": "node scripts/taskLinks.js"
+    "task-links": "node scripts/taskLinks.js",
+    "verify:floorplan": "node scripts/verifyFloorplan.js"
   },
   "keywords": [],
   "author": "",

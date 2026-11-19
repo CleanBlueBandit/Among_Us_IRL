@@ -57,6 +57,13 @@ The server log warns about entries that name a task with no minigame file. If `t
 typo, the server leaves it untouched and treats every task as switched on, with no location, no
 repeats and no binds, until it is fixed.
 
+## Floor plan editor
+
+The host's **Floor plan** button (in the lobby) does all of the above without editing `tasks.json` by
+hand: drag each task's QR codes into the rooms on the plan and save. Placed tasks are switched on with
+their room as location (with the floor name when there are several floors); tasks left off the plan are
+switched off. Repeats and binds still come from `tasks.json`.
+
 ## QR codes
 
 Each task is scanned through a random secret token, so a task link can't be guessed from its name.

@@ -11,7 +11,8 @@ import 'dotenv/config';
 import { renderCrewmateWinHtml, renderImpostorWinHtml } from './winscreen.js';
 import { renderRoleRevealHtml } from './rolereveal.js';
 import { renderTaskResultHtml } from './taskresult.js';
-import { readLibrary, MINIGAMES_DIR } from './scripts/taskStore.js';
+import { readLibrary, MINIGAMES_DIR, ROOT, updateTaskConfig } from './scripts/taskStore.js';
+import { validatePlan } from './public/editor/geometry.js';
 import { debuglog } from 'util';
 import { marked } from "marked";
 
@@ -126,7 +127,9 @@ app.use((req, res, next) => {
 });
 
 app.use(express.static('public'));
-app.use(express.json());
+// The floor plan save carries the whole plan, so it gets a bigger body limit (see /floorplan/save).
+const jsonBody = express.json();
+app.use((req, res, next) => (req.path === '/floorplan/save' ? next() : jsonBody(req, res, next)));
 app.use(cookieParser());
 
 let gameLock = Promise.resolve();
@@ -2031,6 +2034,153 @@ app.post("/task/:token", async (req, res) => {
 
 // Read by the fuel_engine minigame: the tank counts as filled once this player has done every step
 // before fuel_engine in its task (normally refuel_tank, bound to it in tasks.json).
+// ---- floor plan editor (host only) ---------------------------------------------------------------
+// The host draws the building in the editor (public/editor/). Saving checks the plan with the same rules
+// the editor shows (public/editor/geometry.js), writes map/map.json, and updates tasks.json: every task
+// placed in a room is switched on with that room as its location, every task left off the plan is
+// switched off.
+const MAP_DIR = path.join(ROOT, 'map');
+const MAP_FILE = path.join(MAP_DIR, 'map.json');
+const REF_DIR = path.join(MAP_DIR, 'refs');
+const REF_NAME = /^[a-f0-9]{24}\.(png|jpg|webp|gif|svg)$/;
+const REF_TYPES = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'image/svg+xml': 'svg' };
+
+function isHostRequest(req, data) {
+    const p = req.cookies.session ? data.players[req.cookies.session] : null;
+    return !!(p && data.gameState.host && p.username === data.gameState.host);
+}
+
+async function readPlan() {
+    try {
+        return JSON.parse(await fs.readFile(MAP_FILE, 'utf-8'));
+    } catch (e) {
+        if (e.code !== 'ENOENT') logError('Could not read map/map.json:', e);
+        return null;
+    }
+}
+
+// Every task as the editor sees it: a unit (a single task, a bound chain or a repeating task) and its
+// parts, one per QR code.
+function editorUnits(library) {
+    return library.units.map(u => {
+        const tasks = u.tasks.map(id => library.byId.get(id));
+        const name = tasks.map(t => (t.repeat > 1 ? `${t.name} ×${t.repeat}` : t.name)).join(' → ');
+        return {
+            id: u.id, name, problem: u.usable ? '' : (tasks.every(t => !t.enabled) ? '' : u.problem),
+            parts: u.steps.map(s => {
+                const t = library.byId.get(s.task);
+                return { code: t.steps[s.n - 1].label, task: s.task, name: stepName(t, s.n) };
+            })
+        };
+    });
+}
+
+// Strict shape check of a plan coming from the browser. Throws with a message on anything unexpected.
+function sanitizePlan(raw) {
+    const fail = m => { throw new Error(m); };
+    const id = v => (typeof v === 'string' && /^[\w-]{1,40}$/.test(v) ? v : fail('Bad id.'));
+    const text = (v, max) => (typeof v === 'string' && v.length <= max ? v : fail('Bad text.'));
+    const num = v => (typeof v === 'number' && Number.isFinite(v) && Math.abs(v) < 1e6 ? v : fail('Bad number.'));
+    const pt = v => (Array.isArray(v) && v.length === 2 ? [num(v[0]), num(v[1])] : fail('Bad point.'));
+    const group = v => (v === undefined || v === null ? undefined : id(v));
+    const list = (v, max) => (Array.isArray(v) && v.length <= max ? v : fail('Too many items.'));
+    if (!raw || typeof raw !== 'object') fail('No plan.');
+    return {
+        version: 1,
+        floors: list(raw.floors, 50).map(f => ({
+            id: id(f.id),
+            name: text(f.name, 60),
+            reference: f.reference ? {
+                file: REF_NAME.test(f.reference.file) ? f.reference.file : fail('Bad reference image.'),
+                x: num(f.reference.x), y: num(f.reference.y), w: num(f.reference.w), h: num(f.reference.h),
+                opacity: Math.max(0, Math.min(1, num(f.reference.opacity))), visible: f.reference.visible !== false
+            } : null,
+            lines: list(f.lines, 5000).map(l => ({ id: id(l.id), type: l.type === 'door' ? 'door' : 'wall', a: pt(l.a), b: pt(l.b), group: group(l.group) })),
+            rooms: list(f.rooms, 1000).map(r => ({ id: id(r.id), name: text(r.name, 60), at: pt(r.at), group: group(r.group) })),
+            pins: list(f.pins, 1000).map(p => ({ id: id(p.id), code: text(p.code, 80), at: pt(p.at), group: group(p.group) }))
+        }))
+    };
+}
+
+app.get("/floorplan", async (req, res) => {
+    const data = await loadGame();
+    if (!isHostRequest(req, data)) return res.redirect('/host');
+    return res.sendFile(path.join(__dirname, 'public', 'editor', 'floorplan.html'));
+});
+
+app.get("/floorplan/data", async (req, res) => {
+    const data = await loadGame();
+    if (!isHostRequest(req, data)) return res.status(401).json({ error: 'Only the host can edit the floor plan.' });
+    const library = await loadTaskLibrary();
+    return res.json({ plan: await readPlan(), units: editorUnits(library), gameRunning: !!data.gameState.started });
+});
+
+app.post("/floorplan/reference", express.raw({ type: Object.keys(REF_TYPES), limit: '15mb' }), async (req, res) => {
+    const data = await loadGame();
+    if (!isHostRequest(req, data)) return res.status(401).json({ error: 'Only the host can edit the floor plan.' });
+    const ext = REF_TYPES[(req.headers['content-type'] || '').split(';')[0].trim()];
+    if (!ext || !Buffer.isBuffer(req.body) || !req.body.length) return res.status(400).json({ error: 'Send a PNG, JPG, WebP, GIF or SVG image.' });
+    await fs.mkdir(REF_DIR, { recursive: true });
+    const file = `${crypto.randomBytes(12).toString('hex')}.${ext}`;
+    await fs.writeFile(path.join(REF_DIR, file), req.body);
+    return res.json({ file });
+});
+
+app.get("/floorplan/ref/:file", async (req, res) => {
+    const data = await loadGame();
+    if (!isHostRequest(req, data)) return res.sendStatus(401);
+    if (!REF_NAME.test(req.params.file)) return res.sendStatus(404);
+    res.set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; img-src data:");
+    return res.sendFile(path.join(REF_DIR, req.params.file), err => { if (err && !res.headersSent) res.sendStatus(404); });
+});
+
+app.post("/floorplan/save", express.json({ limit: '5mb' }), async (req, res) => {
+    try {
+        let result;
+        await withGameLock(async () => {
+            const data = await loadGame();
+            if (!isHostRequest(req, data)) { result = { status: 401, body: { error: 'Only the host can edit the floor plan.' } }; return; }
+            if (data.gameState.started) { result = { status: 409, body: { error: 'A game is running. Save the floor plan after it ends.' } }; return; }
+            let plan;
+            try { plan = sanitizePlan(req.body && req.body.plan); }
+            catch (e) { result = { status: 400, body: { error: `The plan could not be read: ${e.message}` } }; return; }
+
+            const library = await loadTaskLibrary();
+            const units = editorUnits(library);
+            const { problems, placements } = validatePlan(plan, units);
+            if (problems.length) { result = { status: 422, body: { error: 'The plan has problems.', problems } }; return; }
+
+            // map/map.json, written whole and then swapped in
+            await fs.mkdir(MAP_DIR, { recursive: true });
+            await fs.writeFile(MAP_FILE + '.tmp', JSON.stringify(plan, null, 1), 'utf-8');
+            await fs.rename(MAP_FILE + '.tmp', MAP_FILE);
+            const usedRefs = new Set(plan.floors.map(f => f.reference && f.reference.file).filter(Boolean));
+            try {
+                for (const f of await fs.readdir(REF_DIR)) if (REF_NAME.test(f) && !usedRefs.has(f)) await fs.unlink(path.join(REF_DIR, f));
+            } catch (e) { if (e.code !== 'ENOENT') logError('Could not tidy map/refs:', e); }
+
+            // tasks.json: placed -> on, with the room as location; not placed -> off
+            const manyFloors = plan.floors.length > 1;
+            const where = code => { const p = placements.get(code); return p ? (manyFloors ? `${p.room}, ${p.floorName}` : p.room) : null; };
+            const updates = {}, enabled = [], disabled = [];
+            for (const t of library.tasks) {
+                const spots = t.steps.map(st => where(st.label));
+                const on = spots.every(Boolean);
+                updates[t.id] = on ? { enabled: true, location: t.repeat > 1 ? spots : spots[0] }
+                    : { enabled: false, location: t.repeat > 1 ? t.steps.map(st => (st.locationFrom === 'tasks.json' ? st.location : '')) : (t.steps[0].locationFrom === 'tasks.json' ? t.steps[0].location : '') };
+                (on ? enabled : disabled).push(t.id);
+            }
+            await updateTaskConfig(updates);
+            logDebug(`Floor plan saved: ${plan.floors.length} floor(s); tasks on: ${enabled.join(', ') || 'none'}; off: ${disabled.join(', ') || 'none'}.`);
+            result = { status: 200, body: { ok: true, enabled, disabled } };
+        });
+        return res.status(result.status).json(result.body);
+    } catch (error) {
+        logError('Error saving the floor plan:', error);
+        return res.status(500).json({ error: 'Server error while saving. Nothing was changed.' });
+    }
+});
+
 app.get("/fill-rocket", async (req, res) => {
     const data = await loadGame();
     const player = data.players[req.cookies.session];
