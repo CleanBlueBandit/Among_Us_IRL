@@ -1,6 +1,6 @@
 // Floor plan editor. Draw walls and doors per floor, name the rooms they enclose, and place every task's
 // QR codes in rooms. The rules live in geometry.js, shared with the server, which checks them again on save.
-import { analyzeFloor, validatePlan, project, same, dist } from './geometry.js';
+import { analyzeFloor, validatePlan, project, same, dist, onInterior, EPS } from './geometry.js';
 
 const $ = id => document.getElementById(id);
 const GRID = 25;          // cm
@@ -30,7 +30,8 @@ let drag = null;                      // current pointer gesture
 let cursor = null;                    // last world position under the pointer
 let snapShown = null;                 // { p, kind } shown while drawing / dragging a corner
 let saving = false;
-let hoverPin = null;                  // pin under the pointer: its label is always shown
+let hoverPin = null;
+let erasePreview = null;              // the piece the eraser would remove                  // pin under the pointer: its label is always shown
 
 const floor = () => doc.floors[fi];
 const uid = p => p + Math.random().toString(36).slice(2, 10);
@@ -173,10 +174,113 @@ function snapPoint(w, { from = null, shift = false, alt = false, exclude = new S
     return { p: w, kind: 'free' };
 }
 
+// ---- connections, pieces between junctions, and rotation -------------------------------------------
+// Is this end of the line touching another line (its end or anywhere along it)?
+function endConnected(l, key, f = floor()) {
+    const p = l[key];
+    return f.lines.some(m => m !== l && (same(p, m.a) || same(p, m.b) || onInterior(p, m.a, m.b)));
+}
+// A wall that can swing around its one connected end: { line, pivotKey, freeKey } or null.
+function rotatable(l) {
+    if (!l || l.type === 'door') return null;
+    const ca = endConnected(l, 'a'), cb = endConnected(l, 'b');
+    if (ca === cb) return null;
+    return { line: l, pivotKey: ca ? 'a' : 'b', freeKey: ca ? 'b' : 'a' };
+}
+function selectedRotatable() {
+    const s = selected();
+    return s.lines.length === 1 && !s.rooms.length && !s.pins.length ? rotatable(s.lines[0]) : null;
+}
+function rotateHandle(r) {
+    const P = r.line[r.pivotKey], Q = r.line[r.freeKey], L = dist(P, Q) || 1;
+    const off = 26 / view.k;
+    return [Q[0] + (Q[0] - P[0]) / L * off, Q[1] + (Q[1] - P[1]) / L * off];
+}
+// Angle in degrees as the plan shows it: 0 = right, 90 = up.
+const angleOf = (P, Q) => (Math.atan2(-(Q[1] - P[1]), Q[0] - P[0]) * 180 / Math.PI + 360) % 360;
+// Swings the free end to the angle, keeping the length (r.len, fixed when the rotation starts, so rounding
+// can't creep). If the free end lands close to another line's end or on a line, it joins it.
+function setAngle(r, deg, snap = true) {
+    const P = r.line[r.pivotKey], a = deg * Math.PI / 180;
+    if (!r.len) r.len = Math.round(dist(P, r.line[r.freeKey]) * 100) / 100;
+    let q = [Math.round((P[0] + Math.cos(a) * r.len) * 100) / 100, Math.round((P[1] - Math.sin(a) * r.len) * 100) / 100];
+    if (snap) {
+        const others = floor().lines.filter(l => l !== r.line), rad = SNAP / view.k;
+        const e = nearestEnd(q, others, rad);
+        if (e) q = e;
+        else { const l = nearestLine(q, others, rad * 0.5); if (l) q = l.point; }
+    }
+    r.line[r.freeKey] = q;
+}
+function rotateBy(deg) {
+    const r = selectedRotatable();
+    if (!r) { toast('Select one wall that has exactly one end connected to rotate it around that end.'); return; }
+    change(() => setAngle(r, angleOf(r.line[r.pivotKey], r.line[r.freeKey]) + deg));
+}
+// Where along line l other lines meet or cross it (0..1), always including both ends.
+function junctions(l, f = floor()) {
+    const ts = [0, 1];
+    for (const m of f.lines) {
+        if (m === l) continue;
+        for (const e of [m.a, m.b]) if (onInterior(e, l.a, l.b)) ts.push(project(e, l.a, l.b).t);
+        const r = [l.b[0] - l.a[0], l.b[1] - l.a[1]], q = [m.b[0] - m.a[0], m.b[1] - m.a[1]];
+        const den = r[0] * q[1] - r[1] * q[0];
+        if (Math.abs(den) > 1e-9) {
+            const d = [m.a[0] - l.a[0], m.a[1] - l.a[1]];
+            const t = (d[0] * q[1] - d[1] * q[0]) / den, u = (d[0] * r[1] - d[1] * r[0]) / den;
+            if (t > 0 && t < 1 && u >= 0 && u <= 1) ts.push(t);
+        }
+    }
+    return [...new Set(ts.map(t => Math.round(t * 1e6) / 1e6))].sort((x, y) => x - y);
+}
+const lerp = (l, t) => [Math.round((l.a[0] + (l.b[0] - l.a[0]) * t) * 100) / 100, Math.round((l.a[1] + (l.b[1] - l.a[1]) * t) * 100) / 100];
+// The piece of a line under w, between the junctions on either side of it.
+function pieceAt(w) {
+    const f = floor(), t = HIT / view.k;
+    let line = null, best = t, at = 0;
+    for (const l of f.lines) { const q = project(w, l.a, l.b); if (q.d < best) { best = q.d; line = l; at = q.t; } }
+    if (!line) return null;
+    const ts = junctions(line);
+    let i = 0;
+    while (i < ts.length - 2 && ts[i + 1] <= at) i++;
+    return { line, t0: ts[i], t1: ts[i + 1], p0: lerp(line, ts[i]), p1: lerp(line, ts[i + 1]) };
+}
+// Removes the part of line l between t0 and t1, keeping what is left on either side.
+function cutLine(f, l, t0, t1) {
+    const keep = [];
+    if (t0 > 1e-6 && dist(l.a, lerp(l, t0)) > EPS) keep.push({ ...l, a: [...l.a], b: lerp(l, t0) });
+    if (t1 < 1 - 1e-6 && dist(lerp(l, t1), l.b) > EPS) keep.push({ ...l, id: keep.length ? uid('l') : l.id, a: lerp(l, t1), b: [...l.b] });
+    const i = f.lines.indexOf(l);
+    f.lines.splice(i, 1, ...keep);
+    return keep;
+}
+function erasePiece(pc) {
+    if (!pc) return false;
+    cutLine(floor(), pc.line, pc.t0, pc.t1);
+    sel.delete(pc.line.id);
+    return true;
+}
+// A door drawn along a wall replaces that stretch of the wall.
+function overwriteWalls(door) {
+    const f = floor(), len = dist(door.a, door.b);
+    if (len < EPS) return;
+    for (const w of [...f.lines]) {
+        if (w === door || w.type === 'door') continue;
+        const wl = dist(w.a, w.b);
+        if (wl < EPS) continue;
+        const offLine = p => Math.abs(((p[0] - w.a[0]) * (w.b[1] - w.a[1]) - (p[1] - w.a[1]) * (w.b[0] - w.a[0])) / wl);
+        if (offLine(door.a) > EPS || offLine(door.b) > EPS) continue;
+        const along = p => ((p[0] - w.a[0]) * (w.b[0] - w.a[0]) + (p[1] - w.a[1]) * (w.b[1] - w.a[1])) / (wl * wl);
+        const s0 = Math.max(0, Math.min(along(door.a), along(door.b))), s1 = Math.min(1, Math.max(along(door.a), along(door.b)));
+        if ((s1 - s0) * wl > EPS) cutLine(f, w, s0, s1);
+    }
+}
+
 // ---- hit testing -----------------------------------------------------------------------------------
 function labelBox(r) { const w = Math.max(60, (r.name || 'Unnamed room').length * 7.4 + 18) / view.k, h = 22 / view.k; return [r.at[0] - w / 2, r.at[1] - h / 2, w, h]; }
 function hitTest(w) {
     const f = floor(), t = HIT / view.k;
+    if (tool === 'select') { const r = selectedRotatable(); if (r && dist(w, rotateHandle(r)) < 13 / view.k) return { kind: 'rotate', r }; }
     for (let i = f.pins.length - 1; i >= 0; i--) if (dist(w, f.pins[i].at) < 13 / view.k) return { kind: 'pin', id: f.pins[i].id };
     for (let i = f.rooms.length - 1; i >= 0; i--) {
         const b = labelBox(f.rooms[i]);
@@ -185,7 +289,7 @@ function hitTest(w) {
     if (tool === 'select') {
         let best = null, bd = t;
         for (const l of f.lines) for (const e of [l.a, l.b]) { const d = dist(w, e); if (d < bd) { bd = d; best = e; } }
-        if (best) return { kind: 'end', point: best };
+        if (best) return { kind: 'end', point: best, w };
     }
     let line = null, ld = t;
     for (const l of f.lines) { const q = project(w, l.a, l.b); if (q.d < ld) { ld = q.d; line = l; } }
@@ -300,7 +404,22 @@ function renderOverlay() {
     }
     if (drag && drag.mode === 'box' && drag.rect) {
         const [x, y, w, h] = drag.rect;
-        o += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="rgba(255,176,46,.08)" stroke="var(--accent)" stroke-width="${px(1)}" stroke-dasharray="${px(4)} ${px(3)}"/>`;
+        // right-to-left selects whatever it touches (dashed green), left-to-right only what is fully inside
+        o += drag.crossing
+            ? `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="rgba(61,220,132,.07)" stroke="var(--good)" stroke-width="${px(1)}" stroke-dasharray="${px(5)} ${px(4)}"/>`
+            : `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="rgba(255,176,46,.08)" stroke="var(--accent)" stroke-width="${px(1)}"/>`;
+    }
+    const rot = tool === 'select' && !drag ? selectedRotatable() : (drag && drag.mode === 'rotate' ? drag.r : null);
+    if (rot) {
+        const h = rotateHandle(rot), P = rot.line[rot.pivotKey], Q = rot.line[rot.freeKey];
+        o += `<line x1="${Q[0]}" y1="${Q[1]}" x2="${h[0]}" y2="${h[1]}" stroke="var(--accent)" stroke-width="${px(1.5)}" stroke-dasharray="${px(3)} ${px(3)}"/>`;
+        o += `<circle cx="${P[0]}" cy="${P[1]}" r="${px(5)}" fill="none" stroke="var(--accent)" stroke-width="${px(2)}"/>`;
+        o += `<circle cx="${h[0]}" cy="${h[1]}" r="${px(10)}" fill="#1a1205" stroke="var(--accent)" stroke-width="${px(2)}"/>`;
+        o += `<path d="M${h[0] - px(4.5)} ${h[1] - px(1)}a${px(4.6)} ${px(4.6)} 0 1 0 ${px(4.5)} ${px(-3.6)}" fill="none" stroke="var(--accent)" stroke-width="${px(1.6)}" stroke-linecap="round"/><path d="M${h[0] + px(0.6)} ${h[1] - px(7.2)}l${px(-0.2)} ${px(3.4)} ${px(-3.2)} ${px(-0.6)}" fill="none" stroke="var(--accent)" stroke-width="${px(1.6)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+        if (drag && drag.mode === 'rotate') o += `<text x="${h[0]}" y="${h[1] - px(16)}" text-anchor="middle" font-size="${px(11)}" fill="var(--text)" stroke="#0d1016" stroke-width="${px(3)}" paint-order="stroke">${Math.round(angleOf(P, Q))}°</text>`;
+    }
+    if (tool === 'erase' && erasePreview) {
+        o += `<line x1="${erasePreview.p0[0]}" y1="${erasePreview.p0[1]}" x2="${erasePreview.p1[0]}" y2="${erasePreview.p1[1]}" stroke="var(--bad)" stroke-width="${px(10)}" stroke-linecap="round" opacity=".75"/>`;
     }
     $('gOverlay').innerHTML = o;
 }
@@ -372,6 +491,9 @@ function renderInspector() {
         const doors = s.lines.filter(l => l.type === 'door').length;
         html += `<div class="field"><label>Type</label><div class="seg"><button id="tWall" class="${doors === 0 ? 'on' : ''}">Wall</button><button id="tDoor" class="${doors === s.lines.length ? 'on' : ''}">Door</button></div></div>`;
         if (s.lines.length === 1) html += `<div class="kv"><span>Length</span><b>${fmt(dist(s.lines[0].a, s.lines[0].b))}</b></div>`;
+        const r = selectedRotatable();
+        if (r) html += `<div class="field" style="margin-top:8px"><label for="lAng">Angle around its connected end (°)</label><div class="row"><input type="number" id="lAng" step="1" style="flex:1;min-width:0" value="${Math.round(angleOf(r.line[r.pivotKey], r.line[r.freeKey]))}"><button class="btn" id="lRotL" title="[">⟲ 15°</button><button class="btn" id="lRotR" title="]">⟳ 15°</button></div></div>`;
+        else if (s.lines.length === 1 && s.lines[0].type !== 'door') html += `<p class="muted">To rotate a wall around one end, that end must be its only connected end.</p>`;
     }
     if (s.pins.length) html += s.pins.map(p => `<div class="kv"><span>Task</span><b>${esc(partName(p.code))}</b></div>`).join('');
     html += `</div><div class="sec"><h3>Arrange</h3><div class="row">
@@ -385,15 +507,16 @@ function renderTop() {
     document.body.classList.toggle('dirty', JSON.stringify(doc) !== savedState);
     $('save').disabled = saving;
     document.querySelectorAll('.tool[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === tool));
-    stage.classList.toggle('draw', tool === 'wall' || tool === 'door' || tool === 'room');
+    stage.classList.toggle('draw', tool === 'wall' || tool === 'door' || tool === 'room' || tool === 'erase');
     stage.classList.toggle('pan', tool === 'pan' || spaceDown);
     $('gridBtn').classList.toggle('on', snapGrid);
     $('stSel').textContent = sel.size ? `${sel.size} selected` : '';
     const hints = {
-        select: 'Click to select · drag to move · drag a line end to move a corner · drag on empty space to select an area',
+        select: 'Click to select · drag to move · drag a line end to move a corner · drag a box: left→right picks what is inside, right→left what it touches',
         wall: drawing ? 'Click for each corner · click an existing line to connect and stop · Enter or double-click to stop · Shift = 45°' : 'Click to start a wall',
         door: drawing ? 'Click where the door ends, on a wall' : 'Click where the door starts: a wall end, or a point along a wall',
         room: 'Click inside an enclosed room to name it',
+        erase: 'Click a line to erase the piece between its junctions · drag across lines to erase several',
         pan: 'Drag to move around'
     };
     $('hint').textContent = hints[tool];
@@ -416,7 +539,7 @@ function toast(msg, kind = '') {
 // ---- editing operations ----------------------------------------------------------------------------
 function setTool(t) {
     if (drawing) drawing = null;
-    tool = t; snapShown = null;
+    tool = t; snapShown = null; erasePreview = null;
     closeNamePopup(true);
     renderTop(); render();
 }
@@ -521,7 +644,11 @@ function findPin(code) {
 function addSegment(s) {
     if (same(s.p, drawing.start)) { finishDrawing(); return; }
     const type = drawing.type, a = drawing.start;
-    change(() => { floor().lines.push({ id: uid('l'), type, a: [...a], b: [...s.p] }); });
+    change(() => {
+        const l = { id: uid('l'), type, a: [...a], b: [...s.p] };
+        floor().lines.push(l);
+        if (type === 'door') overwriteWalls(l);
+    });
     drawing.count++;
     if (type === 'door' || ((s.kind === 'end' || s.kind === 'line') && drawing.count > 0)) { finishDrawing(); return; }
     drawing.start = [...s.p]; drawing.armed = true;
@@ -587,13 +714,22 @@ svg.addEventListener('pointerdown', e => {
         return;
     }
     if (tool === 'room') { drag = { mode: 'click', c: [e.clientX, e.clientY] }; return; }
+    if (tool === 'erase') {
+        drag = { mode: 'erase', before: snapshot(), done: 0 };
+        if (erasePiece(pieceAt(w))) { drag.done++; erasePreview = pieceAt(w); quickRefresh(); }
+        return;
+    }
 
     // select tool
     const hit = hitTest(w);
+    if (hit && hit.kind === 'rotate') {
+        drag = { mode: 'rotate', before: snapshot(), r: hit.r };
+        return;
+    }
     if (hit && hit.kind === 'end') {
         const ends = [];
         for (const l of floor().lines) for (const key of ['a', 'b']) if (same(l[key], hit.point)) ends.push({ l, key });
-        drag = { mode: 'corner', before: snapshot(), ends, exclude: new Set(ends.map(x => x.l.id)), moved: false, c: [e.clientX, e.clientY] };
+        drag = { mode: 'corner', before: snapshot(), ends, exclude: new Set(ends.map(x => x.l.id)), moved: false, c: [e.clientX, e.clientY], w0: w, shift: e.shiftKey, alt: e.altKey };
         return;
     }
     if (hit && (hit.kind === 'ref' || hit.kind === 'refScale')) {
@@ -637,6 +773,21 @@ svg.addEventListener('pointermove', e => {
         renderOverlay();
         return;
     }
+    if (tool === 'erase') {
+        const pc = pieceAt(w);
+        if (drag && drag.mode === 'erase' && pc) { erasePiece(pc); drag.done++; quickRefresh(); }
+        erasePreview = pieceAt(w);
+        renderOverlay();
+        return;
+    }
+    if (drag && drag.mode === 'rotate') {
+        const P = drag.r.line[drag.r.pivotKey];
+        let deg = angleOf(P, w);
+        if (!e.altKey) deg = Math.round(deg / 15) * 15;
+        setAngle(drag.r, deg, !e.altKey);
+        quickRefresh();
+        return;
+    }
     if (!drag) {
         const h = tool === 'select' || tool === 'room' ? hitTest(w) : null;
         const hp = h && h.kind === 'pin' ? h.id : null;
@@ -665,9 +816,17 @@ svg.addEventListener('pointermove', e => {
     } else if (drag.mode === 'box') {
         const x = Math.min(drag.w0[0], w[0]), y = Math.min(drag.w0[1], w[1]), wd = Math.abs(w[0] - drag.w0[0]), ht = Math.abs(w[1] - drag.w0[1]);
         drag.rect = [x, y, wd, ht];
+        drag.crossing = w[0] < drag.w0[0];
         const inside = p => p[0] >= x && p[0] <= x + wd && p[1] >= y && p[1] <= y + ht;
+        // does segment ab touch the box? (an end inside, or crossing one of its sides)
+        const touches = (a, b) => {
+            if (inside(a) || inside(b)) return true;
+            const c = [[x, y], [x + wd, y], [x + wd, y + ht], [x, y + ht]];
+            const cr = (p, q, r, s) => { const d = (q[0] - p[0]) * (s[1] - r[1]) - (q[1] - p[1]) * (s[0] - r[0]); if (!d) return false; const t = ((r[0] - p[0]) * (s[1] - r[1]) - (r[1] - p[1]) * (s[0] - r[0])) / d, u = ((r[0] - p[0]) * (q[1] - p[1]) - (r[1] - p[1]) * (q[0] - p[0])) / d; return t >= 0 && t <= 1 && u >= 0 && u <= 1; };
+            return c.some((p, i) => cr(a, b, p, c[(i + 1) % 4]));
+        };
         const f = floor(), hits = new Set(drag.base);
-        for (const l of f.lines) if (inside(l.a) && inside(l.b)) withGroup(l.id).forEach(id => hits.add(id));
+        for (const l of f.lines) if (drag.crossing ? touches(l.a, l.b) : (inside(l.a) && inside(l.b))) withGroup(l.id).forEach(id => hits.add(id));
         for (const r of f.rooms) if (inside(r.at)) withGroup(r.id).forEach(id => hits.add(id));
         for (const p of f.pins) if (inside(p.at)) withGroup(p.id).forEach(id => hits.add(id));
         sel = hits;
@@ -700,7 +859,26 @@ function endPointer(e) {
         openNamePopup(id);
         return;
     }
-    if (d.mode === 'corner' || d.mode === 'move' || d.mode === 'ref' || d.mode === 'refScale') {
+    if (d.mode === 'corner' && !d.moved) {
+        // a click (no drag) near a line end selects the line there, like clicking its middle
+        const f = floor();
+        let line = null, best = Infinity;
+        for (const x of d.ends) { const q = project(d.w0, x.l.a, x.l.b); const dd = q.d + (q.t <= 0 || q.t >= 1 ? 0.001 : 0); if (dd < best) { best = dd; line = x.l; } }
+        if (line && f.lines.includes(line)) {
+            const ids = withGroup(line.id, d.alt);
+            if (d.shift) { const on = sel.has(line.id); ids.forEach(id => (on ? sel.delete(id) : sel.add(id))); }
+            else sel = new Set(ids);
+        }
+        snapShown = null; refresh();
+        return;
+    }
+    if (d.mode === 'erase') {
+        erasePreview = pieceAt(w);
+        if (snapshot() !== d.before) pushUndo(d.before);
+        refresh();
+        return;
+    }
+    if (d.mode === 'corner' || d.mode === 'move' || d.mode === 'ref' || d.mode === 'refScale' || d.mode === 'rotate') {
         snapShown = null;
         if (snapshot() !== d.before) pushUndo(d.before);
         refresh();
@@ -708,7 +886,7 @@ function endPointer(e) {
 }
 svg.addEventListener('pointerup', endPointer);
 svg.addEventListener('pointercancel', endPointer);
-svg.addEventListener('pointerleave', () => { if (!drag && !drawing) { snapShown = null; renderOverlay(); } });
+svg.addEventListener('pointerleave', () => { if (!drag && !drawing) { snapShown = null; erasePreview = null; renderOverlay(); } });
 svg.addEventListener('dblclick', () => { if (drawing) finishDrawing(); });
 svg.addEventListener('contextmenu', e => { e.preventDefault(); if (drawing) finishDrawing(); });
 svg.addEventListener('wheel', e => {
@@ -775,6 +953,8 @@ $('pane-inspect').addEventListener('click', e => {
     else if (id === 'rVis') { change(() => { f.reference.visible = !f.reference.visible; }); }
     else if (id === 'rAdj') { refAdjust = !refAdjust; if (refAdjust) setTool('select'); renderInspector(); render(); }
     else if (id === 'rDel') { refAdjust = false; change(() => { f.reference = null; }); }
+    else if (id === 'lRotL') rotateBy(15);
+    else if (id === 'lRotR') rotateBy(-15);
     else if (id === 'tWall') setType('wall');
     else if (id === 'tDoor') setType('door');
     else if (id === 'aRot') rotate();
@@ -789,6 +969,7 @@ $('pane-inspect').addEventListener('change', e => {
     const f = floor(), id = e.target.id, v = e.target.value;
     if (id === 'fName') change(() => { f.name = v.trim(); });
     else if (id === 'roomName') { const r = selected().rooms[0]; if (r) change(() => { r.name = v.trim(); }); }
+    else if (id === 'lAng') { const r = selectedRotatable(); if (r && Number.isFinite(+v)) change(() => setAngle(r, +v)); }
     else if (id === 'rOp') change(() => { f.reference.opacity = +v; });
     else if (id === 'rW') { const w = Math.max(100, +v * 100); if (w) change(() => { const s = w / f.reference.w; f.reference.w = w; f.reference.h *= s; }); }
     e.target.blur();
@@ -882,7 +1063,9 @@ document.addEventListener('keydown', e => {
     if (e.shiftKey && key === 'h') { flipH(); return; }
     if (e.shiftKey && key === 'v') { flipV(); return; }
     if (e.key === '?') { $('help').classList.add('on'); return; }
-    const tools = { v: 'select', w: 'wall', d: 'door', r: 'room', h: 'pan' };
+    if (e.key === '[') { rotateBy(15); return; }
+    if (e.key === ']') { rotateBy(-15); return; }
+    const tools = { v: 'select', w: 'wall', d: 'door', r: 'room', e: 'erase', h: 'pan' };
     if (tools[key]) { setTool(tools[key]); return; }
     if (key === 'g') { snapGrid = !snapGrid; renderTop(); toast(snapGrid ? 'Grid snap on' : 'Grid snap off'); return; }
     if (key === 'f') { fit(); return; }

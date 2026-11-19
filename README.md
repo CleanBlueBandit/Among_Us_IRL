@@ -233,7 +233,8 @@ At game start every player gets `tasks` random tasks (set in the host lobby) and
 In the host lobby, **Floor plan** opens the editor (host only). Draw each floor with walls and doors, name every room, and drag every task into the room where its QR code hangs. Saving checks the plan and writes it to `map/map.json`; it also updates `tasks.json`: tasks placed on the plan are switched on with their room as location, tasks left off are switched off.
 
 - Every line end must touch another line (its end or anywhere along it).
-- A door sits in a gap between walls: each door end touches exactly one wall, and nothing touches a door's middle.
+- A door sits in a gap between walls: each door end touches exactly one wall, and nothing touches a door's middle. Drawing a door along a wall cuts that part of the wall out for you.
+- The eraser removes the piece of a line between two junctions; a wall with exactly one connected end can be rotated around that end.
 - Every enclosed area is a room and needs a unique name; all rooms on a floor must be reachable through doors.
 - A bound or repeating task must have all its parts placed, or none.
 - A reference image (a photo or drawing of the plan) can be traced over; it is only shown in the editor.
