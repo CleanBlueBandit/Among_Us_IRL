@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Impostor Remote</title>
+    <link rel="stylesheet" href="/tabletmap.css">
     <style>
         :root {
             --rust-dark: #1a120c;
@@ -318,7 +319,13 @@
             border-radius: 6px;
             cursor: pointer;
         }
-    </style>
+            .btn-map { display: flex; align-items: center; gap: 10px; width: 100%; margin: 10px 0; padding: 10px 12px; font-family: inherit; font-weight: 700; letter-spacing: 1px;
+            color: var(--terminal-green); background: rgba(51, 255, 51, 0.05); border: 1px solid rgba(51, 255, 51, 0.35); border-radius: 6px; cursor: pointer; }
+        .btn-map svg { width: 20px; height: 20px; }
+        .btn-map:focus-visible { outline: 2px solid var(--terminal-green); outline-offset: 2px; }
+        .task-pin { margin-left: 8px; border: 1px solid rgba(51, 255, 51, 0.35); background: transparent; color: var(--terminal-green); border-radius: 4px; padding: 0 6px; font: inherit; font-size: 0.8em; cursor: pointer; display: none; }
+        .has-map .task-pin { display: inline-block; }
+</style>
 </head>
 <body>
 
@@ -332,11 +339,15 @@
             <h1>1MP0ST0R REM0TE H4CK</h1>
         </div>
 
-        <div class="terminal-screen">
+        <div class="terminal-screen" data-map-screen>
             <p id="usr">username: ---</p>
             <p id="id">id: ---</p>
             <p id="alive">status: ---</p>
             
+            <button class="btn-map" type="button" data-map-open hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20z"/><path d="M9 4v13.5M15 6.5V20"/></svg>
+                <span>M4P</span>
+            </button>
             <div class="task-container">
                 <div class="task-header">
                     <span>Cover Tasks (don't count):</span>
@@ -403,6 +414,10 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="common.js"></script>
+    <script type="module" src="/tabletmap.js"></script>
+    <script>
+        document.addEventListener('tabletmap:ready', function(e) { document.body.classList.toggle('has-map', !!(e.detail && e.detail.hasMap)); });
+    </script>
     <script>
         let clientAnimationId = null;
         let cooldownAnimationId = null;
@@ -555,6 +570,16 @@
                 mark.className = "task-mark";
                 mark.textContent = t.done ? "\u2713" : "\u25CB";
                 li.appendChild(info);
+                const step = !t.done && t.steps ? t.steps[t.step] : null;
+                if (step && step.pin) {
+                    const pin = document.createElement("button");
+                    pin.type = "button";
+                    pin.className = "task-pin";
+                    pin.textContent = "map";
+                    pin.setAttribute("aria-label", "Show " + t.name + " on the map");
+                    pin.addEventListener("click", () => { if (window.TabletMap) window.TabletMap.focusTask(t.id); });
+                    info.appendChild(pin);
+                }
                 li.appendChild(mark);
                 list.appendChild(li);
             });
