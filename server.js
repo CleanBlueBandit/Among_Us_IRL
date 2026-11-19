@@ -2181,6 +2181,65 @@ app.post("/floorplan/save", express.json({ limit: '5mb' }), async (req, res) => 
     }
 });
 
+// ---- minigame test bench (host only) ---------------------------------------------------------------
+// /minigames lists every minigame and plays it in a preview frame. Nothing is recorded: the preview gets
+// its own completeTask() that only tells the page, and a pretend fuel tank for fuel_engine.
+const PREVIEW_NAME = /^_?[A-Za-z0-9_-]+$/;
+
+function previewSnippet() {
+    return `<script>(function(){
+var q=new URLSearchParams(location.search),sent=false,framed=window.parent!==window;
+function tell(m){if(framed)parent.postMessage(m,location.origin);}
+window.__MINIGAME_PREVIEW__=true;
+window.completeTask=function(delay){if(sent)return;sent=true;setTimeout(function(){tell({type:'minigame-complete'});
+ if(!framed){var d=document.createElement('div');d.textContent='✓ Finished (test run, nothing was recorded)';d.style.cssText='position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:2147483647;background:#16a34a;color:#fff;font:700 14px system-ui,sans-serif;padding:9px 16px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.5)';document.body.appendChild(d);}
+},delay==null?1500:delay);};
+var full=q.get('tank')!=='empty',f=window.fetch;
+window.fetch=function(u){if(String(u).indexOf('/fill-rocket')===0)return Promise.resolve(new Response(JSON.stringify({filled:full,gallons:12.5}),{headers:{'Content-Type':'application/json'}}));return f.apply(this,arguments);};
+window.addEventListener('error',function(e){tell({type:'minigame-error',message:String(e.message||e)});});
+window.addEventListener('unhandledrejection',function(e){tell({type:'minigame-error',message:String(e.reason&&e.reason.message||e.reason)});});
+})();</script>`;
+}
+
+app.get("/minigames", async (req, res) => {
+    const data = await loadGame();
+    if (!isHostRequest(req, data)) return res.redirect('/host');
+    return res.sendFile(path.join(__dirname, 'public', 'editor', 'minigames.html'));
+});
+
+app.get("/minigames/list", async (req, res) => {
+    const data = await loadGame();
+    if (!isHostRequest(req, data)) return res.status(401).json({ error: 'Only the host can test minigames.' });
+    const library = await loadTaskLibrary();
+    const games = library.tasks.map(t => {
+        const unit = library.units.find(u => u.tasks.includes(t.id));
+        const chain = unit && unit.tasks.length > 1 ? unit.tasks : null;
+        return {
+            id: t.id, name: t.name, file: t.file, enabled: t.enabled, repeat: t.repeat,
+            locations: t.steps.map(st => st.location), chain, draft: false
+        };
+    });
+    let drafts = [];
+    try {
+        drafts = (await fs.readdir(MINIGAMES_DIR)).filter(f => f.startsWith('_') && f.toLowerCase().endsWith('.html') && PREVIEW_NAME.test(f.slice(0, -5)))
+            .map(f => ({ id: f.slice(0, -5), name: f.slice(1, -5).replace(/[-_]+/g, ' ').trim() || f, file: f, enabled: false, repeat: 1, locations: [], chain: null, draft: true }));
+    } catch (e) { /* no folder */ }
+    return res.json({ games: [...games, ...drafts] });
+});
+
+app.get("/minigames/play/:id", async (req, res) => {
+    const data = await loadGame();
+    if (!isHostRequest(req, data)) return res.redirect('/host');
+    const id = String(req.params.id || '');
+    if (!PREVIEW_NAME.test(id)) return res.sendStatus(404);
+    let html;
+    try { html = await fs.readFile(path.join(MINIGAMES_DIR, id + '.html'), 'utf-8'); }
+    catch (e) { return res.status(404).send('No such minigame.'); }
+    const snippet = previewSnippet();
+    res.set('Cache-Control', 'no-store');
+    return res.send(/<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, m => m + snippet) : snippet + html);
+});
+
 app.get("/fill-rocket", async (req, res) => {
     const data = await loadGame();
     const player = data.players[req.cookies.session];

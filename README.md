@@ -242,6 +242,10 @@ In the host lobby, **Floor plan** opens the editor (host only). Draw each floor 
 
 `npm run verify:floorplan` checks the rules on sample plans.
 
+## Testing minigames
+
+In the host lobby, **Test minigames** opens a test bench (host only): every minigame in `minigames/` (and any `_draft` files) can be played in a phone, sideways phone or tablet sized frame, with a timer and a "finished" signal. Nothing is recorded in a game, and `fuel_engine` gets a pretend tank you can set to full or empty. Mark each one "Works" or "Has a problem" with a note; the marks are kept in that browser.
+
 ## Important security note
 This server is meant to be hosted on **localhost only**. Several serious vulnerabilities are present intentionally, because I didnt bother to fix them. (It aint like im building this for a megacorporation or something)
 
