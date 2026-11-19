@@ -243,6 +243,18 @@ In the host lobby, **Floor plan** opens the editor (host only). Draw each floor 
 
 `npm run verify:floorplan` checks the rules on sample plans.
 
+## Tablet map
+
+Once a floor plan is saved, every player's tablet gets a **Map** button (the impostor remote too). The tablet's screen turns into the map and then grows to fill the phone; the back button, the arrow or Escape close it again.
+
+- It shows only what the player needs: the next step of each of their own tasks (the second part of a bound task appears once the first is done), with a count per floor on the floor tabs.
+- Tap a pin for its name and room; pinch, drag and double-tap to zoom; the corner button fits the whole floor again.
+- **Done** shows finished tasks too; a teal ring marks where the player last scanned a task.
+- The emergency button is always shown; O2 and reactor light up while they are sabotaged (place these "stations" in the floor plan editor's Tasks tab).
+- On the sticky note, the pin next to a task opens the map right on it.
+
+Where each QR code is gets fixed when the game starts, so editing the plan mid-game doesn't move anyone's pins.
+
 ## Testing minigames
 
 In the host lobby, **Test minigames** opens a test bench (host only): every minigame in `minigames/` (and any `_draft` files) can be played in a phone, sideways phone or tablet sized frame, with a timer and a "finished" signal. Nothing is recorded in a game, and `fuel_engine` gets a pretend tank you can set to full or empty. Mark each one "Works" or "Has a problem" with a note; the marks are kept in that browser.

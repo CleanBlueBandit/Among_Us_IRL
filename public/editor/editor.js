@@ -434,16 +434,22 @@ function renderTasks() {
     const placedAt = new Map();
     doc.floors.forEach(f => f.pins.forEach(p => placedAt.set(p.code, f)));
     let total = 0, placed = 0;
-    $('pane-tasks').innerHTML = `<div class="sec"><p class="muted" style="margin:0 0 10px">Drag each task into a room. Tasks you leave off the plan are switched off when you save. A task with several parts needs every part placed.</p></div>` + units.map(u => {
+    const chipsOf = u => u.parts.map(p => {
+        const f = placedAt.get(p.code);
+        return `<button class="chip${f ? ' placed' : ''}" data-code="${esc(p.code)}" title="${f ? `On ${esc(f.name)}. Click to find it, drag to move it.` : 'Drag into a room'}"><span class="dot"></span>${esc(p.name)}</button>`;
+    }).join('');
+    const taskHtml = units.filter(u => !u.station).map(u => {
         const n = u.parts.filter(p => placedAt.has(p.code)).length;
         total += u.parts.length; placed += n;
         const badge = n === 0 ? '<span class="badge off">Off</span>' : n === u.parts.length ? '<span class="badge on">On</span>' : `<span class="badge part">${n}/${u.parts.length} placed</span>`;
-        const chips = u.parts.map(p => {
-            const f = placedAt.get(p.code);
-            return `<button class="chip${f ? ' placed' : ''}" data-code="${esc(p.code)}" title="${f ? `On ${esc(f.name)}. Click to find it, drag to move it.` : 'Drag into a room'}"><span class="dot"></span>${esc(p.name)}</button>`;
-        }).join('');
-        return `<div class="unit"><div class="unit-head"><span class="unit-name">${esc(u.name)}</span>${badge}</div><div class="chips">${chips}</div>${u.problem ? `<div class="note">${esc(u.problem)}</div>` : ''}</div>`;
+        return `<div class="unit"><div class="unit-head"><span class="unit-name">${esc(u.name)}</span>${badge}</div><div class="chips">${chipsOf(u)}</div>${u.problem ? `<div class="note">${esc(u.problem)}</div>` : ''}</div>`;
     }).join('');
+    const stations = units.filter(u => u.station);
+    const stationHtml = stations.length ? `<div class="sec" style="margin-top:14px"><h3>Stations (optional)</h3><p class="muted" style="margin:0 0 8px">Where the emergency button and the O2 and reactor devices are. Players see O2 and reactor on their map while they are sabotaged.</p>` + stations.map(u => {
+        const on = u.parts.every(p => placedAt.has(p.code));
+        return `<div class="unit"><div class="unit-head"><span class="unit-name">${esc(u.name)}</span>${on ? '<span class="badge on">Placed</span>' : '<span class="badge off">Not placed</span>'}</div><div class="chips">${chipsOf(u)}</div></div>`;
+    }).join('') + '</div>' : '';
+    $('pane-tasks').innerHTML = `<div class="sec"><p class="muted" style="margin:0 0 10px">Drag each task into a room. Tasks you leave off the plan are switched off when you save. A task with several parts needs every part placed.</p></div>` + taskHtml + stationHtml;
     $('taskCount').textContent = `${placed}/${total}`;
 }
 function renderProblems() {

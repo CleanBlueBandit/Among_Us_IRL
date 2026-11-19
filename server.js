@@ -247,7 +247,14 @@ function refreshAssigned(entry) {
     return entry;
 }
 
-function pickRandomTasks(library, units, count) {
+// Where each QR code is on the floor plan: code -> { floor, at }, from map/map.json.
+function pinsOf(plan) {
+    const pins = new Map();
+    for (const f of (plan && plan.floors) || []) for (const p of f.pins || []) pins.set(p.code, { floor: f.id, at: p.at });
+    return pins;
+}
+
+function pickRandomTasks(library, units, count, pins = new Map()) {
     const copy = [...units];
     for (let i = copy.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -258,7 +265,7 @@ function pickRandomTasks(library, units, count) {
         steps: u.steps.map(s => {
             const task = library.byId.get(s.task);
             const step = task.steps[s.n - 1];
-            return { task: s.task, n: s.n, of: s.of, name: stepName(task, s.n), location: step.location, done: false };
+            return { task: s.task, n: s.n, of: s.of, name: stepName(task, s.n), location: step.location, pin: pins.get(step.label) || null, done: false };
         })
     }));
 }
@@ -341,6 +348,9 @@ function processTaskScan(data, library, session, token) {
     const { player, entry, stepIndex, shown } = check;
 
     entry.steps[stepIndex].done = true;
+    // "Last scanned here" on the tablet map: where this player just was.
+    const doneStep = entry.steps[stepIndex];
+    if (doneStep.pin) player.lastScan = { floor: doneStep.pin.floor, at: doneStep.pin.at, name: doneStep.name, time: Date.now() };
     refreshAssigned(entry);
     if (!entry.done) {
         return { accepted: true, status: 200, title: 'Step done', message: `Next: ${entry.name}${entry.location ? ` (${entry.location})` : ''}.`, next: '/dashboard', task: shown };
@@ -1901,6 +1911,7 @@ app.post("/start", async (req, res) => {
 
         const taskLibrary = await loadTaskLibrary();
         const taskPool = eligibleUnits(taskLibrary);
+        const taskPins = pinsOf(await readPlan());
         if (parsedSettings.tasks > 0 && taskPool.length === 0) {
             logDebug("Game start blocked: no tasks with generated links.");
             return res.status(202).json({ message: "Cant start the game - no tasks available. Add minigame .html files to the minigames folder (or set tasks to 0).", failed: true });
@@ -1944,7 +1955,8 @@ app.post("/start", async (req, res) => {
             data.players[id].role = assignedRole === "impostor" ? "impostor" : "crewmate";
             data.players[id].totalTasks = tasksPerPlayer;
             data.players[id].tasksCompleted = 0;
-            data.players[id].tasks = pickRandomTasks(taskLibrary, taskPool, tasksPerPlayer);
+            data.players[id].tasks = pickRandomTasks(taskLibrary, taskPool, tasksPerPlayer, taskPins);
+            delete data.players[id].lastScan;
             // Impostors get tasks too (cover), but theirs never count towards the crew total.
             if (assignedRole !== "impostor") totalTasks += tasksPerPlayer;
             
@@ -2061,8 +2073,16 @@ async function readPlan() {
 
 // Every task as the editor sees it: a unit (a single task, a bound chain or a repeating task) and its
 // parts, one per QR code.
+// Places on the plan that aren't tasks: the sabotage devices and the emergency button. Optional; shown on
+// the tablets' map (O2 and reactor only while sabotaged).
+const STATIONS = [
+    { code: 'station:emergency', name: 'Emergency button' },
+    { code: 'station:o2', name: 'O2 station' },
+    { code: 'station:reactor', name: 'Reactor station' }
+];
+
 function editorUnits(library) {
-    return library.units.map(u => {
+    return [...library.units.map(u => {
         const tasks = u.tasks.map(id => library.byId.get(id));
         const name = tasks.map(t => (t.repeat > 1 ? `${t.name} ×${t.repeat}` : t.name)).join(' → ');
         return {
@@ -2072,7 +2092,7 @@ function editorUnits(library) {
                 return { code: t.steps[s.n - 1].label, task: s.task, name: stepName(t, s.n) };
             })
         };
-    });
+    }), ...STATIONS.map(st => ({ id: st.code, name: st.name, station: true, problem: '', parts: [{ code: st.code, name: st.name }] }))];
 }
 
 // Strict shape check of a plan coming from the browser. Throws with a message on anything unexpected.
@@ -2179,6 +2199,31 @@ app.post("/floorplan/save", express.json({ limit: '5mb' }), async (req, res) => 
         logError('Error saving the floor plan:', error);
         return res.status(500).json({ error: 'Server error while saving. Nothing was changed.' });
     }
+});
+
+// ---- the tablets' map ----------------------------------------------------------------------------
+// Everything a player's map needs: walls, doors and room names (never the reference images or other
+// players' tasks), the station pins, the player's own tasks with their pins, and the sabotage state.
+app.get("/map/data", async (req, res) => {
+    const data = await loadGame();
+    const player = req.cookies.session ? data.players[req.cookies.session] : null;
+    if (!player) return res.status(401).json({ error: 'Join the game first.' });
+    const plan = await readPlan();
+    const floors = plan ? plan.floors.map(f => ({
+        id: f.id, name: f.name,
+        lines: f.lines.map(l => ({ type: l.type, a: l.a, b: l.b })),
+        rooms: f.rooms.map(r => ({ name: r.name, at: r.at }))
+    })) : [];
+    const stations = [];
+    if (plan) for (const f of plan.floors) for (const p of f.pins) {
+        if (p.code.startsWith('station:')) stations.push({ kind: p.code.slice(8), floor: f.id, at: p.at });
+    }
+    res.set('Cache-Control', 'no-store');
+    return res.json({
+        floors, stations,
+        me: { tasks: player.tasks || [], lastScan: player.lastScan || null },
+        sabotage: data.activeSabotages
+    });
 });
 
 // ---- minigame test bench (host only) ---------------------------------------------------------------

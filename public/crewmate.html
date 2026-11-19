@@ -6,6 +6,7 @@
     <title>Crewmate Tablet</title>
     <link rel="stylesheet" href="common.css">
     <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/tabletmap.css">
     <style>
         :root {
             --frame-1: #eef1f5;
@@ -349,6 +350,23 @@
         /* Handwritten hint on the tablet screen (phones only) */
         .screen-hint { display: none; }
 
+        /* map button on the screen, and "show on map" pins on the sticky note */
+        .btn-map {
+            display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px;
+            font-family: inherit; font-size: 0.92rem; font-weight: 700; color: var(--lcd); text-align: left;
+            background: rgba(94, 234, 212, 0.06); border: 1px solid rgba(94, 234, 212, 0.35); border-radius: 12px; cursor: pointer;
+            transition: background 0.15s ease, transform 0.1s ease;
+        }
+        .btn-map svg { width: 22px; height: 22px; flex: none; }
+        .btn-map small { margin-left: auto; color: #8ea0b5; font-weight: 600; font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55%; }
+        .btn-map:active { transform: translateY(1px); background: rgba(94, 234, 212, 0.12); }
+        .btn-map:focus-visible { outline: 2px solid var(--lcd); outline-offset: 2px; }
+        .note-pin { display: none; flex: none; align-self: center; margin-left: auto; width: 32px; height: 32px; border: 0; border-radius: 50%;
+            background: rgba(43, 42, 51, 0.1); color: var(--ink); cursor: pointer; padding: 0; place-items: center; }
+        .note-pin svg { width: 18px; height: 18px; }
+        .has-map .note-pin { display: inline-grid; }
+        .note-pin:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
         /* ---- Wide screens: tablet stays dead centre, note hangs off its right side ---- */
         @media (min-width: 860px) {
             .note { position: absolute; left: calc(100% + 40px); top: 90px; transform: rotate(2.5deg); }
@@ -468,7 +486,7 @@
         <div class="tablet">
             <div class="bezel">
                 <div class="camera"></div>
-                <div class="screen">
+                <div class="screen" data-map-screen>
                     <div class="shatter-overlay" id="shatterOverlay">
                                         <img src="image.jpg" class="crack-overlay" alt="" draggable="false">
                                         <div class="blood-stain" style="top:8%;left:58%;width:30px;height:24px;transform:rotate(12deg)"></div>
@@ -514,6 +532,11 @@
                         <div class="progress-track"><div id="taskProgressBar" class="progress-fill"></div></div>
                     </div>
 
+                    <button class="btn-map" type="button" data-map-open hidden>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20z"/><path d="M9 4v13.5M15 6.5V20"/></svg>
+                        <span>Map</span><small id="mapNext"></small>
+                    </button>
+
                     <div class="panel emergency-panel">
                         <span class="emergency-label">Emergency Meeting</span>
                         <span id="emergencyMeetingStatus" class="meeting-badge meeting-idle">Ready</span>
@@ -545,6 +568,10 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="common.js"></script>
+    <script type="module" src="/tabletmap.js"></script>
+    <script>
+        document.addEventListener('tabletmap:ready', function(e) { document.body.classList.toggle('has-map', !!(e.detail && e.detail.hasMap)); });
+    </script>
     <script>
         (function() {
             var actionBtn = document.getElementById('actionBtn');
@@ -693,6 +720,20 @@
                     }
                     li.appendChild(box);
                     li.appendChild(text);
+                    // "show on map": jumps to where this task's next step is
+                    var step = !t.done && t.steps ? t.steps[t.step] : null;
+                    if (step && step.pin) {
+                        var pin = document.createElement('button');
+                        pin.type = 'button';
+                        pin.className = 'note-pin';
+                        pin.setAttribute('aria-label', 'Show ' + t.name + ' on the map');
+                        pin.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg>';
+                        pin.addEventListener('click', function(ev) {
+                            ev.stopPropagation();
+                            if (window.TabletMap) window.TabletMap.focusTask(t.id);
+                        });
+                        li.appendChild(pin);
+                    }
                     list.appendChild(li);
                     if (t.done) {
                         // Already crossed out last time (or first load): show it done. Otherwise draw the stroke.
@@ -731,6 +772,9 @@
 
                 var tasks = Array.isArray(data.tasks) ? data.tasks : [];
                 renderTasks(tasks);
+                // the map button names where the next task is
+                var next = tasks.filter(function(t) { return !t.done; })[0];
+                document.getElementById('mapNext').textContent = next ? 'Next: ' + (next.location || next.name) : (tasks.length ? 'All done' : '');
                 // Derived from the task list so an impostor's cover tasks look the same as a crewmate's.
                 var completed = tasks.length ? tasks.filter(function(t) { return t.done; }).length : (data.tasksCompleted || 0);
                 var total = tasks.length || data.totalTasks || 0;
