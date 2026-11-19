@@ -155,6 +155,9 @@
     <span class="sep"></span>
     <button class="icon-btn" id="undo" title="Undo (Ctrl+Z)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3 2 6l3 3"/><path d="M2 6h7a4 4 0 0 1 0 8H6"/></svg></button>
     <button class="icon-btn" id="redo" title="Redo (Ctrl+Shift+Z)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m11 3 3 3-3 3"/><path d="M14 6H7a4 4 0 0 0 0 8h3"/></svg></button>
+    <button class="icon-btn" id="exportBtn" title="Export the floor plan to a file"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8M5 7l3 3 3-3"/><path d="M2.5 11v2.5h11V11"/></svg></button>
+    <button class="icon-btn" id="importBtn" title="Import a floor plan file"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10V2M5 5l3-3 3 3"/><path d="M2.5 11v2.5h11V11"/></svg></button>
+    <span class="sep"></span>
     <button class="icon-btn" id="helpBtn" title="Shortcuts (?)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6.5"/><path d="M6.2 6.2a1.9 1.9 0 1 1 2.6 1.8c-.5.2-.8.6-.8 1.2v.4"/><circle cx="8" cy="11.8" r=".4" fill="currentColor"/></svg></button>
     <button class="icon-btn side-toggle" id="sideToggle" title="Panels"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M10 3v10"/></svg></button>
     <span class="sep"></span>
@@ -250,6 +253,7 @@
     </div>
   </div>
 
+  <input type="file" id="planFile" accept="application/json,.json" hidden>
   <input type="file" id="refFile" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" hidden>
   <script type="module" src="/editor/editor.js"></script>
 </body>

@@ -1018,6 +1018,91 @@ $('addFloor').addEventListener('click', () => {
 $('undo').addEventListener('click', undo);
 $('redo').addEventListener('click', redo);
 $('save').addEventListener('click', save);
+
+// ---- export / import -------------------------------------------------------------------------------
+// The file holds the whole plan as it is on screen (unsaved changes too) plus the reference images, so it
+// can be moved to another server or kept as a backup. Importing replaces the plan in the editor (undoable)
+// and only reaches the server when it is saved.
+const EXPORT_FORMAT = 'among-us-irl-floorplan';
+const blobToDataUrl = blob => new Promise((ok, fail) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = fail; r.readAsDataURL(blob); });
+
+async function exportPlan() {
+    if (drawing) finishDrawing();
+    const images = {};
+    for (const f of doc.floors) {
+        const file = f.reference && f.reference.file;
+        if (!file || images[file]) continue;
+        try {
+            const res = await fetch('/floorplan/ref/' + encodeURIComponent(file));
+            if (res.ok) images[file] = await blobToDataUrl(await res.blob());
+        } catch (e) { /* exported without that image */ }
+    }
+    const out = { format: EXPORT_FORMAT, version: 1, exportedAt: new Date().toISOString(), plan: doc, images };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(out, null, 1)], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = `floorplan-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    const missing = doc.floors.filter(f => f.reference && !images[f.reference.file]).length;
+    toast(missing ? `Exported. ${missing} reference image${missing > 1 ? 's' : ''} could not be included.` : 'Exported.', missing ? 'bad' : 'good');
+}
+
+// Keeps only well-formed parts of an imported plan, so a hand-edited file can't break the editor.
+function cleanImported(plan) {
+    const num = v => typeof v === 'number' && Number.isFinite(v);
+    const pt = v => Array.isArray(v) && v.length === 2 && num(v[0]) && num(v[1]);
+    const str = (v, max = 80) => (typeof v === 'string' ? v.slice(0, max) : '');
+    const idOk = v => typeof v === 'string' && /^[\w-]{1,40}$/.test(v);
+    const floors = (Array.isArray(plan && plan.floors) ? plan.floors : []).slice(0, 50).map(f => ({
+        id: idOk(f.id) ? f.id : uid('f'),
+        name: str(f.name, 60),
+        reference: f.reference && typeof f.reference.file === 'string' && ['x', 'y', 'w', 'h'].every(k => num(f.reference[k]))
+            ? { file: f.reference.file, x: f.reference.x, y: f.reference.y, w: f.reference.w, h: f.reference.h, opacity: num(f.reference.opacity) ? Math.max(0, Math.min(1, f.reference.opacity)) : 0.5, visible: f.reference.visible !== false }
+            : null,
+        lines: (Array.isArray(f.lines) ? f.lines : []).filter(l => l && pt(l.a) && pt(l.b)).map(l => ({ id: idOk(l.id) ? l.id : uid('l'), type: l.type === 'door' ? 'door' : 'wall', a: [l.a[0], l.a[1]], b: [l.b[0], l.b[1]], ...(idOk(l.group) ? { group: l.group } : {}) })),
+        rooms: (Array.isArray(f.rooms) ? f.rooms : []).filter(r => r && pt(r.at)).map(r => ({ id: idOk(r.id) ? r.id : uid('r'), name: str(r.name, 60), at: [r.at[0], r.at[1]], ...(idOk(r.group) ? { group: r.group } : {}) })),
+        pins: (Array.isArray(f.pins) ? f.pins : []).filter(p => p && pt(p.at) && typeof p.code === 'string').map(p => ({ id: idOk(p.id) ? p.id : uid('p'), code: p.code.slice(0, 80), at: [p.at[0], p.at[1]], ...(idOk(p.group) ? { group: p.group } : {}) }))
+    }));
+    return { version: 1, floors };
+}
+
+async function importPlan(file) {
+    let data;
+    try { data = JSON.parse(await file.text()); }
+    catch (e) { toast('That file is not a floor plan export (it is not valid JSON).', 'bad'); return; }
+    const plan = data && data.format === EXPORT_FORMAT ? data.plan : data;   // a bare map.json works too
+    if (!plan || !Array.isArray(plan.floors) || !plan.floors.length) { toast('That file has no floors in it.', 'bad'); return; }
+    if (!confirm('Replace the floor plan in the editor with the imported one? You can undo this, and nothing changes on the server until you save.')) return;
+    const clean = cleanImported(plan);
+    // Reference images travel inside the file; upload them again and use the new file names.
+    const images = (data && data.images) || {};
+    let lost = 0;
+    for (const f of clean.floors) {
+        if (!f.reference) continue;
+        const url = images[f.reference.file];
+        if (typeof url !== 'string' || !url.startsWith('data:image/')) { f.reference = null; lost++; continue; }
+        try {
+            const blob = await (await fetch(url)).blob();
+            const res = await fetch('/floorplan/reference', { method: 'POST', headers: { 'Content-Type': blob.type }, body: blob });
+            const out = await res.json();
+            if (!res.ok) throw new Error(out.error);
+            f.reference.file = out.file;
+        } catch (e) { f.reference = null; lost++; }
+    }
+    if (!clean.floors.length) clean.floors.push(emptyFloor(1));
+    change(() => { doc = clean; fi = 0; sel.clear(); drawing = null; });
+    views.clear();
+    fit();
+    const known = new Set(units.flatMap(u => u.parts.map(p => p.code)));
+    const unknown = clean.floors.reduce((n, f) => n + f.pins.filter(p => !known.has(p.code)).length, 0);
+    const notes = [];
+    if (lost) notes.push(`${lost} reference image${lost > 1 ? 's were' : ' was'} missing`);
+    if (unknown) notes.push(`${unknown} task${unknown > 1 ? 's' : ''} on the plan don't exist on this server (see Problems)`);
+    toast(`Imported ${clean.floors.length} floor${clean.floors.length > 1 ? 's' : ''}. Save to keep it.` + (notes.length ? ' ' + notes.join('; ') + '.' : ''), notes.length ? 'bad' : 'good');
+}
+$('exportBtn').addEventListener('click', exportPlan);
+$('importBtn').addEventListener('click', () => $('planFile').click());
+$('planFile').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) importPlan(f); });
 $('fitBtn').addEventListener('click', fit);
 $('gridBtn').addEventListener('click', () => { snapGrid = !snapGrid; renderTop(); });
 $('helpBtn').addEventListener('click', () => $('help').classList.add('on'));
