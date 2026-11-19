@@ -239,6 +239,7 @@ In the host lobby, **Floor plan** opens the editor (host only). Draw each floor 
 - A bound or repeating task must have all its parts placed, or none.
 - A reference image (a photo or drawing of the plan) can be traced over; it is only shown in the editor.
 - The editor won't save while a game is running.
+- **Export** saves the plan (with its reference images) to a `.json` file; **Import** loads one back, e.g. on another server or as a backup. An import is only kept once you save.
 
 `npm run verify:floorplan` checks the rules on sample plans.
 
