@@ -759,30 +759,64 @@ app.get('/logout', async (req, res) => {
     res.redirect('/');
 })
 
-app.post("/deviceFunc", async (req, res) => {
+const SERVER_ROLES = ['o2', 'reactor', 'emergency'];
+
+// What a server device needs for its lobby: its own role and who holds each role.
+function serverStatus(data, session) {
+    const roles = {};
+    for (const r of SERVER_ROLES) {
+        const holder = Object.keys(data.servers).find(id => data.servers[id] === r);
+        roles[r] = !holder ? 'free' : holder === session ? 'me' : 'other';
+    }
+    const gs = data.gameState;
+    return { role: data.servers[session], roles, started: !!gs.started, over: !gs.started && !!(gs.impostorsWon || gs.crewmatesWon) };
+}
+
+app.get("/server/status", async (req, res) => {
     const data = await loadGame();
-    const sf = req.body.setting;
+    if (!validateServer(data.servers, req.cookies.session)) return res.status(401).json({ error: "401 unauthorised" });
+    return res.json(serverStatus(data, req.cookies.session));
+});
 
-    if (!validateServer(data.servers, req.cookies.session)) {
-        logDebug(`Unauthorised /deviceFunc request by ${req.cookies.session}`);
-        return res.status(401).json({ ok: false, resp: "401 unauthorised" });
-    }
+// Take, switch or release (setting "none") this device's role. A role held by another device
+// can be taken over (e.g. that device died); the other device is told and drops back to the lobby.
+app.post("/deviceFunc", async (req, res) => {
+    await withGameLock(async () => {
+        const data = await loadGame();
+        const session = req.cookies.session;
+        const sf = req.body && req.body.setting;
 
-    if (Object.values(data.servers).includes(sf)) {
-        logDebug(`${req.cookies.session} tried to take on the role of an existing server, denying.`);
-        return res.status(400).json({ ok: false, resp: "400 - the server role is already taken." });
-    }
+        if (!validateServer(data.servers, session)) {
+            logDebug(`Unauthorised /deviceFunc request by ${session}`);
+            return res.status(401).json({ ok: false, resp: "401 unauthorised" });
+        }
+        if (sf !== 'none' && !SERVER_ROLES.includes(sf)) {
+            return res.status(400).json({ ok: false, resp: "Unknown server role." });
+        }
 
-    data.servers[req.cookies.session] = sf;
-    logDebug(`${sf} server is now online and registered to session ${req.cookies.session}`);
-    await saveGame(data);
+        const holder = sf === 'none' ? null : Object.keys(data.servers).find(id => data.servers[id] === sf && id !== session);
+        if (holder && !(req.body && req.body.takeover)) {
+            logDebug(`${session} asked for the ${sf} role, held by ${holder}.`);
+            return res.status(409).json({ ok: false, taken: true, resp: `Another device is already the ${sf} server.` });
+        }
+        if (holder) {
+            data.servers[holder] = 'none';
+            io.to(holder).emit('server_role', { role: 'none' });
+            logDebug(`${session} took over the ${sf} role from ${holder}.`);
+        }
 
-    io.emit('servers_data_request', {
-        servers: data.servers,
-        operational: isGameOperational(data.servers)
+        data.servers[session] = sf;
+        logDebug(`Server ${session} is now: ${sf}`);
+        await saveGame(data);
+
+        io.emit('servers_data_request', {
+            servers: data.servers,
+            operational: isGameOperational(data.servers)
+        });
+        io.emit('server_lobby_update', {});
+
+        return res.status(200).json({ ok: true, role: sf });
     });
-
-    return res.status(200).json({ ok: true });
 });
 
 app.get("/o2", async (req, res) => {
@@ -792,8 +826,9 @@ app.get("/o2", async (req, res) => {
         
     }
     if(data.servers[req.cookies.session] != "o2"){
-            return res.redirect(data.servers[req.cookies.session])
-        }
+        const role = data.servers[req.cookies.session];
+        return res.redirect(SERVER_ROLES.includes(role) ? "/" + role : "/waiting");
+    }
     return res.status(200).sendFile(publicPath("o2"));
 })
 
@@ -803,8 +838,9 @@ app.get("/reactor", async (req, res) => {
         return res.status(401).json({ err: "401 unauthorised" })
     }
     if(data.servers[req.cookies.session] != "reactor"){
-            return res.redirect(data.servers[req.cookies.session])
-        }
+        const role = data.servers[req.cookies.session];
+        return res.redirect(SERVER_ROLES.includes(role) ? "/" + role : "/waiting");
+    }
     return res.status(200).sendFile(publicPath("reactor"));
 })
 
@@ -815,8 +851,9 @@ app.get("/emergency", async (req, res) => {
         
     }
     if(data.servers[req.cookies.session] != "emergency"){
-            return res.redirect(data.servers[req.cookies.session])
-        }
+        const role = data.servers[req.cookies.session];
+        return res.redirect(SERVER_ROLES.includes(role) ? "/" + role : "/waiting");
+    }
     return res.status(200).sendFile(publicPath("emergency"));
 })
 
@@ -1504,6 +1541,7 @@ io.on("connection", async (socket) => {
             // Previously server/room devices (o2, reactor, emergency) fell through
             // to the "username not found" branch below and got an unwarranted Err on every connect.
             logDebug(`Server device connected via socket (session: ${cookies.session}, role: ${data.servers[cookies.session]})`);
+            socket.emit("server_role", { role: data.servers[cookies.session] });
 
             let targetEndTimestamp = 0;
 
@@ -1786,11 +1824,13 @@ app.get("/win", async (req, res) => {
     const session = req.cookies.session;
     const isHost = !!(session && data.players[session] && data.players[session].username === data.gameState.host);
 
-    logDebug(`Client (${session}) fetching win screen.`);
+    // ?embed=1: shown inside a server device's page, which handles restarts itself
+    const embedded = req.query.embed === '1';
+    logDebug(`Client (${session}) fetching win screen${embedded ? ' (embedded)' : ''}.`);
     if (data.gameState.crewmatesWon) {
-        return res.send(renderCrewmateWinHtml(data, isHost));
+        return res.send(renderCrewmateWinHtml(data, isHost && !embedded, embedded));
     }
-    return res.send(renderImpostorWinHtml(data, isHost));
+    return res.send(renderImpostorWinHtml(data, isHost && !embedded, embedded));
 })
 
 app.get('/reveal', async (req, res) => {
@@ -2397,6 +2437,7 @@ async function reset(req, res){
     }
 
     logDebug("Host initiated full reset of game state.");
+    for (const id of Object.keys(data.servers || {})) io.to(id).emit('server_role', { role: null });
     clearAllSabotageTimers();
     clearEmergencyMeetingTimer();
     meltdownCountdownSeconds = DEFAULT_SETTINGS.meltdownCountdown;

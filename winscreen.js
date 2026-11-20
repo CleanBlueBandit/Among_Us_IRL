@@ -26,7 +26,8 @@ function buildImpostorList(names, baseDelay = 2.6) {
 }
 
 
-function buildRestartControls(isHost, glowColor) {
+function buildRestartControls(isHost, glowColor, embedded = false) {
+  if (embedded) return '';   // a server device's page shows this in a frame and handles restarts itself
   const button = isHost ? `
     <button id="restartBtn" class="restart-btn">Restart</button>
     <style>
@@ -96,7 +97,7 @@ function buildRestartControls(isHost, glowColor) {
 }
 
 
-function renderImpostorWinHtml(data, isHost = false) {
+function renderImpostorWinHtml(data, isHost = false, embedded = false) {
   const impostorNames = getImpostorNames(data);
   const listItems = buildImpostorList(impostorNames);
 
@@ -284,7 +285,7 @@ ${listItems}
       </ul>
     </div>
     <div class="vignette"></div>
-    ${buildRestartControls(isHost, '#ff1a1a')}
+    ${buildRestartControls(isHost, '#ff1a1a', embedded)}
   </div>
 
 <script>
@@ -308,7 +309,7 @@ ${listItems}
 }
 
 
-function renderCrewmateWinHtml(data, isHost = false) {
+function renderCrewmateWinHtml(data, isHost = false, embedded = false) {
   const impostorNames = getImpostorNames(data);
   const listItems = buildImpostorList(impostorNames);
 
@@ -496,7 +497,7 @@ ${listItems}
       </ul>
     </div>
     <div class="vignette"></div>
-    ${buildRestartControls(isHost, '#1ac8ff')}
+    ${buildRestartControls(isHost, '#1ac8ff', embedded)}
   </div>
 
 <script>
