@@ -20,6 +20,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "marked": "^18.0.9",
+    "qrcode": "^1.5.4",
     "socket.io": "^4.5.4"
   },
   "devDependencies": {

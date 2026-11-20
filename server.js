@@ -11,7 +11,8 @@ import 'dotenv/config';
 import { renderCrewmateWinHtml, renderImpostorWinHtml } from './winscreen.js';
 import { renderRoleRevealHtml } from './rolereveal.js';
 import { renderTaskResultHtml } from './taskresult.js';
-import { readLibrary, MINIGAMES_DIR, ROOT, updateTaskConfig } from './scripts/taskStore.js';
+import { readLibrary, MINIGAMES_DIR, ROOT, updateTaskConfig, baseUrl } from './scripts/taskStore.js';
+import QRCode from 'qrcode';
 import { validatePlan } from './public/editor/geometry.js';
 import { debuglog } from 'util';
 import { marked } from "marked";
@@ -24,11 +25,6 @@ const btoActive = true;
 let cooldownTime = Date.now();
 let sabCooldownTime = Date.now();
 
-const betaTestingOverride = {
-    emergencyCountdown : 30,
-    meetingCooldown: 40,
-    sabotageCooldown: 30
-} 
 
 async function haltScript(){
     while(true){};
@@ -149,11 +145,11 @@ async function withGameLock(fn) {
 
 const DEFAULT_SETTINGS = {
     impostors: 2,
-    meltdownCountdown: 30,
+    meltdownCountdown: 90,   // how long the crew has to fix a sabotage once the alarm goes off
     tasks: 5,
     emergencyCountdown: 120,
     emergencyCooldown : 30,
-    sabotageCooldown:30
+    sabotageCooldown: 60     // after a fix, before the impostors can sabotage again
 };
 
 let meltdownCountdownSeconds = DEFAULT_SETTINGS.meltdownCountdown;
@@ -871,6 +867,174 @@ app.get("/emergency", async (req, res) => {
 
 const sabotageTimers = new Map();
 
+// ---- Fixing a sabotage (only once the alarm is going off) ----
+// O2: every living player's tablet shows their own override code. Two different players' codes typed
+//     into the O2 keypad restore O2. Impostors are shown a decoy code that looks the same but never works.
+// Reactor: the reactor screen shows a QR code, new for every meltdown. Scanning it opens the manual
+//     override lever; two crewmates holding their levers at the same time for a few seconds stops it.
+// Codes and the QR token live only in memory and only ever go to the one player / the reactor device.
+const OVERRIDE_NEED = 2;
+const REACTOR_HOLD_MS = 3000;
+const O2_MAX_MISSES = 3;        // wrong codes in a row before the keypad locks
+const O2_LOCK_MS = 10000;
+let o2Fix = null;      // { codes: Map(session -> code), accepted: Set(session), misses, lockUntil, total }
+let reactorFix = null; // { token, holders: Map(socketId -> session), timer, since, total }
+
+function inCrisis(data, type) {
+    const sab = data.activeSabotages && data.activeSabotages[type];
+    if (!sab || !sab.sabotaged) return false;
+    return type === 'o2' ? !!sab.depleted : !!sab.meltdown;
+}
+function aliveCrew(data) {
+    return Object.entries(data.players).filter(([, p]) => p.alive !== false && !p.impostor).map(([s]) => s);
+}
+function overrideNeed(data) {
+    return Math.max(1, Math.min(OVERRIDE_NEED, aliveCrew(data).length));
+}
+function newO2Code(taken) {
+    let c;
+    do { c = String(crypto.randomInt(0, 100000)).padStart(5, '0'); } while (taken.has(c));
+    taken.add(c);
+    return c;
+}
+// Every living player gets a code (crewmates a real one, impostors a decoy), made on first need.
+function ensureO2Fix(data) {
+    if (!o2Fix) o2Fix = { codes: new Map(), accepted: new Set(), misses: 0, lockUntil: 0, total: meltdownCountdownSeconds };
+    const taken = new Set(o2Fix.codes.values());
+    for (const [s, p] of Object.entries(data.players)) {
+        if (p.alive !== false && !o2Fix.codes.has(s)) o2Fix.codes.set(s, newO2Code(taken));
+    }
+    return o2Fix;
+}
+function o2CodeFor(data, session) {
+    const p = data.players[session];
+    if (!p) return null;
+    if (!o2Fix || !inCrisis(data, 'o2')) return { active: false };
+    if (p.alive === false) return { active: true, code: null, dead: true };
+    ensureO2Fix(data);
+    return { active: true, code: o2Fix.codes.get(session), accepted: o2Fix.accepted.has(session) };
+}
+function sendO2Codes(data) {
+    for (const s of Object.keys(data.players)) io.to(s).emit('o2_override', o2CodeFor(data, s));
+}
+function o2Status(data) {
+    if (!o2Fix || !inCrisis(data, 'o2')) return { active: false };
+    return { active: true, accepted: o2Fix.accepted.size, need: overrideNeed(data), lockUntil: o2Fix.lockUntil, total: o2Fix.total };
+}
+function reactorHolding(data) {
+    if (!reactorFix) return 0;
+    const crew = new Set();
+    for (const s of reactorFix.holders.values()) {
+        const p = data.players[s];
+        if (p && p.alive !== false && !p.impostor) crew.add(s);
+    }
+    return crew.size;
+}
+function reactorStatus(data) {
+    if (!reactorFix || !inCrisis(data, 'reactor')) return { active: false };
+    return {
+        active: true, holding: reactorHolding(data), need: overrideNeed(data),
+        since: reactorFix.since, holdMs: REACTOR_HOLD_MS, total: reactorFix.total,
+        qr: reactorFix.id   // tells the reactor screen when to load a new QR code; not the token
+    };
+}
+function startOverride(data, type) {
+    clearOverride(type);
+    if (type === 'o2') {
+        ensureO2Fix(data);
+        sendO2Codes(data);
+        io.emit('o2_override_status', o2Status(data));
+    } else {
+        reactorFix = { token: crypto.randomBytes(18).toString('base64url'), id: crypto.randomBytes(6).toString('hex'),
+            holders: new Map(), timer: null, since: 0, total: meltdownCountdownSeconds };
+        io.emit('reactor_override_status', reactorStatus(data));
+    }
+    logDebug(`Override started for ${type}.`);
+}
+function clearOverride(type) {
+    if (type === 'o2') {
+        if (!o2Fix) return;
+        o2Fix = null;
+        io.emit('o2_override', { active: false });
+        io.emit('o2_override_status', { active: false });
+    } else {
+        if (!reactorFix) return;
+        if (reactorFix.timer) clearTimeout(reactorFix.timer);
+        reactorFix = null;
+        io.emit('reactor_override_status', { active: false });
+    }
+}
+// The fix itself, then the sabotage cooldown.
+async function completeFix(type) {
+    const fixed = await fixSabotage(type);
+    if (!fixed) return false;
+    const freshData = await loadGame();
+    const cooldownEndTime = Date.now() + ((freshData.settings.sabotageCooldown ?? DEFAULT_SETTINGS.sabotageCooldown) * 1000);
+    sabCooldownTime = cooldownEndTime;
+    freshData.activeSabotages.cooldown = cooldownEndTime;
+    await saveGame(freshData);
+    io.emit("sabotage_cooldown", { endTime: cooldownEndTime });
+    return true;
+}
+// Re-check the levers whenever someone grabs or lets go: two crewmates holding starts the clock,
+// anyone letting go stops it.
+async function evaluateReactorHold() {
+    if (!reactorFix) return;
+    const data = await loadGame();
+    if (!reactorFix) return;
+    const ok = inCrisis(data, 'reactor') && !data.gameState.emergencyMeeting &&
+        reactorHolding(data) >= overrideNeed(data);
+    if (ok && !reactorFix.timer) {
+        reactorFix.since = Date.now();
+        const fix = reactorFix;
+        fix.timer = setTimeout(async () => {
+            if (reactorFix !== fix) return;
+            fix.timer = null;
+            const d = await loadGame();
+            if (inCrisis(d, 'reactor') && !d.gameState.emergencyMeeting && reactorHolding(d) >= overrideNeed(d)) {
+                logDebug('Reactor stabilised by the manual override.');
+                await completeFix('reactor');
+            } else {
+                fix.since = 0;
+                io.emit('reactor_override_status', reactorStatus(d));
+            }
+        }, REACTOR_HOLD_MS);
+    } else if (!ok && reactorFix.timer) {
+        clearTimeout(reactorFix.timer);
+        reactorFix.timer = null;
+        reactorFix.since = 0;
+    }
+    io.emit('reactor_override_status', reactorStatus(data));
+}
+// When the server restarted mid-crisis, or a player joined/died, bring the override state up to date.
+function syncOverride(data) {
+    if (inCrisis(data, 'o2')) { if (!o2Fix) startOverride(data, 'o2'); else sendO2Codes(data); io.emit('o2_override_status', o2Status(data)); }
+    if (inCrisis(data, 'reactor')) { if (!reactorFix) startOverride(data, 'reactor'); else evaluateReactorHold(); }
+}
+function sabEndTimeOf(data) {
+    const { o2, reactor } = data.activeSabotages || {};
+    if (o2 && o2.sabotaged) return Date.now() + (o2.timeLeft * 1000);
+    if (reactor && reactor.sabotaged) return Date.now() + (reactor.timeLeft * 1000);
+    return 0;
+}
+
+app.get("/reactor/qr.svg", async (req, res) => {
+    const data = await loadGame();
+    if (data.servers[req.cookies.session] !== 'reactor') return res.status(401).json({ err: "401 unauthorised" });
+    if (!reactorFix || !inCrisis(data, 'reactor')) return res.status(404).json({ err: "no meltdown" });
+    const svg = await QRCode.toString(`${baseUrl()}/override/${reactorFix.token}`, {
+        type: 'svg', margin: 1, errorCorrectionLevel: 'M', color: { dark: '#000000', light: '#ffffff' }
+    });
+    res.set('Cache-Control', 'no-store');
+    res.type('image/svg+xml').send(svg);
+});
+
+// What the reactor QR opens on a player's phone. The page checks the token over the socket.
+app.get("/override/:token", (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    return res.sendFile(publicPath("override"));
+});
+
 async function startSabotageCountdown(type, seconds) {
     if (!type || typeof seconds !== 'number' || seconds <= 0) return;
     if (type !== 'o2' && type !== 'reactor') return;
@@ -928,6 +1092,7 @@ async function startSabotageCountdown(type, seconds) {
 
                     sab.timeLeft = meltdownCountdownSeconds;
                     await saveGame(d);
+                    startOverride(d, type);
 
                     const targetEndTime = Date.now() + (meltdownCountdownSeconds * 1000);
                     io.emit('sabotage_data_request', {
@@ -966,6 +1131,7 @@ async function startSabotageCountdown(type, seconds) {
 
                     clearInterval(timer);
                     sabotageTimers.delete(type);
+                    clearOverride(type);
                 }
             }
         } catch (e) {
@@ -991,6 +1157,7 @@ async function fixSabotage(type) {
     }
 
     logDebug(`Sabotage fixed by crew: ${type}`);
+    clearOverride(type);
     d.activeSabotages[type] = type === 'o2'
         ? { sabotaged: false, depleted: false, timeLeft: 0 }
         : { sabotaged: false, meltdown: false, timeLeft: 0 };
@@ -1003,6 +1170,8 @@ async function fixSabotage(type) {
 
 function clearAllSabotageTimers() {
     logDebug("Clearing all sabotage timers.");
+    clearOverride('o2');
+    clearOverride('reactor');
     for (const t of sabotageTimers.values()) {
         clearInterval(t);
     }
@@ -1204,7 +1373,7 @@ async function resolveEmergencyMeeting(resultData) {
     await saveGame(data);
     
     // FIXED: Calculate cooldown duration and convert to absolute end-timestamp
-    const cooldownSeconds = btoActive ? betaTestingOverride.meetingCooldown : data.settings.emergencyCooldown;
+    const cooldownSeconds = data.settings.emergencyCooldown;
     cooldownTime = Date.now() + (cooldownSeconds * 1000);
 
     // Only the ejected player's role is revealed - never anyone else's.
@@ -1528,13 +1697,7 @@ io.on("connection", async (socket) => {
             socket.emit("player_data_request", selfView(cookies.session, data.players[cookies.session]));
             socket.emit("game_data_request", data.gameState);
 
-            let targetEndTimestamp = 0;
-
-            if (data.activeSabotages.o2 && data.activeSabotages.o2.sabotaged && !data.activeSabotages.o2.depleted) {
-                targetEndTimestamp = Date.now() + (data.activeSabotages.o2.timeLeft * 1000);
-            } else if (data.activeSabotages.reactor && data.activeSabotages.reactor.sabotaged && !data.activeSabotages.reactor.meltdown) {
-                targetEndTimestamp = Date.now() + (data.activeSabotages.reactor.timeLeft * 1000);
-            }
+            const targetEndTimestamp = sabEndTimeOf(data);
 
             logDebug(`client requested sabotage data (sent via connect for ${cookies.session})`);
             socket.emit("sabotage_data_request", {
@@ -1542,6 +1705,10 @@ io.on("connection", async (socket) => {
                 endTime: targetEndTimestamp
             });
             socket.emit("sabotage_cooldown", { endTime: sabCooldownTime });
+            if (inCrisis(data, 'o2') && !o2Fix) syncOverride(data);
+            socket.emit('o2_override', o2CodeFor(data, cookies.session));
+            socket.emit('o2_override_status', o2Status(data));
+            socket.emit('reactor_override_status', reactorStatus(data));
 
             if (data.gameState.emergencyMeeting && data.gameState.emergencyMeetingEndTime) {
                 socket.emit("emergency_ack", {
@@ -1558,13 +1725,7 @@ io.on("connection", async (socket) => {
             logDebug(`Server device connected via socket (session: ${cookies.session}, role: ${data.servers[cookies.session]})`);
             socket.emit("server_role", { role: data.servers[cookies.session] });
 
-            let targetEndTimestamp = 0;
-
-            if (data.activeSabotages.o2 && data.activeSabotages.o2.sabotaged && !data.activeSabotages.o2.depleted) {
-                targetEndTimestamp = Date.now() + (data.activeSabotages.o2.timeLeft * 1000);
-            } else if (data.activeSabotages.reactor && data.activeSabotages.reactor.sabotaged && !data.activeSabotages.reactor.meltdown) {
-                targetEndTimestamp = Date.now() + (data.activeSabotages.reactor.timeLeft * 1000);
-            }
+            const targetEndTimestamp = sabEndTimeOf(data);
 
             socket.emit("sabotage_data_request", {
                 sData: data.activeSabotages,
@@ -1572,6 +1733,9 @@ io.on("connection", async (socket) => {
             });
             socket.emit("game_data_request", data.gameState);
             socket.emit('servers_data_request', serversView(data.servers));
+            if ((inCrisis(data, 'o2') && !o2Fix) || (inCrisis(data, 'reactor') && !reactorFix)) syncOverride(data);
+            socket.emit('o2_override_status', o2Status(data));
+            socket.emit('reactor_override_status', reactorStatus(data));
         }
         else {
             logDebug(`Socket connection rejected: username not found for session ${cookies.session}`);
@@ -1773,6 +1937,7 @@ io.on("connection", async (socket) => {
 
                 socket.emit("imdead_ack", { ok: true });
                 socket.emit("player_data_request", selfView(cookies.session, player));
+                syncOverride(d);
                 io.emit("game_data_request", d.gameState);
 
                 if (!d.gameState.started && (d.gameState.crewmatesWon || d.gameState.impostorsWon)) {
@@ -1788,37 +1953,72 @@ io.on("connection", async (socket) => {
             }
         })
         
-        socket.on("fix_sabotage", async (payload) => {
-            logDebug(`Client (${cookies.session}) requested to fix sabotage: ${payload ? payload.type : 'unknown'}`);
+        // The O2 keypad: one override code per submit. Only the O2 device can submit.
+        let o2Busy = false;
+        socket.on("o2_code", async (payload) => {
+            const ack = (r) => socket.emit('o2_code_ack', r);
+            if (o2Busy) return ack({ ok: false, result: 'busy' });
+            o2Busy = true;
             try {
-                if (!payload || (payload.type !== 'o2' && payload.type !== 'reactor')) {
-                    socket.emit('Err', { error: 'invalid fix payload' });
-                    socket.emit('fix_ack', {ok:false})
-                    return;
+                const d = await loadGame();
+                if (d.servers[cookies.session] !== 'o2') {
+                    logDebug(`Unauthorised O2 code from ${cookies.session}`);
+                    return ack({ ok: false, result: 'denied' });
                 }
-                // Only the device that is that room's server can fix it.
-                const who = await loadGame();
-                if (who.servers[cookies.session] !== payload.type) {
-                    logDebug(`Unauthorised ${payload.type} fix attempt by ${cookies.session}`);
-                    socket.emit('Err', { error: 'only the ' + payload.type + ' server can fix this' });
-                    socket.emit('fix_ack', { ok: false });
-                    return;
+                if (!inCrisis(d, 'o2')) return ack({ ok: false, result: 'inactive' });
+                if (d.gameState.emergencyMeeting) return ack({ ok: false, result: 'meeting' });
+                const fix = ensureO2Fix(d);
+                if (Date.now() < fix.lockUntil) return ack({ ok: false, result: 'locked', lockUntil: fix.lockUntil });
+                const code = payload && typeof payload.code === 'string' ? payload.code : '';
+                let owner = null;
+                if (/^\d{5}$/.test(code)) for (const [s, c] of fix.codes) if (c === code) { owner = s; break; }
+                const p = owner && d.players[owner];
+                if (!p || p.alive === false || p.impostor) {
+                    fix.misses++;
+                    if (fix.misses >= O2_MAX_MISSES) { fix.misses = 0; fix.lockUntil = Date.now() + O2_LOCK_MS; }
+                    io.emit('o2_override_status', o2Status(d));
+                    return ack({ ok: false, result: fix.lockUntil > Date.now() ? 'locked' : 'invalid', lockUntil: fix.lockUntil });
                 }
-                const fixed = await fixSabotage(payload.type);
-                socket.emit('fix_ack', { ok: fixed });
-
-                const freshData = await loadGame();
-                const sabCooldownSeconds = btoActive ? betaTestingOverride.sabotageCooldown : freshData.settings.sabotageCooldown;
-                const cooldownEndTime = Date.now() + (sabCooldownSeconds * 1000);
-                sabCooldownTime = cooldownEndTime;
-                freshData.activeSabotages.cooldown = cooldownEndTime;
-
-                await saveGame(freshData);
-                io.emit("sabotage_cooldown", { endTime: cooldownEndTime });
+                fix.misses = 0;
+                if (fix.accepted.has(owner)) return ack({ ok: false, result: 'used' });
+                fix.accepted.add(owner);
+                logDebug(`O2 override code accepted (${fix.accepted.size}/${overrideNeed(d)}).`);
+                io.to(owner).emit('o2_override', o2CodeFor(d, owner));
+                const done = fix.accepted.size >= overrideNeed(d);
+                ack({ ok: true, result: 'accepted', accepted: fix.accepted.size, need: overrideNeed(d), done });
+                io.emit('o2_override_status', o2Status(d));
+                if (done) await completeFix('o2');
             } catch (e) {
-                logError("Fix sabotage error:", e);
-                socket.emit('Err', { error: e.message });
-                socket.emit('fix_ack', {ok:false})
+                logError("O2 code error:", e);
+                ack({ ok: false, result: 'error' });
+            } finally {
+                o2Busy = false;
+            }
+        });
+
+        // The reactor manual override lever, on the phone of whoever scanned the reactor's QR code.
+        socket.on("reactor_lever", async (payload) => {
+            try {
+                const d = await loadGame();
+                const p = d.players[cookies.session];
+                const token = payload && payload.token;
+                let state = 'ok';
+                if (!p) state = 'nologin';
+                else if (!d.gameState.started) state = 'inactive';
+                else if (!reactorFix || !inCrisis(d, 'reactor') || token !== reactorFix.token) state = 'expired';
+                else if (p.alive === false) state = 'dead';
+                else if (d.gameState.emergencyMeeting) state = 'meeting';
+                if (state !== 'ok') {
+                    if (reactorFix && reactorFix.holders.delete(socket.id)) evaluateReactorHold();
+                    return socket.emit('reactor_lever_ack', { state, status: reactorStatus(d) });
+                }
+                const before = reactorFix.holders.get(socket.id);
+                if (payload.hold) reactorFix.holders.set(socket.id, cookies.session);
+                else reactorFix.holders.delete(socket.id);
+                socket.emit('reactor_lever_ack', { state, holding: !!payload.hold, status: reactorStatus(d) });
+                if (!!before !== !!payload.hold) await evaluateReactorHold();
+            } catch (e) {
+                logError("Reactor lever error:", e);
             }
         });
 
@@ -1835,6 +2035,7 @@ io.on("connection", async (socket) => {
         
         socket.on('disconnect', () => {
             logDebug(`Client disconnected (session: ${cookies.session || 'unknown'}).`);
+            if (reactorFix && reactorFix.holders.delete(socket.id)) evaluateReactorHold();
         });
     }
     catch (err) {
@@ -2048,9 +2249,8 @@ app.post("/start", async (req, res) => {
 
         data.settings = { ...DEFAULT_SETTINGS, ...data.settings, ...parsedSettings };
         const targetImpostors = data.settings.impostors;
-        // No beta override exists for the meltdown countdown, so it always comes from the host's setting.
         meltdownCountdownSeconds = data.settings.meltdownCountdown;
-        emergencyCountdownSeconds = btoActive ? betaTestingOverride.emergencyCountdown : data.settings.emergencyCountdown;
+        emergencyCountdownSeconds = data.settings.emergencyCountdown;
 
         let roleDeck = [];
         for (let i = 0; i < allPlayerIds.length; i++) {
@@ -2104,9 +2304,7 @@ app.post("/start", async (req, res) => {
 
         await saveGame(data);
         
-        const meetingCooldownSeconds = btoActive
-            ? betaTestingOverride.emergencyCountdown
-            : (data.settings.emergencyCooldown + 20);
+        const meetingCooldownSeconds = data.settings.emergencyCooldown + 20;
         cooldownTime = Date.now() + (meetingCooldownSeconds * 1000);
         
         logDebug("Game successfully started.");

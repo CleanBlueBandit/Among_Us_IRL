@@ -259,6 +259,29 @@
         .btn-action:disabled { opacity: 0.6; cursor: not-allowed; pointer-events: none; }
         .btn-action:focus-visible { outline: 2px solid #fca5a5; outline-offset: 2px; }
 
+        /* ---------- Sabotage alert (override code / reactor instructions) ---------- */
+        .sab-card {
+            border-radius: 12px; padding: 11px 12px 12px; border: 1px solid var(--red);
+            background: linear-gradient(180deg, rgba(239, 68, 68, 0.20), rgba(239, 68, 68, 0.07));
+            animation: sab-glow 1s infinite alternate;
+        }
+        .sab-card[hidden] { display: none; }
+        @keyframes sab-glow { from { box-shadow: 0 0 4px rgba(239, 68, 68, 0.35); } to { box-shadow: 0 0 16px rgba(239, 68, 68, 0.8); } }
+        .sab-head { display: flex; align-items: center; gap: 8px; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.12em; color: #fca5a5; }
+        .sab-head i { width: 8px; height: 8px; border-radius: 50%; background: var(--red); box-shadow: 0 0 8px var(--red); animation: sab-blink 0.6s steps(2) infinite; }
+        @keyframes sab-blink { 50% { opacity: 0.2; } }
+        .sab-head .sab-time { margin-left: auto; color: #fff; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-variant-numeric: tabular-nums; letter-spacing: 0.04em; font-size: 0.85rem; }
+        .sab-code {
+            margin: 8px 0 2px; text-align: center; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 2.1rem; font-weight: 800; letter-spacing: 0.32em; padding-left: 0.32em; color: #fff;
+            text-shadow: 0 0 12px rgba(239, 68, 68, 0.7);
+        }
+        .sab-code[hidden] { display: none; }
+        .sab-sub { margin: 4px 0 0; font-size: 0.78rem; line-height: 1.35; color: #fecaca; text-align: center; }
+        .sab-card.done { border-color: var(--green); background: linear-gradient(180deg, rgba(16, 185, 129, 0.18), rgba(16, 185, 129, 0.06)); animation: none; }
+        .sab-card.done .sab-code { color: #a7f3d0; text-shadow: none; text-decoration: line-through; text-decoration-thickness: 2px; opacity: 0.8; }
+        .sab-card.done .sab-sub { color: #a7f3d0; }
+
         /* ---------- Body report ---------- */
         .btn-report {
             margin-top: auto;
@@ -581,6 +604,12 @@
                     <div class="screen-header">
                         <h1>Crew Terminal</h1>
                         <span id="alive-badge" class="status-pill status-alive">Alive</span>
+                    </div>
+
+                    <div class="sab-card" id="sabCard" role="status" aria-live="polite" hidden>
+                        <div class="sab-head"><i></i><span id="sabTitle">O2 DEPLETING</span><span class="sab-time" id="sabTime"></span></div>
+                        <div class="sab-code" id="sabCode" hidden></div>
+                        <p class="sab-sub" id="sabSub"></p>
                     </div>
 
                     <div class="panel info-grid">
@@ -958,6 +987,7 @@
                 document.getElementById('personalTaskProgressBar').style.width = pct + '%';
 
                 isImpostor = !!data.impostor;
+                sabRender();
             });
 
             socket.on('game_data_request', function(data) {
@@ -971,6 +1001,70 @@
                 if (data.emergencyMeeting) {
                    window.location.href = "/emergency-client"
                 }
+            });
+
+            // ---- sabotage alert: my own O2 override code, or how to reach the reactor override ----
+            var sab = { o2: false, reactor: false, endTime: 0, code: null, accepted: false, dead: false, need: 2, got: 0 };
+            var sabCard = document.getElementById('sabCard');
+            function sabRender() {
+                var code = document.getElementById('sabCode');
+                var sub = document.getElementById('sabSub');
+                sabCard.classList.remove('done');
+                if (sab.o2 && isAlive && !sab.dead) {
+                    document.getElementById('sabTitle').textContent = 'O2 DEPLETING';
+                    code.hidden = !sab.code;
+                    code.textContent = sab.code || '';
+                    if (sab.accepted) {
+                        sabCard.classList.add('done');
+                        var more = Math.max(0, sab.need - sab.got);
+                        sub.textContent = 'Your code was accepted (' + Math.min(sab.got, sab.need) + '/' + sab.need + ').' + (more ? ' Waiting for ' + more + ' more crewmate' + (more > 1 ? 's' : '') + '.' : '');
+                    } else {
+                        sub.textContent = sab.code ? 'Your override code. Type it into the O2 keypad. Codes from ' + sab.need + ' different crewmates restore O2.' : 'Head to O2.';
+                    }
+                    sabCard.hidden = false;
+                } else if (sab.reactor && isAlive) {
+                    document.getElementById('sabTitle').textContent = 'REACTOR MELTDOWN';
+                    code.hidden = true;
+                    sub.textContent = 'Go to the reactor, scan its QR code and hold the override lever down together with another crewmate.';
+                    sabCard.hidden = false;
+                } else {
+                    sabCard.hidden = true;
+                }
+                sabTick();
+            }
+            function sabTick() {
+                if (sabCard.hidden || !sab.endTime) { document.getElementById('sabTime').textContent = ''; return; }
+                var left = Math.max(0, Math.ceil((sab.endTime - Date.now()) / 1000));
+                document.getElementById('sabTime').textContent = Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0');
+            }
+            setInterval(sabTick, 500);
+            socket.on('sabotage_data_request', function(d) {
+                var s = d && d.sData;
+                if (!s) return;
+                var o2 = !!(s.o2 && s.o2.sabotaged && s.o2.depleted);
+                var reactor = !!(s.reactor && s.reactor.sabotaged && s.reactor.meltdown);
+                if (o2 || reactor) sab.endTime = d.endTime || sab.endTime;
+                if (!o2) { sab.code = null; sab.accepted = false; }
+                if (o2 !== sab.o2 || reactor !== sab.reactor) { sab.o2 = o2; sab.reactor = reactor; sabRender(); }
+            });
+            socket.on('o2_override', function(d) {
+                if (!d) return;
+                sab.code = d.active ? (d.code || null) : null;
+                sab.accepted = !!(d.active && d.accepted);
+                sab.dead = !!(d.active && d.dead);
+                sabRender();
+            });
+            socket.on('o2_override_status', function(d) {
+                if (!d || !d.active) return;
+                sab.need = d.need || sab.need; sab.got = d.accepted || 0;
+                if (sab.accepted) sabRender();
+            });
+            socket.on('sabotage_fixed', function(d) {
+                if (!d) return;
+                if (d.type === 'o2') { sab.o2 = false; sab.code = null; sab.accepted = false; }
+                if (d.type === 'reactor') sab.reactor = false;
+                sabRender();
+                showToast(d.type === 'o2' ? 'O2 restored' : 'Reactor stabilised', 'success');
             });
 
             socket.on("restart_game", function(data){

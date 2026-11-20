@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Manual Override</title>
+    <style>
+        :root {
+            --bg: #08090a; --panel: #121517; --edge: #2a2f33; --text: #e5e7eb; --dim: #8a939c;
+            --red: #ff3b3b; --amber: #fbbf24; --green: #34d399;
+            --mono: "SFMono-Regular", Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; }
+        body {
+            margin: 0; background: radial-gradient(ellipse at top, #1a1012, var(--bg) 70%); color: var(--text);
+            font-family: var(--mono); overflow: hidden; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+            display: flex; flex-direction: column; align-items: center;
+            padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+        }
+        header { width: 100%; max-width: 420px; text-align: center; }
+        .kicker { font-size: 0.72rem; letter-spacing: 0.26em; color: var(--red); }
+        h1 { margin: 4px 0 0; font-size: 1.35rem; letter-spacing: 0.1em; }
+        #msg { margin: 10px 0 0; min-height: 2.6em; font-size: 0.85rem; line-height: 1.4; color: var(--dim); }
+        #msg.go { color: var(--amber); }
+        #msg.ok { color: var(--green); }
+
+        .count { display: flex; justify-content: center; gap: 8px; margin-top: 4px; }
+        .count i { width: 34px; height: 8px; border-radius: 2px; background: #2b1616; border: 1px solid #4a2020; transition: background 0.2s, box-shadow 0.2s; }
+        .count i.on { background: var(--amber); border-color: var(--amber); box-shadow: 0 0 8px var(--amber); }
+        .stab { width: min(260px, 70vw); height: 6px; margin: 10px auto 0; background: #111; border-radius: 3px; overflow: hidden; border: 1px solid var(--edge); }
+        .stab i { display: block; height: 100%; width: 0; background: var(--green); box-shadow: 0 0 8px var(--green); }
+
+        /* ---- the lever ---- */
+        .rig { flex: 1; min-height: 0; width: 100%; display: grid; place-items: center; padding: 14px 0; }
+        .housing {
+            position: relative; height: clamp(180px, 56vh, 460px); aspect-ratio: 0.52; border-radius: 18px; touch-action: none; cursor: grab;
+            background: linear-gradient(90deg, #1c2024, #2a3036 45%, #1a1d21);
+            border: 1px solid #000; box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 18px 40px rgba(0,0,0,0.6);
+        }
+        .housing[aria-disabled="true"] { cursor: default; filter: saturate(0.3) brightness(0.7); }
+        .housing::before { /* hazard stripes */
+            content: ""; position: absolute; left: 10px; right: 10px; top: 10px; height: 26px; border-radius: 6px;
+            background: repeating-linear-gradient(-45deg, #f5c518 0 12px, #111 12px 24px); opacity: 0.85;
+        }
+        .housing::after {
+            content: ""; position: absolute; left: 10px; right: 10px; bottom: 10px; height: 26px; border-radius: 6px;
+            background: repeating-linear-gradient(-45deg, #f5c518 0 12px, #111 12px 24px); opacity: 0.85;
+        }
+        .screw { position: absolute; width: 10px; height: 10px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #9aa3ab, #3a4046); }
+        .screw.a { top: 46px; left: 14px; } .screw.b { top: 46px; right: 14px; } .screw.c { bottom: 46px; left: 14px; } .screw.d { bottom: 46px; right: 14px; }
+        .slot {
+            position: absolute; left: 50%; top: 52px; bottom: 52px; width: 18px; transform: translateX(-50%);
+            background: #050607; border-radius: 9px; box-shadow: inset 0 2px 6px rgba(0,0,0,0.9), 0 1px 0 rgba(255,255,255,0.06);
+        }
+        .ticks { position: absolute; top: 60px; bottom: 60px; right: 22%; width: 12px;
+            background: repeating-linear-gradient(180deg, #5b646c 0 2px, transparent 2px 22px); opacity: 0.7; }
+        .ticks.l { right: auto; left: 22%; }
+        .handle {
+            position: absolute; left: 50%; width: 78%; height: 64px; top: 52px; transform: translate(-50%, 0);
+            transition: top 0.22s cubic-bezier(.3,1.4,.5,1);
+        }
+        .housing.held .handle { top: calc(100% - 52px - 64px); transition: top 0.32s cubic-bezier(.2,.9,.3,1); }
+        .handle .stem { position: absolute; left: 50%; top: 50%; width: 12px; height: 8px; transform: translate(-50%, -50%); background: #9aa3ab; }
+        .handle .grip {
+            position: absolute; inset: 8px 0; border-radius: 12px;
+            background: linear-gradient(180deg, #ff6b6b, #c81e1e 55%, #8f1111);
+            border: 1px solid #4a0a0a; box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), 0 6px 14px rgba(0,0,0,0.6);
+        }
+        .handle .grip::before { content: ""; position: absolute; left: 14%; right: 14%; top: 45%; height: 4px; border-radius: 2px; background: rgba(0,0,0,0.25); box-shadow: 0 -9px 0 rgba(0,0,0,0.18), 0 9px 0 rgba(0,0,0,0.18); }
+        .housing.held .grip { background: linear-gradient(180deg, #ffd15c, #e1a20f 55%, #9a6b04); border-color: #5a3d00; }
+        .housing:focus-visible { outline: 3px solid var(--amber); outline-offset: 4px; }
+        .label { margin-top: 8px; font-size: 0.75rem; letter-spacing: 0.2em; color: var(--dim); text-align: center; }
+
+        .card { margin-top: 24px; max-width: 360px; text-align: center; padding: 18px; border: 1px solid var(--edge); border-radius: 14px; background: var(--panel); }
+        .card[hidden], .rig[hidden], .meter[hidden] { display: none; }
+        .card p { margin: 0 0 14px; color: var(--dim); line-height: 1.45; font-size: 0.9rem; }
+        .card a { display: inline-block; padding: 11px 18px; border-radius: 10px; color: #071016; background: var(--amber); font-weight: 700; text-decoration: none; }
+        .card a:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+        .done { color: var(--green); font-size: 1.4rem; font-weight: 800; letter-spacing: 0.08em; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="kicker">REACTOR // EMERGENCY</div>
+        <h1>MANUAL OVERRIDE</h1>
+        <p id="msg" role="status" aria-live="polite">Connecting…</p>
+        <div class="meter" id="meter" hidden>
+            <div class="count" id="count"></div>
+            <div class="stab"><i id="stab"></i></div>
+        </div>
+    </header>
+
+    <div class="rig" id="rig" hidden>
+        <div>
+            <div class="housing" id="lever" role="button" tabindex="0" aria-pressed="false" aria-label="Override lever. Press and hold.">
+                <span class="screw a"></span><span class="screw b"></span><span class="screw c"></span><span class="screw d"></span>
+                <div class="slot"></div><div class="ticks l"></div><div class="ticks"></div>
+                <div class="handle"><div class="stem"></div><div class="grip"></div></div>
+            </div>
+            <div class="label">PRESS AND HOLD</div>
+        </div>
+    </div>
+
+    <div class="card" id="card" hidden>
+        <div class="done" id="cardTitle" hidden>REACTOR STABILISED</div>
+        <p id="cardText"></p>
+        <a href="/dashboard" id="cardLink">Back to my tablet</a>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const $ = id => document.getElementById(id);
+        const token = decodeURIComponent(location.pathname.split('/').pop() || '');
+        const lever = $('lever');
+        const socket = io();
+        let mine = false, wanted = false, live = false, status = null, ended = false;
+
+        const TEXT = {
+            nologin: 'This phone is not logged in as a player. Log in first, then scan the reactor code again.',
+            inactive: 'There is no game running right now.',
+            expired: 'This override code is no longer active. The reactor may already be stable, or a new meltdown has a new code.',
+            dead: 'Ghosts can\'t work the override. Leave it to the living.',
+            meeting: 'An emergency meeting is in progress. The reactor waits for it to end.'
+        };
+
+        function showCard(text, title) {
+            live = false; release(true);
+            $('rig').hidden = true; $('meter').hidden = true;
+            $('msg').textContent = ''; $('msg').className = '';
+            $('cardTitle').hidden = !title;
+            $('cardText').textContent = text;
+            $('cardLink').textContent = 'Back to my tablet';
+            $('cardLink').href = '/dashboard';
+            $('card').hidden = false;
+        }
+        function showLever() {
+            live = true;
+            $('card').hidden = true;
+            $('rig').hidden = false; $('meter').hidden = false;
+            render();
+        }
+
+        function render() {
+            if (!live) return;
+            const need = status && status.need || 2;
+            const holding = status && status.holding || 0;
+            const box = $('count'); box.innerHTML = '';
+            for (let i = 0; i < need; i++) { const n = document.createElement('i'); if (i < holding) n.className = 'on'; box.appendChild(n); }
+            const msg = $('msg');
+            if (status && status.since > 0) { msg.textContent = 'Stabilising — keep holding!'; msg.className = 'go'; }
+            else if (mine) {
+                const more = Math.max(0, need - holding);
+                msg.textContent = more ? 'Holding. Waiting for ' + more + ' more crewmate' + (more > 1 ? 's' : '') + ' to hold their lever.' : 'Holding…';
+                msg.className = 'go';
+            } else {
+                msg.textContent = 'Hold the lever down together with another crewmate until the reactor stabilises.';
+                msg.className = '';
+            }
+        }
+        function stabTick() {
+            const s = status;
+            const p = s && s.since > 0 ? Math.min(1, (Date.now() - s.since) / (s.holdMs || 3000)) : 0;
+            $('stab').style.width = (p * 100) + '%';
+            requestAnimationFrame(stabTick);
+        }
+        requestAnimationFrame(stabTick);
+
+        // ---- holding ----
+        function send(hold) { socket.emit('reactor_lever', { token, hold }); }
+        function grab() {
+            if (!live || wanted) return;
+            wanted = true; mine = true;
+            lever.classList.add('held'); lever.setAttribute('aria-pressed', 'true');
+            if (navigator.vibrate) navigator.vibrate(30);
+            send(true); render();
+        }
+        function release(quiet) {
+            if (!wanted) return;
+            wanted = false; mine = false;
+            lever.classList.remove('held'); lever.setAttribute('aria-pressed', 'false');
+            if (!quiet || socket.connected) send(false);
+            render();
+        }
+        lever.addEventListener('pointerdown', e => {
+            if (!live) return;
+            e.preventDefault();
+            try { lever.setPointerCapture(e.pointerId); } catch (_) {}
+            grab();
+        });
+        ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => lever.addEventListener(ev, () => release()));
+        lever.addEventListener('keydown', e => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); grab(); } });
+        lever.addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'Enter') release(); });
+        lever.addEventListener('blur', () => release());
+        document.addEventListener('contextmenu', e => e.preventDefault());
+        document.addEventListener('visibilitychange', () => { if (document.hidden) release(); });
+
+        // ---- server ----
+        socket.on('connect', () => send(wanted));
+        socket.on('reactor_lever_ack', r => {
+            if (!r || ended) return;
+            if (r.status) status = r.status;
+            if (r.state === 'ok') { if (!live) showLever(); else render(); }
+            else showCard(TEXT[r.state] || TEXT.expired);
+            if (r.state === 'nologin') { $('cardLink').textContent = 'Log in'; $('cardLink').href = '/'; }
+        });
+        socket.on('reactor_override_status', st => {
+            if (ended) return;
+            if (st && st.active) { status = st; render(); return; }
+            // the override closes when the reactor is fixed (a game over follows with its own card)
+            if (live) { ended = true; if (navigator.vibrate) navigator.vibrate([60, 60, 120]); showCard('Nice work. The reactor is back under control.', true); }
+        });
+        socket.on('game_data_request', gs => {
+            if (!gs || ended) return;
+            if (gs.emergencyMeeting && live) showCard(TEXT.meeting);
+            else if (!gs.emergencyMeeting && !live && $('cardText').textContent === TEXT.meeting) send(false);
+        });
+        socket.on('game_over', () => { ended = true; showCard('The game is over.', false); $('cardLink').href = '/win'; $('cardLink').textContent = 'See who won'; });
+    </script>
+</body>
+</html>
