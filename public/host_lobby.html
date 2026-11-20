@@ -342,18 +342,27 @@
 
         .actions{
             display: flex;
+            flex-direction: row;
             flex-wrap: wrap;
             gap: 10px;
             margin-top: 4px;
         }
 
-        .actions a{
+        /* two to a row; the start button takes a full row of its own on top */
+        .actions > *{
+            flex: 1 1 calc(50% - 5px);
+            margin: 0;
             text-decoration: none;
-            flex: 1;
         }
 
-        .actions a button{
+        .actions > .primary{
+            flex-basis: 100%;
+        }
+
+        .actions a button,
+        .actions form button{
             width: 100%;
+            height: 100%;
         }
 
         .fail-msg{
@@ -488,7 +497,7 @@
                     <a href="/floorplan"><button>Floor plan</button></a>
                     <a href="/minigames"><button>Test minigames</button></a>
                     <a href="/logout"><button>Leave</button></a>
-                    <form method="POST" action="/reset" style="display:inline"><button type="submit">Reset</button></form>
+                    <form method="POST" action="/reset"><button type="submit">Reset</button></form>
                 </div>
                 <p class="fail-msg" id="fail"></p>
             </div>
