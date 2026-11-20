@@ -2598,7 +2598,7 @@ function sanitizePlan(raw) {
                 opacity: Math.max(0, Math.min(1, num(f.reference.opacity))), visible: f.reference.visible !== false
             } : null,
             lines: list(f.lines, 5000).map(l => ({ id: id(l.id), type: l.type === 'door' ? 'door' : 'wall', a: pt(l.a), b: pt(l.b), group: group(l.group) })),
-            rooms: list(f.rooms, 1000).map(r => ({ id: id(r.id), name: text(r.name, 60), at: pt(r.at), group: group(r.group) })),
+            rooms: list(f.rooms, 1000).map(r => ({ id: id(r.id), name: r.void === true ? '' : text(r.name, 60), at: pt(r.at), group: group(r.group), ...(r.void === true ? { void: true } : {}) })),
             pins: list(f.pins, 1000).map(p => ({ id: id(p.id), code: text(p.code, 80), at: pt(p.at), group: group(p.group) }))
         }))
     };
@@ -2695,7 +2695,7 @@ app.get("/map/data", async (req, res) => {
     const floors = plan ? plan.floors.map(f => ({
         id: f.id, name: f.name,
         lines: f.lines.map(l => ({ type: l.type, a: l.a, b: l.b })),
-        rooms: f.rooms.map(r => ({ name: r.name, at: r.at }))
+        rooms: f.rooms.map(r => (r.void ? { name: '', at: r.at, void: true } : { name: r.name, at: r.at }))
     })) : [];
     const stations = [];
     if (plan) for (const f of plan.floors) for (const p of f.pins) {

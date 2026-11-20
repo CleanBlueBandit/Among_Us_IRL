@@ -7,7 +7,8 @@
 //       id, name,
 //       reference: null | { file, x, y, w, h, opacity, visible },   // optional image to trace over
 //       lines: [ { id, type: 'wall' | 'door', a: [x, y], b: [x, y], group? } ],
-//       rooms: [ { id, name, at: [x, y], group? } ],                  // a room's name, placed inside it
+//       rooms: [ { id, name, at: [x, y], group?, void? } ],           // a room's name, placed inside it;
+//                                                                     // void: true marks the space as void
 //       pins:  [ { id, code, at: [x, y], group? } ]                   // a task's QR code, placed inside a room
 //   } ] }
 // Coordinates are in centimetres.
@@ -18,6 +19,8 @@
 //     middle of a door, and a door crosses nothing.
 //   - Walls may cross each other (that makes a junction). Lines may not overlap.
 //   - Every enclosed area is a room and needs exactly one name. Names are unique on a floor.
+//   - ...or it is void: a space that isn't part of the game (a shaft, a gap between buildings). A void
+//     has a void marker instead of a name, no doors, and no tasks, and is not a room.
 //   - Every room on a floor can be reached from every other room through doors; a door separates two
 //     different spaces (a room and outside counts).
 //   - Task pins sit inside a room. Every part of a bound or repeating task is placed, or none of it.
@@ -87,17 +90,17 @@ export function pointInPolygon(p, poly) {
     return inside;
 }
 
-// A point well inside a polygon (for putting a hint or label in an unnamed room).
-export function interiorPoint(poly) {
+// A point well inside a polygon, and outside its holes (for putting a hint or label in an unnamed room).
+export function interiorPoint(poly, holes = []) {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const [x, y] of poly) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y); }
     let best = null, bestD = -1;
     const N = 14;
     for (let i = 1; i < N; i++) for (let j = 1; j < N; j++) {
         const p = [minX + (maxX - minX) * i / N, minY + (maxY - minY) * j / N];
-        if (!pointInPolygon(p, poly)) continue;
+        if (!pointInPolygon(p, poly) || holes.some(h => pointInPolygon(p, h))) continue;
         let d = Infinity;
-        for (let k = 0; k < poly.length; k++) d = Math.min(d, project(p, poly[k], poly[(k + 1) % poly.length]).d);
+        for (const ring of [poly, ...holes]) for (let k = 0; k < ring.length; k++) d = Math.min(d, project(p, ring[k], ring[(k + 1) % ring.length]).d);
         if (d > bestD) { bestD = d; best = p; }
     }
     return best || poly[0];
@@ -106,8 +109,9 @@ export function interiorPoint(poly) {
 // ---- floor analysis --------------------------------------------------------------------------------
 // Returns {
 //   problems: [{ code, message, at: [x, y], ids: [...] }],
-//   faces:    [{ id, poly, area, holes: [poly], roomId, name }]   every enclosed area
-//   roomAt(p) -> face or null                                     the room containing point p
+//   faces:    [{ id, poly, area, holes: [poly], roomId, name, void, door }]   every enclosed area
+//             (roomId is its name or void marker; door: a door touches it)
+//   roomAt(p) -> face or null                                     the enclosed area containing point p
 //   doorSides: Map doorLineId -> [faceId | 'outside', faceId | 'outside']
 // }
 export function analyzeFloor(floor) {
@@ -232,7 +236,7 @@ export function analyzeFloor(floor) {
     }
     const resolve = f => (f.area > MIN_FACE_AREA ? f : container.get(f.id) || null);
 
-    const faces = bounded.map(f => ({ id: f.id, poly: f.poly, area: f.area, holes: [], roomId: null, name: '' }));
+    const faces = bounded.map(f => ({ id: f.id, poly: f.poly, area: f.area, holes: [], roomId: null, name: '', void: false, door: false }));
     const faceById = new Map(faces.map(f => [f.id, f]));
     for (const f of rawFaces) {
         const c = f.area > MIN_FACE_AREA ? null : container.get(f.id);
@@ -243,17 +247,25 @@ export function analyzeFloor(floor) {
         return f ? faceById.get(f.id) : null;
     };
 
-    // 6. room names
-    const named = new Map();   // face id -> room label
+    // 6. room names and void markers
+    const named = new Map();   // face id -> room label or void marker
     for (const r of floor.rooms || []) {
         const f = roomAt(r.at);
-        if (!f) { add('name-outside', 'This room name is not inside a room.', r.at, [r.id]); continue; }
-        if (named.has(f.id)) { add('name-twice', 'A room has two names.', r.at, [r.id, named.get(f.id).id]); continue; }
+        if (!f) { add(r.void ? 'void-outside' : 'name-outside', r.void ? 'This void marker is not inside an enclosed area.' : 'This room name is not inside a room.', r.at, [r.id]); continue; }
+        if (named.has(f.id)) {
+            const o = named.get(f.id);
+            if (r.void && o.void) add('void-twice', 'This space has two void markers.', r.at, [r.id, o.id]);
+            else if (r.void || o.void) add('void-named', 'This space has a room name and a void marker. It is either a room or void.', r.at, [r.id, o.id]);
+            else add('name-twice', 'A room has two names.', r.at, [r.id, o.id]);
+            continue;
+        }
         named.set(f.id, r);
-        f.roomId = r.id; f.name = (r.name || '').trim();
+        f.roomId = r.id;
+        if (r.void) { f.void = true; continue; }
+        f.name = (r.name || '').trim();
         if (!f.name) add('name-empty', 'Give this room a name.', r.at, [r.id]);
     }
-    for (const f of faces) if (!named.has(f.id)) add('unnamed', 'This room has no name.', interiorPoint(f.poly), []);
+    for (const f of faces) if (!named.has(f.id)) add('unnamed', 'This room has no name. Name it, or mark it as void.', interiorPoint(f.poly, f.holes), []);
     const byName = new Map();
     for (const f of faces) {
         if (!f.name) continue;
@@ -265,12 +277,18 @@ export function analyzeFloor(floor) {
     // 7. doors: what they connect, and whether every room can be reached
     const doorSides = new Map();
     const links = new Map(faces.map(f => [f.id, new Set()]));
+    const voidDoors = new Map();   // void face id -> its door line ids
     for (const e of edges) {
         if (e.line.type !== 'door') continue;
         const hs = half.filter(h => h.edge === e);
         const sides = hs.map(h => resolve(rawFaces[h.face]));
         const ids = sides.map(s => (s ? s.id : 'outside'));
         doorSides.set(e.line.id, ids);
+        for (const raw of sides) if (raw) {
+            const s = faceById.get(raw.id);
+            s.door = true;
+            if (s.void) { if (!voidDoors.has(s.id)) voidDoors.set(s.id, new Set()); voidDoors.get(s.id).add(e.line.id); }
+        }
         if (ids[0] === ids[1]) {
             const mid = [(verts[e.u][0] + verts[e.v][0]) / 2, (verts[e.u][1] + verts[e.v][1]) / 2];
             add('door-nowhere', 'This door has the same room on both sides.', mid, [e.line.id]);
@@ -278,13 +296,18 @@ export function analyzeFloor(floor) {
             links.get(ids[0]).add(ids[1]); links.get(ids[1]).add(ids[0]);
         }
     }
-    if (faces.length > 1) {
+    for (const [id, doors] of voidDoors) {
+        const f = faceById.get(id);
+        add('void-door', 'A void cannot have doors. This space has one, so it must be a room.', (floor.rooms.find(r => r.id === f.roomId) || {}).at || interiorPoint(f.poly, f.holes), [f.roomId, ...doors]);
+    }
+    const rooms = faces.filter(f => !f.void);
+    if (rooms.length > 1) {
         const groups = [], done = new Set();
-        for (const f of faces) {
+        for (const f of rooms) {
             if (done.has(f.id)) continue;
             const g = [], stack = [f.id];
             done.add(f.id);
-            while (stack.length) { const c = stack.pop(); g.push(c); for (const n of links.get(c)) if (!done.has(n)) { done.add(n); stack.push(n); } }
+            while (stack.length) { const c = stack.pop(); g.push(c); for (const n of links.get(c)) if (!done.has(n) && !faceById.get(n).void) { done.add(n); stack.push(n); } }
             groups.push(g);
         }
         if (groups.length > 1) {
@@ -299,7 +322,9 @@ export function analyzeFloor(floor) {
 
     // 8. task pins
     for (const pin of floor.pins || []) {
-        if (!roomAt(pin.at)) add('pin-outside', `Task ${pin.code} is not inside a room.`, pin.at, [pin.id]);
+        const f = roomAt(pin.at);
+        if (!f) add('pin-outside', `Task ${pin.code} is not inside a room.`, pin.at, [pin.id]);
+        else if (f.void) add('pin-void', `Task ${pin.code} is inside a void. Tasks go in rooms.`, pin.at, [pin.id]);
     }
 
     return { problems, faces, roomAt, doorSides };
@@ -326,7 +351,7 @@ export function validatePlan(plan, units) {
         else floorNames.set(name.toLowerCase(), floor);
         const a = analyzeFloor(floor);
         for (const p of a.problems) problems.push({ floor: floor.id, ...p });
-        if (!a.faces.length) add(floor.id, 'no-rooms', `${name || 'This floor'} has no rooms yet.`);
+        if (!a.faces.some(f => !f.void)) add(floor.id, 'no-rooms', `${name || 'This floor'} has no rooms yet.`);
         for (const pin of floor.pins || []) {
             if (!known.has(pin.code)) { add(floor.id, 'pin-unknown', `There is no task called ${pin.code}.`, pin.at, [pin.id]); continue; }
             if (placements.has(pin.code)) { add(floor.id, 'pin-twice', `Task ${pin.code} is placed twice.`, pin.at, [pin.id]); continue; }

@@ -109,7 +109,7 @@ function render() {
     const f = floorById(S.floor), g = S.geo.get(S.floor), s = scale(), px = n => n / s;
     svg.setAttribute('viewBox', `${S.view.x} ${S.view.y} ${S.view.w} ${S.view.h}`);
     const hiRoom = S.bubble && S.bubble.floor === S.floor && S.bubble.at ? g.roomAt(S.bubble.at) : null;
-    $('.tm-rooms').innerHTML = g.faces.map(fc => `<path d="${poly(fc.poly)}${fc.holes.map(poly).join('')}" fill="${fc === hiRoom ? 'var(--tm-room-hi)' : 'var(--tm-room)'}" fill-rule="evenodd"/>`).join('');
+    $('.tm-rooms').innerHTML = g.faces.filter(fc => !fc.void).map(fc => `<path d="${poly(fc.poly)}${fc.holes.map(poly).join('')}" fill="${fc === hiRoom ? 'var(--tm-room-hi)' : 'var(--tm-room)'}" fill-rule="evenodd"/>`).join('');
     $('.tm-walls').innerHTML = f.lines.map(l => l.type === 'door'
         ? `<line x1="${l.a[0]}" y1="${l.a[1]}" x2="${l.b[0]}" y2="${l.b[1]}" stroke="var(--tm-door)" stroke-opacity=".55" stroke-width="${px(2)}" stroke-dasharray="${px(5)} ${px(4)}"/>`
         : `<line x1="${l.a[0]}" y1="${l.a[1]}" x2="${l.b[0]}" y2="${l.b[1]}" stroke="var(--tm-wall)" stroke-width="${px(4)}" stroke-linecap="round"/>`).join('');
