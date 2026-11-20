@@ -17,6 +17,7 @@
         "alarmVolume": 0.6,
         "voiceVolume": 1,
         "duckTo": 0.35,
+        "winVolume": 1,
         "reverb": {
             "mix": 0.3,
             "seconds": 2.4,

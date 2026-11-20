@@ -43,6 +43,7 @@ export const DEFAULTS = {
         alarmVolume: 0.6,
         voiceVolume: 1,
         duckTo: 0.35,
+        winVolume: 1,   // the end-of-game sound (no reverb)
         reverb: { mix: 0.3, seconds: 2.4, decay: 2.6 }
     },
     // Filled into the lines below: {section} is picked once per alarm from these patterns (so the "stable"
@@ -204,7 +205,17 @@ export function createAlarmVoice({ root, send, log = () => {}, logError = consol
     }
     const varsFor = (type, inc, timeLeft) => ({ ...inc, time: timeWords(timeLeft), seconds: timeLeft, status: statusLine(type, inc) });
 
-    async function speak(type, line, vars) {
+    // What each station is saying or about to say, so the end-of-game sound can wait for it.
+    const talk = new Map();   // type -> { pending: Set of promises, until: ms timestamp }
+    function speak(type, line, vars) {
+        const t = talk.get(type) || { pending: new Set(), until: 0 };
+        talk.set(type, t);
+        const p = speakNow(type, line, vars, t).finally(() => t.pending.delete(p));
+        t.pending.add(p);
+        return p;
+    }
+
+    async function speakNow(type, line, vars, talking) {
         const inc = incidents.get(type);
         if (inc && String(line).includes('{status}')) inc.spoken = inc.status && inc.status.count;
         const text = fill(line, vars || inc || {}).replace(/\s+/g, ' ');
@@ -231,6 +242,7 @@ export function createAlarmVoice({ root, send, log = () => {}, logError = consol
             while (clips.size > 24) clips.delete(clips.keys().next().value);
             const seconds = samples.length / rate;
             if (inc) inc.busyUntil = Date.now() + seconds * 1000 + 400;
+            talking.until = Math.max(talking.until, Date.now() + seconds * 1000 + 400);
             send(type, 'alarm_voice', { type, text, url: `/alarm/voice/${id}.wav`, seconds });
             log(`Alarm voice (${type}): ${text}`);
         } catch (e) {
@@ -301,6 +313,14 @@ export function createAlarmVoice({ root, send, log = () => {}, logError = consol
             clearTimeout(inc.statusTimer);
             incidents.delete(type);
             if (config.enabled) speak(type, pick(config[type].failed), inc);
+        },
+        // Resolves once this station has finished speaking (at most maxMs from now).
+        async whenQuiet(type, maxMs = 10000) {
+            const end = Date.now() + maxMs, t = talk.get(type);
+            if (!t) return;
+            const wait = ms => new Promise(r => setTimeout(r, Math.max(0, Math.min(ms, end - Date.now()))));
+            while (t.pending.size && Date.now() < end) await Promise.race([Promise.allSettled([...t.pending]), wait(end - Date.now())]);
+            if (t.until > Date.now()) await wait(t.until - Date.now());
         },
         reset() { for (const inc of incidents.values()) clearTimeout(inc.statusTimer); incidents.clear(); }
     };

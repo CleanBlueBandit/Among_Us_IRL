@@ -3,7 +3,7 @@
 //
 //   const alarm = AlarmAudio.create(audioContext, socket);   // after a tap, so the browser allows sound
 //   alarm.start();  alarm.stop();                             // the looping alarm
-// Spoken lines arrive by themselves over the socket ('alarm_voice').
+// Spoken lines ('alarm_voice') and the end-of-game sound ('win_sound') arrive by themselves over the socket.
 (function () {
     'use strict';
 
@@ -19,7 +19,7 @@
 
     function create(ctx, socket) {
         let settings = null, alarmBuf = null, alarmSrc = null, wantAlarm = false;
-        let speaking = 0;
+        let speaking = 0, voiceSrc = null, winSrc = null;
         const queue = [];
 
         const bus = ctx.createGain();
@@ -88,8 +88,8 @@
                 const src = ctx.createBufferSource();
                 src.buffer = buf;
                 src.connect(voiceGain);
-                speaking++; setAlarmLevel();
-                src.onended = () => { speaking--; setAlarmLevel(0.25); playNext(); };
+                speaking++; setAlarmLevel(); voiceSrc = src;
+                src.onended = () => { speaking--; if (voiceSrc === src) voiceSrc = null; setAlarmLevel(0.25); playNext(); };
                 src.start();
             } catch (e) {
                 console.warn('Could not play the alarm voice:', e);
@@ -99,7 +99,28 @@
 
         // Phones and tablets pause web audio when the screen dims or another app takes the sound. Wake it
         // straight back up while the alarm should be playing, instead of waiting for the next voice line.
-        function keepAlive() { if ((wantAlarm || speaking || queue.length) && ctx.state !== 'running' && ctx.state !== 'closed') ctx.resume().catch(() => {}); }
+        // The end-of-game fanfare: stops the alarm and anything still queued, plays dry (no reverb).
+        async function playWin(url) {
+            wantAlarm = false; stopSource(0.05);
+            queue.length = 0;
+            try { if (voiceSrc) voiceSrc.stop(); } catch (e) {}
+            try {
+                if (ctx.state === 'suspended') await ctx.resume();
+                const buf = await ctx.decodeAudioData(await (await fetch(url)).arrayBuffer());
+                try { if (winSrc) winSrc.stop(); } catch (e) {}
+                const src = ctx.createBufferSource(), g = ctx.createGain();
+                src.buffer = buf;
+                g.gain.value = A().winVolume ?? 1;
+                src.connect(g); g.connect(ctx.destination);
+                winSrc = src;
+                src.onended = () => { if (winSrc === src) winSrc = null; };
+                src.start();
+            } catch (e) {
+                console.warn('Could not play the win sound:', e);
+            }
+        }
+
+        function keepAlive() { if ((wantAlarm || speaking || queue.length || winSrc) && ctx.state !== 'running' && ctx.state !== 'closed') ctx.resume().catch(() => {}); }
         ctx.addEventListener('statechange', () => setTimeout(keepAlive, 200));
         document.addEventListener('visibilitychange', keepAlive);
         window.addEventListener('focus', keepAlive);
@@ -114,6 +135,7 @@
                 while (queue.length > 2) queue.shift();   // never fall behind the countdown
                 ready.then(playNext);
             });
+            socket.on('win_sound', d => { if (d && d.url) ready.then(() => playWin(d.url)); });
         }
 
         return {
