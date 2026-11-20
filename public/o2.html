@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>O2 Level Monitor</title>
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/serverdevice.js"></script>
     <style>
         body {
             background-color: #111;
@@ -155,6 +156,8 @@
             socket = io();
 
             setupSocketListeners();
+            // game over / restart happen on this page, so the alarm stays allowed to play
+            ServerDevice.attach(socket, { role: 'o2', onGameOver: stopForGameOver, onReset: resetToOptimal });
         });
 
         // Emit fix command when user clicks "Restore O2"
@@ -251,6 +254,11 @@
             alarmSound.currentTime = 0;
         }
 
+        // The game ended for any reason: stop everything; serverdevice.js shows the result.
+        function stopForGameOver() {
+            if (currentState !== 'game-over') triggerGameOver();
+        }
+
         function triggerGameOver() {
             currentState = 'game-over';
             clearInterval(countdownInterval);
@@ -261,7 +269,7 @@
             countdownDisplay.style.display = 'none';
             fixBtn.style.display = 'none';
             
-            window.location.href = "/win";
+            // the win screen is shown over this page by serverdevice.js
         }
     </script>
 </body>

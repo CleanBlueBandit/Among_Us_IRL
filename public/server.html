@@ -3,44 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Server</title>
+    <title>Server Lobby</title>
+    <style>
+        :root {
+            --bg: #0b0f14; --panel: #121821; --edge: #1f2a37; --text: #e2e8f0; --dim: #8ea0b5;
+            --o2: #00e5ff; --reactor: #ff6a3d; --emergency: #ff3b3b; --ok: #34d399; --warn: #fbbf24;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh; background: radial-gradient(ellipse at top, #16202c, var(--bg) 70%); color: var(--text);
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            display: flex; justify-content: center; padding: 28px 16px 40px;
+        }
+        main { width: 100%; max-width: 520px; display: flex; flex-direction: column; gap: 16px; }
+        h1 { margin: 0; font-size: 1.05rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); }
+        .me { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-radius: 14px; background: var(--panel); border: 1px solid var(--edge); }
+        .me small { display: block; color: var(--dim); font-size: 0.8rem; margin-bottom: 2px; }
+        .me b { font-size: 1.25rem; letter-spacing: 0.04em; }
+        .game { font-size: 0.8rem; color: var(--dim); text-align: right; }
+        .roles { display: flex; flex-direction: column; gap: 10px; }
+        .role { --c: var(--dim); display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px;
+            padding: 14px; border-radius: 14px; background: var(--panel); border: 1px solid var(--edge); }
+        .role.me-role { border-color: var(--c); box-shadow: 0 0 0 1px var(--c) inset, 0 0 22px color-mix(in srgb, var(--c) 18%, transparent); }
+        .role[data-role="o2"] { --c: var(--o2); } .role[data-role="reactor"] { --c: var(--reactor); } .role[data-role="emergency"] { --c: var(--emergency); }
+        .icon { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); }
+        .icon svg { width: 24px; height: 24px; }
+        .name { font-weight: 700; font-size: 1.02rem; }
+        .state { font-size: 0.8rem; color: var(--dim); margin-top: 2px; }
+        .state.free { color: var(--ok); } .state.other { color: var(--warn); } .state.me { color: var(--c); }
+        .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+        button, .btn { font: inherit; font-size: 0.85rem; font-weight: 700; padding: 9px 12px; min-height: 40px; border-radius: 10px; cursor: pointer;
+            border: 1px solid var(--edge); background: #18212c; color: var(--text); text-decoration: none; display: inline-flex; align-items: center; }
+        button:hover, .btn:hover { background: #1f2a37; }
+        button:focus-visible, .btn:focus-visible { outline: 2px solid var(--c, var(--o2)); outline-offset: 2px; }
+        button:disabled { opacity: 0.5; cursor: default; }
+        .primary { background: var(--c); border-color: var(--c); color: #071016; }
+        .primary:hover { background: var(--c); filter: brightness(1.1); }
+        .danger { border-color: #7f1d1d; color: #fca5a5; }
+        .msg { min-height: 1.3em; margin: 0; font-size: 0.85rem; color: #fca5a5; }
+        .msg.info { color: var(--warn); }
+        .foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 6px; }
+        .foot p { margin: 0; color: var(--dim); font-size: 0.8rem; }
+        @media (max-width: 420px) {
+            .role { grid-template-columns: auto 1fr; }
+            .acts { grid-column: 1 / -1; justify-content: stretch; }
+            .acts > * { flex: 1; justify-content: center; }
+        }
+    </style>
 </head>
 <body>
-    <h3>Server config</h3>
-    <h4>Turn this device into</h4>
-    <div style="display: flex;">
-        <button onclick="cicleBetweenValues('func_val', false, ['o2', 'reactor', 'emergency'])">&lt;</button>
-        <p style="margin: 10px" id="func_val">o2</p>
-        <button onclick="cicleBetweenValues('func_val', true, ['o2', 'reactor', 'emergency'])">&gt;</button>
+<main>
+    <h1>Server lobby</h1>
+    <div class="me">
+        <div><small>This device is</small><b id="myRole">…</b></div>
+        <div class="game" id="game"></div>
     </div>
-    <p id="server_res"></p>
-    <br>
-    <button onclick="postServer()">Submit</button>
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="common.js"></script>
-    <script>
-        function postServer(){
-            const it = get("func_val").innerText;
-            fetch(`/deviceFunc`, {
-                method : 'POST',
-                headers : {
-                    "Content-Type" : "application/json"
-                },
-                body: JSON.stringify({
-                    setting : it,
-                })
-            })
-            .then(res => res.json())
-            .then((data) => {
-                if(data.ok){
-                    window.location.href = "/" + it;
-                }
-                else{
-                    get("server_res").innerText = data.resp;
-                }
-            })
-        }
-    </script>
+    <div class="roles" id="roles"></div>
+    <p class="msg" id="msg" role="alert"></p>
+    <div class="foot">
+        <p>Opening a role asks for one tap so it can play sound. After that it stays on its page between games.</p>
+        <button class="danger" id="disconnect" type="button">Disconnect</button>
+    </div>
+</main>
 
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const ROLES = {
+        o2: { name: 'O2', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="12" r="5"/><path d="M17 15.5h3l-3 3.5h3"/></svg>' },
+        reactor: { name: 'Reactor', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M12 10 9 4.8a8 8 0 0 1 6 0zM13.7 13l6 .2a8 8 0 0 1-3 5.2zM10.3 13l-3 5.4a8 8 0 0 1-3-5.2z"/></svg>' },
+        emergency: { name: 'Emergency button', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M5 19h14M7 19v-5a5 5 0 0 1 10 0v5M12 3v2M4.2 6.2l1.4 1.4M19.8 6.2l-1.4 1.4"/></svg>' }
+    };
+    const $ = id => document.getElementById(id);
+    let status = null, confirmFor = null, busy = false;
+    function say(text, info) { $('msg').textContent = text; $('msg').className = 'msg' + (info ? ' info' : ''); }
+
+    async function load() {
+        const res = await fetch('/server/status', { cache: 'no-store' });
+        if (res.status === 401) { window.location.href = '/host'; return; }
+        status = await res.json();
+        render();
+    }
+
+    function render() {
+        const mine = status.role;
+        $('myRole').textContent = ROLES[mine] ? ROLES[mine].name : 'No role yet';
+        $('game').textContent = status.started ? 'Game running' : status.over ? 'Game over' : 'In lobby';
+        const box = $('roles');
+        box.innerHTML = '';
+        for (const [key, r] of Object.entries(ROLES)) {
+            const st = status.roles[key];
+            const el = document.createElement('div');
+            el.className = 'role' + (st === 'me' ? ' me-role' : '');
+            el.dataset.role = key;
+            el.innerHTML = `<div class="icon">${r.icon}</div>
+                <div><div class="name"></div><div class="state ${st}"></div></div>
+                <div class="acts"></div>`;
+            el.querySelector('.name').textContent = r.name;
+            el.querySelector('.state').textContent = st === 'me' ? 'This device' : st === 'other' ? 'Taken by another device' : 'Free';
+            const acts = el.querySelector('.acts');
+            const btn = (label, cls, fn) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; if (cls) b.className = cls; b.disabled = busy; b.addEventListener('click', fn); acts.appendChild(b); return b; };
+            if (st === 'me') {
+                btn('Open', 'primary', () => { window.location.href = '/' + key; });
+                btn('Release', '', () => setRole('none'));
+            } else if (st === 'free') {
+                btn(mine && ROLES[mine] ? 'Switch to this' : 'Use this device', 'primary', () => setRole(key));
+            } else if (confirmFor === key) {
+                btn('Cancel', '', () => { confirmFor = null; say(''); render(); });
+                btn('Take it over', 'primary', () => setRole(key, true));
+            } else {
+                btn('Take over', '', () => { confirmFor = key; say('The other device will drop back to this lobby.', true); render(); });
+            }
+            box.appendChild(el);
+        }
+    }
+
+    async function setRole(role, takeover) {
+        busy = true; render(); say('');
+        try {
+            const res = await fetch('/deviceFunc', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ setting: role, takeover: !!takeover }) });
+            if (res.status === 401) { window.location.href = '/host'; return; }
+            const data = await res.json();
+            confirmFor = null;
+            if (data.ok && role !== 'none') { window.location.href = '/' + role; return; }
+            if (!data.ok) say(data.resp || 'That did not work');
+        } catch (e) {
+            say('Could not reach the server');
+        }
+        busy = false;
+        await load();
+    }
+
+    $('disconnect').addEventListener('click', () => {
+        if (confirm('Disconnect this device? It frees its role and logs it out.')) window.location.href = '/logout';
+    });
+
+    const socket = io();
+    socket.on('server_lobby_update', load);
+    socket.on('servers_data_request', load);
+    socket.on('restart_game', load);
+    socket.on('server_role', d => { if (d && d.role === null) window.location.href = '/host'; else load(); });
+    load();
+</script>
 </body>
 </html>

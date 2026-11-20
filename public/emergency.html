@@ -218,6 +218,7 @@
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="/serverdevice.js"></script>
 <script>
   const socket = io();
 
@@ -406,8 +407,20 @@
     countdownTick = setInterval(tick, 1000);
   });
 
-  socket.on("game_over", (data) => {
-    window.location.href = "/win";
+  // Game over and restart stay on this page (serverdevice.js shows the result over it).
+  function resetForNewGame() {
+    if (countdownTick) clearInterval(countdownTick);
+    countdownTick = null;
+    cooldownEndTime = 0;
+    meetingActive = false;
+    revealOverlay.classList.remove('active');
+    updateButton(false, "CALL<br>MEETING");
+    setStatus("Ready");
+  }
+  ServerDevice.attach(socket, {
+    role: 'emergency',
+    onGameOver: () => { if (countdownTick) clearInterval(countdownTick); },
+    onReset: resetForNewGame
   });
 
   socket.on("Err", (data) => {
