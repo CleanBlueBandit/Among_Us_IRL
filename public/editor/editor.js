@@ -260,19 +260,26 @@ function erasePiece(pc) {
     sel.delete(pc.line.id);
     return true;
 }
-// A door drawn along a wall replaces that stretch of the wall.
-function overwriteWalls(door) {
-    const f = floor(), len = dist(door.a, door.b);
+// The newest line wins: a wall or door drawn along other lines replaces the stretch of them it covers.
+// The cut ends are the new line's own ends (exactly), so what is left of the old line joins it cleanly.
+function overwriteLines(nl) {
+    const f = floor(), len = dist(nl.a, nl.b);
     if (len < EPS) return;
     for (const w of [...f.lines]) {
-        if (w === door || w.type === 'door') continue;
+        if (w === nl) continue;
         const wl = dist(w.a, w.b);
         if (wl < EPS) continue;
         const offLine = p => Math.abs(((p[0] - w.a[0]) * (w.b[1] - w.a[1]) - (p[1] - w.a[1]) * (w.b[0] - w.a[0])) / wl);
-        if (offLine(door.a) > EPS || offLine(door.b) > EPS) continue;
+        if (offLine(nl.a) > EPS || offLine(nl.b) > EPS) continue;
         const along = p => ((p[0] - w.a[0]) * (w.b[0] - w.a[0]) + (p[1] - w.a[1]) * (w.b[1] - w.a[1])) / (wl * wl);
-        const s0 = Math.max(0, Math.min(along(door.a), along(door.b))), s1 = Math.min(1, Math.max(along(door.a), along(door.b)));
-        if ((s1 - s0) * wl > EPS) cutLine(f, w, s0, s1);
+        const [lo, hi] = along(nl.a) <= along(nl.b) ? [nl.a, nl.b] : [nl.b, nl.a];
+        const s0 = Math.max(0, along(lo)), s1 = Math.min(1, along(hi));
+        if ((s1 - s0) * wl <= EPS) continue;
+        const keep = [];
+        if (s0 > 0 && dist(w.a, lo) > EPS) keep.push({ ...w, a: [...w.a], b: [...lo] });
+        if (s1 < 1 && dist(hi, w.b) > EPS) keep.push({ ...w, id: keep.length ? uid('l') : w.id, a: [...hi], b: [...w.b] });
+        f.lines.splice(f.lines.indexOf(w), 1, ...keep);
+        if (!keep.some(k => k.id === w.id)) sel.delete(w.id);
     }
 }
 
@@ -479,8 +486,8 @@ function renderInspector() {
             <div class="kv"><span>Rooms</span><b>${analysis.faces.filter(x => !x.void).length}</b></div><div class="kv"><span>Void spaces</span><b>${analysis.faces.filter(x => x.void).length}</b></div><div class="kv"><span>Tasks placed</span><b>${f.pins.length}</b></div>
           </div>
           <div class="sec"><h3>Clean up</h3>
-            <div class="row"><button class="btn" id="fSlice" title="Mark every unnamed space without a door as void">Slice void</button><button class="btn" id="fCorrect" title="Straighten every line to a multiple of 45°">Correct edges</button></div>
-            <p class="muted"><b>Slice void</b> marks every unnamed space without a door as void. <b>Correct edges</b> turns every wall and door to the nearest 45° (0°, 45°, 90°…), keeping corners joined.</p>
+            <div class="row"><button class="btn" id="fSlice" title="Mark every unnamed space without a door as void">Slice void</button><button class="btn" id="fCorrect" title="Straighten every line to a multiple of 45°">Correct edges</button><button class="btn" id="fFuse" title="Fuse lines that meet in a straight line (180°) into one">Line correction</button></div>
+            <p class="muted"><b>Slice void</b> marks every unnamed space without a door as void. <b>Correct edges</b> turns every wall and door to the nearest 45° (0°, 45°, 90°…), keeping corners joined. <b>Line correction</b> fuses walls (or doors) that meet end to end in a straight line into one.</p>
           </div>
           <div class="sec"><h3>Reference image</h3>
             ${ref ? `
@@ -663,7 +670,7 @@ function addSegment(s) {
     change(() => {
         const l = { id: uid('l'), type, a: [...a], b: [...s.p] };
         floor().lines.push(l);
-        if (type === 'door') overwriteWalls(l);
+        overwriteLines(l);
     });
     drawing.count++;
     if (type === 'door' || ((s.kind === 'end' || s.kind === 'line') && drawing.count > 0)) { finishDrawing(); return; }
@@ -733,6 +740,38 @@ function sliceVoid() {
         }
     });
     toast(`Marked ${targets.length} space${targets.length > 1 ? 's' : ''} as void.` + (skipped ? ` ${skipped} with tasks in ${skipped > 1 ? 'them were' : 'it was'} left alone.` : ''), 'good');
+}
+
+// ---- line correction -------------------------------------------------------------------------------
+// Two lines of the same kind meeting end to end in a straight line (180°) are really one line: fuse them.
+// Doors are only fused where nothing else touches the joint (it would end up in the door's middle).
+function lineCorrection() {
+    const f = floor();
+    let fused = 0;
+    for (let again = true; again;) {
+        again = false;
+        outer: for (const l of f.lines) {
+            for (const key of ['a', 'b']) {
+                const p = l[key];
+                const touching = f.lines.filter(m => m !== l && (same(m.a, p) || same(m.b, p) || onInterior(p, m.a, m.b)));
+                for (const m of touching) {
+                    if (m.type !== l.type || onInterior(p, m.a, m.b)) continue;
+                    if (l.type === 'door' && touching.length > 1) continue;
+                    const far1 = key === 'a' ? l.b : l.a, far2 = same(m.a, p) ? m.b : m.a;
+                    if (project(p, far1, far2).d > EPS || project(p, far1, far2).t <= 0 || project(p, far1, far2).t >= 1) continue;   // not a straight 180°
+                    const keepL = dist(l.a, l.b) >= dist(m.a, m.b);
+                    const kept = keepL ? l : m, gone = keepL ? m : l;
+                    kept.a = [...far1]; kept.b = [...far2];
+                    if (kept.group !== gone.group) delete kept.group;
+                    f.lines.splice(f.lines.indexOf(gone), 1);
+                    if (sel.has(gone.id)) { sel.delete(gone.id); sel.add(kept.id); }
+                    fused++; again = true;
+                    break outer;
+                }
+            }
+        }
+    }
+    return fused;
 }
 
 // ---- correct edges ---------------------------------------------------------------------------------
@@ -1078,6 +1117,11 @@ $('pane-inspect').addEventListener('click', e => {
         fit();
     } else if (id === 'fSlice') sliceVoid();
     else if (id === 'fCorrect') correctEdges();
+    else if (id === 'fFuse') {
+        let n = 0;
+        change(() => { n = lineCorrection(); });
+        toast(n ? `Fused ${n} joint${n > 1 ? 's' : ''}: lines meeting in a straight line are now one.` : 'No lines meet in a straight line (180°) on this floor.', n ? 'good' : '');
+    }
     else if (id === 'rImp') { $('refFile').click(); }
     else if (id === 'rVis') { change(() => { f.reference.visible = !f.reference.visible; }); }
     else if (id === 'rAdj') { refAdjust = !refAdjust; if (refAdjust) setTool('select'); renderInspector(); render(); }
