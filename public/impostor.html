@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Impostor Remote</title>
-    <link rel="stylesheet" href="/tabletmap.css">
     <style>
         :root {
             --rust-dark: #1a120c;
@@ -111,28 +110,6 @@
         }
 
         /* Progress Bar Styles */
-        .task-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-        .task-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.8rem;
-            padding: 6px 8px; border: 1px solid var(--rust-accent); border-radius: 4px; background: rgba(0, 0, 0, 0.35); }
-        .task-item .task-loc { opacity: 0.6; font-size: 0.7rem; }
-        .task-item .task-mark { opacity: 0.6; }
-        .task-item.done { opacity: 0.5; }
-        .task-item.done .task-name { text-decoration: line-through; }
-        .task-item.done .task-mark { color: var(--terminal-green); opacity: 1; }
-
-        .task-container {
-            margin-top: 10px;
-            padding-top: 8px;
-            border-top: 1px dashed #2b2018;
-        }
-
-        .task-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 4px;
-            color: #88a888;
-        }
-
         .progress-track {
             width: 100%;
             height: 12px;
@@ -319,12 +296,6 @@
             border-radius: 6px;
             cursor: pointer;
         }
-            .btn-map { display: flex; align-items: center; gap: 10px; width: 100%; margin: 10px 0; padding: 10px 12px; font-family: inherit; font-weight: 700; letter-spacing: 1px;
-            color: var(--terminal-green); background: rgba(51, 255, 51, 0.05); border: 1px solid rgba(51, 255, 51, 0.35); border-radius: 6px; cursor: pointer; }
-        .btn-map svg { width: 20px; height: 20px; }
-        .btn-map:focus-visible { outline: 2px solid var(--terminal-green); outline-offset: 2px; }
-        .task-pin { margin-left: 8px; border: 1px solid rgba(51, 255, 51, 0.35); background: transparent; color: var(--terminal-green); border-radius: 4px; padding: 0 6px; font: inherit; font-size: 0.8em; cursor: pointer; display: none; }
-        .has-map .task-pin { display: inline-block; }
 </style>
 </head>
 <body>
@@ -339,32 +310,10 @@
             <h1>1MP0ST0R REM0TE H4CK</h1>
         </div>
 
-        <div class="terminal-screen" data-map-screen>
+        <div class="terminal-screen">
             <p id="usr">username: ---</p>
             <p id="id">id: ---</p>
             <p id="alive">status: ---</p>
-            
-            <button class="btn-map" type="button" data-map-open hidden>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20z"/><path d="M9 4v13.5M15 6.5V20"/></svg>
-                <span>M4P</span>
-            </button>
-            <div class="task-container">
-                <div class="task-header">
-                    <span>Cover Tasks (don't count):</span>
-                    <span id="myTasksText">--/--</span>
-                </div>
-                <ul id="taskList" class="task-list"></ul>
-            </div>
-
-            <div class="task-container">
-                <div class="task-header">
-                    <span>Crew Tasks:</span>
-                    <span id="totalTasksText">--/--</span>
-                </div>
-                <div class="progress-track">
-                    <div class="progress-fill" id="taskProgressFill"></div>
-                </div>
-            </div>
         </div>
 
         <div class="control-group" id="cooldown-panel">
@@ -414,10 +363,6 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="common.js"></script>
-    <script type="module" src="/tabletmap.js"></script>
-    <script>
-        document.addEventListener('tabletmap:ready', function(e) { document.body.classList.toggle('has-map', !!(e.detail && e.detail.hasMap)); });
-    </script>
     <script>
         let clientAnimationId = null;
         let cooldownAnimationId = null;
@@ -551,62 +496,15 @@
             window.location.href = "/win";
         });
 
-        function renderTasks(tasks) {
-            const list = document.getElementById("taskList");
-            list.innerHTML = "";
-            tasks.forEach((t) => {
-                const li = document.createElement("li");
-                li.className = "task-item" + (t.done ? " done" : "");
-                const info = document.createElement("div");
-                const name = document.createElement("div");
-                name.className = "task-name";
-                name.textContent = t.name;
-                const loc = document.createElement("div");
-                loc.className = "task-loc";
-                loc.textContent = t.location;
-                info.appendChild(name);
-                info.appendChild(loc);
-                const mark = document.createElement("span");
-                mark.className = "task-mark";
-                mark.textContent = t.done ? "\u2713" : "\u25CB";
-                li.appendChild(info);
-                const step = !t.done && t.steps ? t.steps[t.step] : null;
-                if (step && step.pin) {
-                    const pin = document.createElement("button");
-                    pin.type = "button";
-                    pin.className = "task-pin";
-                    pin.textContent = "map";
-                    pin.setAttribute("aria-label", "Show " + t.name + " on the map");
-                    pin.addEventListener("click", () => { if (window.TabletMap) window.TabletMap.focusTask(t.id); });
-                    info.appendChild(pin);
-                }
-                li.appendChild(mark);
-                list.appendChild(li);
-            });
-            document.getElementById("myTasksText").innerText = tasks.filter((t) => t.done).length + "/" + tasks.length;
-        }
-
         socket.on("player_data_request", (data) => {
             if (!data) return;
-            renderTasks(Array.isArray(data.tasks) ? data.tasks : []);
             document.getElementById("usr").innerText = "username: " + data.username;
             document.getElementById("id").innerText = "id: " + data.id;
             document.getElementById("alive").innerText = data.alive ? "status: Alive" : "status: Dead";
         });
 
         socket.on("game_data_request", (data) => {
-            // Update Text
-            document.getElementById("totalTasksText").innerText = data.completedTasks + "/" + data.totalTasks;
-            
-            // Update Progress Bar
-            let percentage = 0;
-            if (data.totalTasks > 0) {
-                percentage = (data.completedTasks / data.totalTasks) * 100;
-            }
-            // Cap at 100% just in case
-            percentage = Math.min(percentage, 100);
-            document.getElementById("taskProgressFill").style.width = percentage + "%";
-            if(data.emergencyMeeting){
+            if (data.emergencyMeeting) {
                 window.location.href = "/emergency-client";
             }
         });
