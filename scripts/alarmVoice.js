@@ -27,12 +27,15 @@ export const DEFAULTS = {
         model: 'vits-piper-en_US-lessac-medium',   // any Piper voice from the sherpa-onnx tts-models release
         speaker: 0,
         speed: 0.95,                               // 1 = normal; lower is slower
+        pause: 0.3,                                // extra seconds of silence for each "..." in a line
         downloadUrl: 'https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/{model}.tar.bz2'
     },
     // When the voice speaks, in seconds left on the alarm's countdown. It speaks the "start" line as the
     // alarm goes off, a "countdown" line every `every` seconds, then a "final" line every `finalEvery`
     // seconds once `finalFrom` or fewer are left. A line is skipped if the last one is still being spoken.
-    schedule: { every: 15, finalFrom: 10, finalEvery: 5 },
+    // When the repair changes (a code is accepted, a lever is pushed or let go), the "status" line is spoken
+    // after `statusDelay` seconds, once the voice is free, so quick changes are read out once.
+    schedule: { every: 15, finalFrom: 10, finalEvery: 5, statusDelay: 1.5 },
     // Mixed in the station's browser. Volumes are 0-1. While the voice speaks, the alarm drops to duckTo.
     // Reverb goes over the alarm and the voice together: mix is how much of it you hear, seconds how long
     // it rings, decay how fast it fades (higher = shorter, drier room).
@@ -44,30 +47,39 @@ export const DEFAULTS = {
     },
     // Filled into the lines below: {section} is picked once per alarm from these patterns (so the "stable"
     // line names the same one), # becomes a random digit and @ a random letter (not I or O): "#@" gives sections like 4B.
-    // {time} is the time left in words, {seconds} the bare number.
+    // {time} is the time left in words, {seconds} the bare number, {status} the "status" line.
+    // In the "status" and "ready" lines: {count} codes / levers so far, {need} how many it takes, and {s},
+    // which is "s" unless the count is 1 ("1 code", "0 codes").
+    // "..." anywhere in a line is a pause (voice.pause seconds long), like the gaps in a station announcement.
     sections: ['#@'],
     reactor: {
         alarm: '/sounds/reactor.mp3',
         audio: { reverb: { mix: 0.3 } },
         start: [
-            'Warning! Reactor section {section} is unstable. Meltdown in {time}.',
-            'Alert! Reactor section {section} is unstable. Two crewmates, hold the override levers. Meltdown in {time}.'
+            'Warning! Reactor section... {section}... is unstable. Meltdown in... {time}.',
+            'Alert! Reactor section... {section}... is unstable. Two crewmates, hold the override levers. Meltdown in... {time}.'
         ],
-        countdown: ['Reactor meltdown in {time}.', 'Reactor section {section} unstable. Meltdown in {time}.', '{time} to core meltdown.'],
+        countdown: ['Reactor meltdown in... {time}. {status}', 'Reactor section... {section}... unstable. Meltdown in... {time}. {status}',
+            '{time}... to core meltdown. {status}'],
         final: ['{seconds}.'],
-        fixed: ['Reactor section {section} stable.'],
+        status: ['{count} override lever{s} pushed... {need} needed for an override.'],
+        ready: ['Override engaged. Hold the levers.'],   // when enough levers are pushed
+        fixed: ['Reactor section... {section}... stable.'],
         failed: ['Reactor meltdown. Containment lost.']
     },
     o2: {
         alarm: '/sounds/o2.mp3',
         audio: { reverb: { mix: 0.15 } },   // this alarm sound already has reverb in it
         start: [
-            'Warning! Oxygen section {section} is unstable. Oxygen depleted in {time}.',
-            'Alert! Oxygen section {section} is unstable. Enter override codes from two crewmates. Oxygen depleted in {time}.'
+            'Warning! Oxygen section... {section}... is unstable. Oxygen depleted in... {time}.',
+            'Alert! Oxygen section... {section}... is unstable. Enter override codes from two crewmates. Oxygen depleted in... {time}.'
         ],
-        countdown: ['Oxygen depleted in {time}.', 'Oxygen section {section} unstable. Oxygen depleted in {time}.', '{time} of oxygen left.'],
+        countdown: ['Oxygen depleted in... {time}. {status}', 'Oxygen section... {section}... unstable. Oxygen depleted in... {time}. {status}',
+            '{time}... of oxygen left. {status}'],
         final: ['{seconds}.'],
-        fixed: ['Oxygen section {section} stable.'],
+        status: ['{count} code{s} provided... {need} are needed for an override.'],
+        ready: [],   // O2 is fixed the moment the last code goes in
+        fixed: ['Oxygen section... {section}... stable.'],
         failed: ['Oxygen depleted. Life support failure.']
     }
 };
@@ -101,7 +113,7 @@ export function timeWords(sec) {
 // Fills a line and capitalises each sentence (a part name may start one).
 export function fill(template, vars) {
     const text = String(template || '').replace(/\{(\w+)\}/g, (all, k) => (vars[k] !== undefined ? String(vars[k]) : all));
-    return text.replace(/(^\s*|[.!?]\s+)([a-z])/g, (all, pre, ch) => pre + ch.toUpperCase()).trim();
+    return text.replace(/(^\s*|(?<!\.)[.!?]\s+)([a-z])/g, (all, pre, ch) => pre + ch.toUpperCase()).trim();
 }
 
 // ---- WAV -------------------------------------------------------------------------------------------
@@ -122,7 +134,7 @@ export function createAlarmVoice({ root, send, log = () => {}, logError = consol
     const MODELS_DIR = path.join(root, 'voice', 'models');
     let config = DEFAULTS;
     let engine = null, engineFor = '', loading = null, failedFor = '';
-    const incidents = new Map();   // type -> { section, part, id, busyUntil, lastAt }
+    const incidents = new Map();   // type -> { section, busyUntil, status: { count, need }, spoken, statusTimer }
     const clips = new Map();       // id -> wav Buffer (the last few, served to the stations)
 
     async function loadConfig() {
@@ -184,18 +196,40 @@ export function createAlarmVoice({ root, send, log = () => {}, logError = consol
         return loading;
     }
 
+    // The repair so far, as the "status" line (or "ready" once there are enough).
+    function statusLine(type, inc) {
+        const t = config[type], st = inc.status || { count: 0, need: 2 };
+        const line = st.count >= st.need ? pick(t.ready) : pick(t.status);
+        return line ? fill(line, { count: st.count, need: st.need, s: st.count === 1 ? '' : 's' }) : '';
+    }
+    const varsFor = (type, inc, timeLeft) => ({ ...inc, time: timeWords(timeLeft), seconds: timeLeft, status: statusLine(type, inc) });
+
     async function speak(type, line, vars) {
         const inc = incidents.get(type);
-        const text = fill(line, vars || inc || {});
+        if (inc && String(line).includes('{status}')) inc.spoken = inc.status && inc.status.count;
+        const text = fill(line, vars || inc || {}).replace(/\s+/g, ' ');
         if (!text) return;
         const tts = await ensureEngine();
         if (!tts) { send(type, 'alarm_voice', { type, text, url: null }); return; }
         try {
-            const out = await tts.generateAsync({ text, sid: config.voice.speaker | 0, speed: Number(config.voice.speed) || 1 });
+            // "..." is a pause: speak the pieces separately and put silence between them.
+            const pieces = text.split(/\s*(?:\.\.\.|…)\s*/).filter(s => /\w/.test(s));
+            const opts = { sid: config.voice.speaker | 0, speed: Number(config.voice.speed) || 1 };
+            let rate = 22050;
+            const parts = [];
+            for (let i = 0; i < pieces.length; i++) {
+                const out = await tts.generateAsync({ text: pieces[i], ...opts });
+                rate = out.sampleRate;
+                if (i) parts.push(new Float32Array(Math.round(rate * Math.max(0, Number(config.voice.pause) || 0))));
+                parts.push(out.samples);
+            }
+            const samples = new Float32Array(parts.reduce((n, p) => n + p.length, 0));
+            let at = 0;
+            for (const p of parts) { samples.set(p, at); at += p.length; }
             const id = crypto.randomBytes(8).toString('hex');
-            clips.set(id, toWav(out.samples, out.sampleRate));
+            clips.set(id, toWav(samples, rate));
             while (clips.size > 24) clips.delete(clips.keys().next().value);
-            const seconds = out.samples.length / out.sampleRate;
+            const seconds = samples.length / rate;
             if (inc) inc.busyUntil = Date.now() + seconds * 1000 + 400;
             send(type, 'alarm_voice', { type, text, url: `/alarm/voice/${id}.wav`, seconds });
             log(`Alarm voice (${type}): ${text}`);
@@ -223,10 +257,25 @@ export function createAlarmVoice({ root, send, log = () => {}, logError = consol
             if (!TYPES.includes(type) || incidents.has(type)) return;
             await loadConfig();
             const t = config[type];
-            const inc = { section: fillId(pick(t.sections || config.sections)), busyUntil: 0 };
+            const inc = { section: fillId(pick(t.sections || config.sections)), busyUntil: 0, status: { count: 0, need: 2 }, spoken: null, statusTimer: null };
             incidents.set(type, inc);
             if (!config.enabled) return;
-            await speak(type, pick(t.start), { ...inc, time: timeWords(timeLeft), seconds: timeLeft });
+            await speak(type, pick(t.start), varsFor(type, inc, timeLeft));
+        },
+        // The repair changed: { count, need } codes accepted / levers pushed. Read out once it settles.
+        status(type, st) {
+            const inc = incidents.get(type);
+            if (!inc || !st) return;
+            inc.status = { count: st.count | 0, need: st.need | 0 };
+            clearTimeout(inc.statusTimer);
+            if (!config.enabled || inc.status.count === inc.spoken) return;
+            const fire = () => {
+                if (incidents.get(type) !== inc || inc.status.count === inc.spoken) return;
+                const wait = inc.busyUntil - Date.now();
+                if (wait > 0) { inc.statusTimer = setTimeout(fire, wait + 50); return; }
+                speak(type, '{status}', varsFor(type, inc, 0));
+            };
+            inc.statusTimer = setTimeout(fire, Math.max(0, Number((config.schedule || {}).statusDelay) || 0) * 1000);
         },
         // Every second of the alarm's countdown.
         tick(type, timeLeft) {
@@ -237,20 +286,22 @@ export function createAlarmVoice({ root, send, log = () => {}, logError = consol
             if (final ? timeLeft % finalEvery !== 0 : timeLeft % every !== 0) return;
             if (Date.now() < inc.busyUntil) return;
             const t = config[type];
-            speak(type, pick(final ? t.final : t.countdown), { ...inc, time: timeWords(timeLeft), seconds: timeLeft });
+            speak(type, pick(final ? t.final : t.countdown), varsFor(type, inc, timeLeft));
         },
         fixed(type) {
             const inc = incidents.get(type);
             if (!inc) return;
+            clearTimeout(inc.statusTimer);
             incidents.delete(type);
             if (config.enabled) speak(type, pick(config[type].fixed), inc);
         },
         failed(type) {
             const inc = incidents.get(type);
             if (!inc) return;
+            clearTimeout(inc.statusTimer);
             incidents.delete(type);
             if (config.enabled) speak(type, pick(config[type].failed), inc);
         },
-        reset() { incidents.clear(); }
+        reset() { for (const inc of incidents.values()) clearTimeout(inc.statusTimer); incidents.clear(); }
     };
 }

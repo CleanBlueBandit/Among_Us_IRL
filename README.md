@@ -257,7 +257,7 @@ Where each QR code is gets fixed when the game starts, so editing the plan mid-g
 
 ## Alarm voice
 
-When the O2 or reactor alarm goes off, its station plays the alarm sound (`public/sounds/o2.mp3`, `public/sounds/reactor.mp3`) and a voice names a random section of the ship, for example *"Warning! Reactor section 4B is unstable. Meltdown in 1 minute 30 seconds."* It counts down while the alarm runs, and once the crew fixes it, it names the same section again: *"Reactor section 4B stable."*
+When the O2 or reactor alarm goes off, its station plays the alarm sound (`public/sounds/o2.mp3`, `public/sounds/reactor.mp3`) and a voice names a random section of the ship, for example *"Warning! Reactor section 4B is unstable. Meltdown in 1 minute 30 seconds."* It counts down while the alarm runs and reads out how the repair is going (*"1 override lever pushed... 2 needed for an override."*, *"0 codes provided... 2 are needed for an override."*), both in the countdown lines and whenever a code goes in or a lever is pushed or let go. Once the crew fixes it, it names the same section again: *"Reactor section 4B stable."*
 
 - The voice is made on the server, offline, with [Piper](https://github.com/rhasspy/piper) (the Lessac voice) through `sherpa-onnx-node`. A line takes a fraction of a second on a desktop processor.
 - The voice (about 80 MB) is downloaded once from GitHub, the first time the server starts, into `voice/models/`. Without internet at that moment, or on a system it can't run on (Alpine Linux in Docker, for example), the alarms play without the voice and the reason is in `error.log`.
@@ -269,14 +269,19 @@ Everything is set in `voice.json` next to `server.js`. It is read each time an a
 |---|---|
 | `enabled` | `false` turns the voice off; the alarm sound still plays. |
 | `voice.model`, `voice.speaker`, `voice.speed` | Which Piper voice, which speaker in it, and how fast it talks (1 = normal). Any `vits-piper-*` voice from the [sherpa-onnx tts-models release](https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models) works and is downloaded on first use. |
+| `voice.pause` | Extra seconds of silence for each `...` in a line (see below). |
 | `schedule.every` | Seconds between countdown lines. |
 | `schedule.finalFrom`, `schedule.finalEvery` | From this many seconds left, speak a short line every `finalEvery` seconds. A line is skipped while the previous one is still playing. |
+| `schedule.statusDelay` | Seconds to wait after the repair changes before reading out the status, so a lever pushed and let go quickly is read out once. It also waits for the voice to be free. |
 | `audio.alarmVolume`, `audio.voiceVolume` | 0 to 1. |
 | `audio.duckTo` | How loud the alarm stays while the voice speaks (0.35 = 35%). |
 | `audio.reverb.mix`, `.seconds`, `.decay` | How much reverb, how long it rings, and how fast it fades (higher decay = smaller room). `o2.audio` and `reactor.audio` override these per station; O2 gets less by default because its sound already has reverb. |
 | `sections` | Patterns for the section an alarm names: `#` becomes a random digit, `@` a random letter (never I or O). `"#@"` gives sections like 4B. `o2.sections` or `reactor.sections` override it for one station. |
-| `start`, `countdown`, `final`, `fixed`, `failed` | The lines (under `o2` and `reactor`). One is picked at random each time. They can use `{section}`, `{time}` (time left in words) and `{seconds}`. |
+| `start`, `countdown`, `final`, `fixed`, `failed` | The lines (under `o2` and `reactor`). One is picked at random each time. They can use `{section}`, `{time}` (time left in words), `{seconds}` and `{status}` (the status line below). |
+| `status`, `ready` | How the repair is going: `{count}` codes or levers so far, `{need}` how many it takes, and `{s}` (an "s" unless the count is 1, for "1 code" / "0 codes"). `ready` is used instead once there are enough (the reactor's levers are all pushed). |
 | `o2.alarm`, `reactor.alarm` | The alarm sound each station loops. |
+
+**Pauses:** Piper barely pauses at commas or full stops, so `...` is a real pause: the line is spoken in pieces with `voice.pause` seconds of silence between them, like the gap before the number in a station announcement: `"Meltdown in... {time}."` → *"Meltdown in — 1 minute 30 seconds."*
 
 ## Testing minigames
 
