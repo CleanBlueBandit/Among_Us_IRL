@@ -36,8 +36,21 @@
         '<path d="M21 19a15 15 0 0 0 0 22M43 19a15 15 0 0 1 0 22" opacity=".55"/><path d="M13 11a26 26 0 0 0 0 38M51 11a26 26 0 0 1 0 38" opacity=".3"/>' +
         '<path d="M8 6l48 52"/></svg>';
 
+    // Keep the station's screen on: a sleeping screen also pauses its sound. Browsers only allow this on
+    // https (or localhost); elsewhere this does nothing and the device's own screen timeout applies.
+    var wake = null;
+    function keepAwake() {
+        if (!navigator.wakeLock || document.visibilityState !== 'visible' || wake) return;
+        navigator.wakeLock.request('screen').then(function (l) {
+            wake = l;
+            l.addEventListener('release', function () { wake = null; });
+        }).catch(function () {});
+    }
+    document.addEventListener('visibilitychange', keepAwake);
+
     function attach(socket, opts) {
         opts = opts || {};
+        keepAwake();
         if (!document.getElementById('sd-style')) {
             var st = document.createElement('style');
             st.id = 'sd-style';
