@@ -257,7 +257,7 @@ Where each QR code is gets fixed when the game starts, so editing the plan mid-g
 
 ## Alarm voice
 
-When the O2 or reactor alarm goes off, its station plays the alarm sound (`public/sounds/o2.mp3`, `public/sounds/reactor.mp3`) and a voice reads out what broke. Each alarm makes up its own details: a section of the ship, a damaged part and an id, for example *"Alert! Reactor core 8 is critical. The primary coolant pump in Module Four is offline. Meltdown in 1 minute 30 seconds."* It counts down while the alarm runs, and once the crew fixes it, it says so with the same details: *"Module Four reactor stable. Primary coolant pump back online."*
+When the O2 or reactor alarm goes off, its station plays the alarm sound (`public/sounds/o2.mp3`, `public/sounds/reactor.mp3`) and a voice names a random section of the ship, for example *"Warning! Reactor section 4B is unstable. Meltdown in 1 minute 30 seconds."* It counts down while the alarm runs, and once the crew fixes it, it names the same section again: *"Reactor section 4B stable."*
 
 - The voice is made on the server, offline, with [Piper](https://github.com/rhasspy/piper) (the Lessac voice) through `sherpa-onnx-node`. A line takes a fraction of a second on a desktop processor.
 - The voice (about 80 MB) is downloaded once from GitHub, the first time the server starts, into `voice/models/`. Without internet at that moment, or on a system it can't run on (Alpine Linux in Docker, for example), the alarms play without the voice and the reason is in `error.log`.
@@ -274,10 +274,8 @@ Everything is set in `voice.json` next to `server.js`. It is read each time an a
 | `audio.alarmVolume`, `audio.voiceVolume` | 0 to 1. |
 | `audio.duckTo` | How loud the alarm stays while the voice speaks (0.35 = 35%). |
 | `audio.reverb.mix`, `.seconds`, `.decay` | How much reverb, how long it rings, and how fast it fades (higher decay = smaller room). `o2.audio` and `reactor.audio` override these per station; O2 gets less by default because its sound already has reverb. |
-| `sections` | Places in the ship an alarm can name. |
-| `o2.parts`, `reactor.parts` | The parts that can break. |
-| `o2.ids`, `reactor.ids` | Id patterns: `#` becomes a random digit, `@` a random letter. |
-| `start`, `countdown`, `final`, `fixed`, `failed` | The lines (under `o2` and `reactor`). One is picked at random each time. They can use `{section}`, `{part}`, `{id}`, `{time}` (time left in words) and `{seconds}`. |
+| `sections` | Patterns for the section an alarm names: `#` becomes a random digit, `@` a random letter (never I or O). `"#@"` gives sections like 4B. `o2.sections` or `reactor.sections` override it for one station. |
+| `start`, `countdown`, `final`, `fixed`, `failed` | The lines (under `o2` and `reactor`). One is picked at random each time. They can use `{section}`, `{time}` (time left in words) and `{seconds}`. |
 | `o2.alarm`, `reactor.alarm` | The alarm sound each station loops. |
 
 ## Testing minigames
