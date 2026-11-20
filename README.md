@@ -255,6 +255,31 @@ Once a floor plan is saved, every player's tablet gets a **Map** button (the imp
 
 Where each QR code is gets fixed when the game starts, so editing the plan mid-game doesn't move anyone's pins.
 
+## Alarm voice
+
+When the O2 or reactor alarm goes off, its station plays the alarm sound (`public/sounds/o2.mp3`, `public/sounds/reactor.mp3`) and a voice reads out what broke. Each alarm makes up its own details: a section of the ship, a damaged part and an id, for example *"Alert! Reactor core 8 is critical. The primary coolant pump in Module Four is offline. Meltdown in 1 minute 30 seconds."* It counts down while the alarm runs, and once the crew fixes it, it says so with the same details: *"Module Four reactor stable. Primary coolant pump back online."*
+
+- The voice is made on the server, offline, with [Piper](https://github.com/rhasspy/piper) (the Lessac voice) through `sherpa-onnx-node`. A line takes a fraction of a second on a desktop processor.
+- The voice (about 80 MB) is downloaded once from GitHub, the first time the server starts, into `voice/models/`. Without internet at that moment, or on a system it can't run on (Alpine Linux in Docker, for example), the alarms play without the voice and the reason is in `error.log`.
+- The station mixes the alarm and the voice in its browser, with reverb over both. Press **Connect** on the station so the browser allows sound.
+
+Everything is set in `voice.json` next to `server.js`. It is read each time an alarm starts, so changes apply to the next alarm without a restart. Leave a key out (or delete the file) and the default is used.
+
+| Key | What it does |
+|---|---|
+| `enabled` | `false` turns the voice off; the alarm sound still plays. |
+| `voice.model`, `voice.speaker`, `voice.speed` | Which Piper voice, which speaker in it, and how fast it talks (1 = normal). Any `vits-piper-*` voice from the [sherpa-onnx tts-models release](https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models) works and is downloaded on first use. |
+| `schedule.every` | Seconds between countdown lines. |
+| `schedule.finalFrom`, `schedule.finalEvery` | From this many seconds left, speak a short line every `finalEvery` seconds. A line is skipped while the previous one is still playing. |
+| `audio.alarmVolume`, `audio.voiceVolume` | 0 to 1. |
+| `audio.duckTo` | How loud the alarm stays while the voice speaks (0.35 = 35%). |
+| `audio.reverb.mix`, `.seconds`, `.decay` | How much reverb, how long it rings, and how fast it fades (higher decay = smaller room). `o2.audio` and `reactor.audio` override these per station; O2 gets less by default because its sound already has reverb. |
+| `sections` | Places in the ship an alarm can name. |
+| `o2.parts`, `reactor.parts` | The parts that can break. |
+| `o2.ids`, `reactor.ids` | Id patterns: `#` becomes a random digit, `@` a random letter. |
+| `start`, `countdown`, `final`, `fixed`, `failed` | The lines (under `o2` and `reactor`). One is picked at random each time. They can use `{section}`, `{part}`, `{id}`, `{time}` (time left in words) and `{seconds}`. |
+| `o2.alarm`, `reactor.alarm` | The alarm sound each station loops. |
+
 ## Testing minigames
 
 In the host lobby, **Test minigames** opens a test bench (host only): every minigame in `minigames/` (and any `_draft` files) can be played in a phone, sideways phone or tablet sized frame, with a timer and a "finished" signal. Nothing is recorded in a game, and `fuel_engine` gets a pretend tank you can set to full or empty. Mark each one "Works" or "Has a problem" with a note; the marks are kept in that browser.

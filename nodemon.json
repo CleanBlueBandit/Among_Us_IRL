@@ -1,5 +1,7 @@
 {
   "ignore": [
-    "game.json"
+    "game.json",
+    "voice/",
+    "voice.json"
   ]
 }

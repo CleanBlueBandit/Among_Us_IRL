@@ -16,6 +16,7 @@ import QRCode from 'qrcode';
 import { validatePlan } from './public/editor/geometry.js';
 import { debuglog } from 'util';
 import { marked } from "marked";
+import { createAlarmVoice } from './scripts/alarmVoice.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -63,6 +64,17 @@ function logError(message, error = "") {
     console.error(logMsg);
     fs.appendFile(ERROR_LOG, logMsg + '\n', 'utf-8').catch(e => console.error("Logger error:", e));
 }
+
+// Spoken O2 / reactor alarms (scripts/alarmVoice.js, tuned in voice.json). Lines go to that station's devices.
+const alarmVoice = createAlarmVoice({
+    root: ROOT,
+    send: async (type, event, payload) => {
+        const data = await loadGame();
+        for (const [s, role] of Object.entries(data.servers || {})) if (role === type) io.to(s).emit(event, payload);
+    },
+    log: logDebug,
+    logError
+});
 
 let PORT = process.env.PORT;
 let IP = process.env.IP;
@@ -468,6 +480,7 @@ async function saveGame(data) {
 
 httpServer.listen(PORT, () => {
     logDebug(`Server connected. Express server running on ${protocol}://${IP}:${PORT}`);
+    alarmVoice.warmUp().catch(e => logError('Alarm voice:', e));
     loadTaskLibrary().then(lib => {
         const label = u => u.steps.length === 1 ? u.id
             : u.tasks.map(id => { const t = lib.byId.get(id); return t.repeat > 1 ? `${id} x${t.repeat}` : id; }).join(' > ');
@@ -980,6 +993,8 @@ function startOverride(data, type) {
         io.emit('reactor_override_status', reactorStatus(data));
     }
     logDebug(`Override started for ${type}.`);
+    const sab = data.activeSabotages && data.activeSabotages[type];
+    alarmVoice.start(type, sab && sab.timeLeft > 0 ? sab.timeLeft : meltdownCountdownSeconds).catch(e => logError('Alarm voice:', e));
 }
 function clearOverride(type) {
     if (type === 'o2') {
@@ -1076,6 +1091,21 @@ app.get("/override/:token", (req, res) => {
     return res.sendFile(publicPath("override"));
 });
 
+// The O2 / reactor station's alarm sound and mix, and the spoken lines it is sent.
+app.get("/alarm/settings", async (req, res) => {
+    const data = await loadGame();
+    const role = data.servers[req.cookies.session];
+    if (role !== 'o2' && role !== 'reactor') return res.status(401).json({ err: "401 unauthorised" });
+    res.set('Cache-Control', 'no-store');
+    return res.json(await alarmVoice.settings(role));
+});
+app.get("/alarm/voice/:id.wav", (req, res) => {
+    const clip = /^[0-9a-f]{16}$/.test(req.params.id) ? alarmVoice.clip(req.params.id) : null;
+    if (!clip) return res.sendStatus(404);
+    res.set('Cache-Control', 'private, max-age=600');
+    return res.type('audio/wav').send(clip);
+});
+
 async function startSabotageCountdown(type, seconds) {
     if (!type || typeof seconds !== 'number' || seconds <= 0) return;
     if (type !== 'o2' && type !== 'reactor') return;
@@ -1121,6 +1151,7 @@ async function startSabotageCountdown(type, seconds) {
             sab.timeLeft = Math.max(0, sab.timeLeft - 1);
             await saveGame(d);
             io.emit('sabotage_tick', { type, timeLeft: sab.timeLeft });
+            if (sab.depleted || sab.meltdown) alarmVoice.tick(type, sab.timeLeft);
 
             if (sab.timeLeft <= 0) {
                 const isCrisisPhase = (type === 'o2' && sab.depleted) ||
@@ -1143,6 +1174,7 @@ async function startSabotageCountdown(type, seconds) {
 
                 } else {
                     logDebug(`Sabotage ${type} failed to be fixed. Impostors win!`);
+                    alarmVoice.failed(type);
                     d.gameState.impostorsWon = true;
                     d.gameState.crewmatesWon = false;
                     d.gameState.started = false;
@@ -1204,6 +1236,7 @@ async function fixSabotage(type) {
     await saveGame(d);   // lifts the comms blackout before anything below goes out
 
     if (type === 'comms') io.emit('comms_state', { down: false });
+    else alarmVoice.fixed(type);
     io.emit('sabotage_fixed', { type });
     io.emit("sabotage_data_request", { sData: d.activeSabotages, timeLeft:0})
     return true;
@@ -1272,6 +1305,7 @@ function clearCommsFor(data) {
 
 function clearAllSabotageTimers() {
     logDebug("Clearing all sabotage timers.");
+    alarmVoice.reset();
     clearOverride('o2');
     clearOverride('reactor');
     for (const t of sabotageTimers.values()) {

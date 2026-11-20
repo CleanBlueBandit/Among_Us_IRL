@@ -1,0 +1,128 @@
+{
+    "enabled": true,
+    "voice": {
+        "model": "vits-piper-en_US-lessac-medium",
+        "speaker": 0,
+        "speed": 0.95,
+        "downloadUrl": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/{model}.tar.bz2"
+    },
+    "schedule": {
+        "every": 15,
+        "finalFrom": 10,
+        "finalEvery": 5
+    },
+    "audio": {
+        "alarmVolume": 0.6,
+        "voiceVolume": 1,
+        "duckTo": 0.35,
+        "reverb": {
+            "mix": 0.3,
+            "seconds": 2.4,
+            "decay": 2.6
+        }
+    },
+    "sections": [
+        "Section Alpha",
+        "Section Bravo",
+        "Section Charlie",
+        "Section Delta",
+        "the Upper Deck",
+        "the Lower Deck",
+        "the Engine Bay",
+        "the Aft Ring",
+        "the Forward Ring",
+        "Module Four",
+        "Sector Seven",
+        "the Cargo Hold"
+    ],
+    "reactor": {
+        "alarm": "/sounds/reactor.mp3",
+        "audio": {
+            "reverb": {
+                "mix": 0.3
+            }
+        },
+        "ids": [
+            "@-##",
+            "core #",
+            "unit @#"
+        ],
+        "parts": [
+            "primary coolant pump",
+            "containment field",
+            "control rod assembly",
+            "core regulator",
+            "plasma conduit",
+            "heat exchanger",
+            "neutron moderator",
+            "magnetic stabiliser"
+        ],
+        "start": [
+            "Warning! {part} failure in {section}. Reactor meltdown in {time}. Two crewmates, hold the override levers.",
+            "Alert! Reactor {id} is critical. The {part} in {section} is offline. Meltdown in {time}.",
+            "Emergency! {section} reactor overheating. {part} damaged. Core meltdown in {time}."
+        ],
+        "countdown": [
+            "Reactor meltdown in {time}.",
+            "Reactor {id}. Meltdown in {time}.",
+            "{time} to core meltdown.",
+            "Warning. {part} offline. Meltdown in {time}."
+        ],
+        "final": [
+            "{seconds}."
+        ],
+        "fixed": [
+            "Reactor {id} stable.",
+            "{section} reactor stable. {part} back online.",
+            "Reactor stabilised. {section} is secure."
+        ],
+        "failed": [
+            "Reactor meltdown. Containment lost."
+        ]
+    },
+    "o2": {
+        "alarm": "/sounds/o2.mp3",
+        "audio": {
+            "reverb": {
+                "mix": 0.15
+            }
+        },
+        "ids": [
+            "@-##",
+            "tank #",
+            "unit @#"
+        ],
+        "parts": [
+            "oxygen filter",
+            "carbon dioxide scrubber",
+            "air recycler",
+            "pressure regulator",
+            "electrolysis unit",
+            "ventilation fan",
+            "oxygen tank valve",
+            "nitrogen mixer"
+        ],
+        "start": [
+            "Warning! {part} failure in {section}. Oxygen depleted in {time}. Enter override codes from two crewmates.",
+            "Alert! Life support {id} is down. The {part} in {section} has failed. Oxygen depleted in {time}.",
+            "Emergency! Oxygen levels falling in {section}. {part} damaged. Oxygen depleted in {time}."
+        ],
+        "countdown": [
+            "Oxygen depleted in {time}.",
+            "Life support {id}. Oxygen depleted in {time}.",
+            "{time} of oxygen left.",
+            "Warning. {part} offline. Oxygen depleted in {time}."
+        ],
+        "final": [
+            "{seconds}."
+        ],
+        "fixed": [
+            "Oxygen restored.",
+            "Life support {id} stable. {section} oxygen restored.",
+            "{part} back online. Oxygen levels stable."
+        ],
+        "failed": [
+            "Oxygen depleted. Life support failure."
+        ]
+    }
+}
