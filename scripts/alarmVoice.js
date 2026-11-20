@@ -1,7 +1,7 @@
 // Spoken alarms for the O2 and reactor stations.
 //
-// When a sabotage's alarm goes off, the server makes up an incident (a random section of the ship, a damaged
-// part and an id), speaks a warning, counts down, and says it is stable again once the crew fixes it. The
+// When a sabotage's alarm goes off, the server picks a random section (like 4B), says it is unstable, counts
+// down, and says the same section is stable again once the crew fixes it. The
 // speech is made here with Piper (through sherpa-onnx), offline. The stations play it over their alarm sound,
 // with reverb, in the browser.
 //
@@ -42,43 +42,32 @@ export const DEFAULTS = {
         duckTo: 0.35,
         reverb: { mix: 0.3, seconds: 2.4, decay: 2.6 }
     },
-    // Filled into the lines below: {section}, {part}, {id} are picked once per alarm (so the "stable" line
-    // names the same ones), {time} is the time left in words, {seconds} the bare number.
-    // In ids, # becomes a random digit and @ a random letter.
-    sections: ['Section Alpha', 'Section Bravo', 'Section Charlie', 'Section Delta', 'the Upper Deck', 'the Lower Deck',
-        'the Engine Bay', 'the Aft Ring', 'the Forward Ring', 'Module Four', 'Sector Seven', 'the Cargo Hold'],
+    // Filled into the lines below: {section} is picked once per alarm from these patterns (so the "stable"
+    // line names the same one), # becomes a random digit and @ a random letter (not I or O): "#@" gives sections like 4B.
+    // {time} is the time left in words, {seconds} the bare number.
+    sections: ['#@'],
     reactor: {
         alarm: '/sounds/reactor.mp3',
         audio: { reverb: { mix: 0.3 } },
-        ids: ['@-##', 'core #', 'unit @#'],
-        parts: ['primary coolant pump', 'containment field', 'control rod assembly', 'core regulator', 'plasma conduit',
-            'heat exchanger', 'neutron moderator', 'magnetic stabiliser'],
         start: [
-            'Warning! {part} failure in {section}. Reactor meltdown in {time}. Two crewmates, hold the override levers.',
-            'Alert! Reactor {id} is critical. The {part} in {section} is offline. Meltdown in {time}.',
-            'Emergency! {section} reactor overheating. {part} damaged. Core meltdown in {time}.'
+            'Warning! Reactor section {section} is unstable. Meltdown in {time}.',
+            'Alert! Reactor section {section} is unstable. Two crewmates, hold the override levers. Meltdown in {time}.'
         ],
-        countdown: ['Reactor meltdown in {time}.', 'Reactor {id}. Meltdown in {time}.', '{time} to core meltdown.',
-            'Warning. {part} offline. Meltdown in {time}.'],
+        countdown: ['Reactor meltdown in {time}.', 'Reactor section {section} unstable. Meltdown in {time}.', '{time} to core meltdown.'],
         final: ['{seconds}.'],
-        fixed: ['Reactor {id} stable.', '{section} reactor stable. {part} back online.', 'Reactor stabilised. {section} is secure.'],
+        fixed: ['Reactor section {section} stable.'],
         failed: ['Reactor meltdown. Containment lost.']
     },
     o2: {
         alarm: '/sounds/o2.mp3',
         audio: { reverb: { mix: 0.15 } },   // this alarm sound already has reverb in it
-        ids: ['@-##', 'tank #', 'unit @#'],
-        parts: ['oxygen filter', 'carbon dioxide scrubber', 'air recycler', 'pressure regulator', 'electrolysis unit',
-            'ventilation fan', 'oxygen tank valve', 'nitrogen mixer'],
         start: [
-            'Warning! {part} failure in {section}. Oxygen depleted in {time}. Enter override codes from two crewmates.',
-            'Alert! Life support {id} is down. The {part} in {section} has failed. Oxygen depleted in {time}.',
-            'Emergency! Oxygen levels falling in {section}. {part} damaged. Oxygen depleted in {time}.'
+            'Warning! Oxygen section {section} is unstable. Oxygen depleted in {time}.',
+            'Alert! Oxygen section {section} is unstable. Enter override codes from two crewmates. Oxygen depleted in {time}.'
         ],
-        countdown: ['Oxygen depleted in {time}.', 'Life support {id}. Oxygen depleted in {time}.', '{time} of oxygen left.',
-            'Warning. {part} offline. Oxygen depleted in {time}.'],
+        countdown: ['Oxygen depleted in {time}.', 'Oxygen section {section} unstable. Oxygen depleted in {time}.', '{time} of oxygen left.'],
         final: ['{seconds}.'],
-        fixed: ['Oxygen restored.', 'Life support {id} stable. {section} oxygen restored.', '{part} back online. Oxygen levels stable.'],
+        fixed: ['Oxygen section {section} stable.'],
         failed: ['Oxygen depleted. Life support failure.']
     }
 };
@@ -99,7 +88,8 @@ function merge(base, over) {
 
 // ---- words -----------------------------------------------------------------------------------------
 const pick = list => (Array.isArray(list) && list.length ? list[crypto.randomInt(list.length)] : '');
-const fillId = s => String(s).replace(/#/g, () => String(crypto.randomInt(10))).replace(/@/g, () => String.fromCharCode(65 + crypto.randomInt(26)));
+const LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';   // no I or O: they sound like 1 and 0
+const fillId = s => String(s).replace(/#/g, () => String(crypto.randomInt(10))).replace(/@/g, () => LETTERS[crypto.randomInt(LETTERS.length)]);
 export function timeWords(sec) {
     sec = Math.max(0, Math.round(sec));
     const m = Math.floor(sec / 60), s = sec % 60;
@@ -233,7 +223,7 @@ export function createAlarmVoice({ root, send, log = () => {}, logError = consol
             if (!TYPES.includes(type) || incidents.has(type)) return;
             await loadConfig();
             const t = config[type];
-            const inc = { section: pick(config.sections), part: pick(t.parts), id: fillId(pick(t.ids)), busyUntil: 0 };
+            const inc = { section: fillId(pick(t.sections || config.sections)), busyUntil: 0 };
             incidents.set(type, inc);
             if (!config.enabled) return;
             await speak(type, pick(t.start), { ...inc, time: timeWords(timeLeft), seconds: timeLeft });
