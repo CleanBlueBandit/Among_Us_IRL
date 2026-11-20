@@ -282,6 +282,27 @@
         .sab-card.done .sab-code { color: #a7f3d0; text-shadow: none; text-decoration: line-through; text-decoration-thickness: 2px; opacity: 0.8; }
         .sab-card.done .sab-sub { color: #a7f3d0; }
 
+        /* ---------- Comms sabotaged: only "Report body" and "I'm dead" are left ---------- */
+        .nosignal { display: none; }
+        body.comms-down .screen > :not(.shatter-overlay):not(#reportBtn):not(#actionBtn):not(.report-panel):not(.nosignal) { display: none !important; }
+        body.comms-down .nosignal {
+            flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+            text-align: center; padding: 18px 8px; border-radius: 12px;
+            background: repeating-linear-gradient(0deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 3px), rgba(0,0,0,0.25);
+            border: 1px solid #2a1416;
+        }
+        .nosignal svg { width: 108px; height: 108px; color: #f87171; filter: drop-shadow(0 0 12px rgba(248,113,113,0.45)); animation: nosig-flick 2.6s steps(1) infinite; }
+        @keyframes nosig-flick { 0%, 100% { opacity: 1; } 46% { opacity: 1; } 47% { opacity: 0.3; } 49% { opacity: 1; } 81% { opacity: 0.55; } 82% { opacity: 1; } }
+        .nosignal b { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 1.02rem; letter-spacing: 0.14em; color: #fca5a5; }
+        .nosignal span { font-size: 0.8rem; color: #94a3b8; line-height: 1.4; max-width: 26ch; }
+        body.comms-down .btn-report:not([hidden]) ~ .btn-action, body.comms-down .btn-action { margin-top: 0; }
+        .note-nosignal { display: none; }
+        body.comms-down .note-list, body.comms-down .note-head span { display: none; }
+        body.comms-down .note-nosignal { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 0 2px; text-align: center; }
+        .note-nosignal svg { width: 74px; height: 74px; color: var(--ink); opacity: 0.85; }
+        .note-nosignal p { margin: 0; font-size: 1.45rem; line-height: 1.05; color: var(--pen); transform: rotate(-2deg); }
+        @media (prefers-reduced-motion: reduce) { .nosignal svg { animation: none; } }
+
         /* ---------- Body report ---------- */
         .btn-report {
             margin-top: auto;
@@ -642,6 +663,12 @@
                         <svg viewBox="0 0 54 44" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6 C 22 2, 40 12, 44 34"/><path d="M34 27 L44 36 L48 23"/></svg>
                     </div>
 
+                    <div class="nosignal" role="alert" aria-live="assertive">
+                        <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M32 34v22M24 56h16"/><circle cx="32" cy="30" r="4"/><path d="M21 19a15 15 0 0 0 0 22M43 19a15 15 0 0 1 0 22" opacity=".55"/><path d="M13 11a26 26 0 0 0 0 38M51 11a26 26 0 0 1 0 38" opacity=".3"/><path d="M8 6l48 52"/></svg>
+                        <b>COMMUNICATIONS SABOTAGED</b>
+                        <span>No signal. Tasks, the map and meetings are offline until comms are fixed. Reporting a body still works.</span>
+                    </div>
+
                     <button id="reportBtn" class="btn-report" type="button" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10v4a1 1 0 0 0 1 1h3l6 4V5L7 9H4a1 1 0 0 0-1 1z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg><span>Report body</span></button>
                     <button id="actionBtn" class="btn-action">I'm dead</button>
 
@@ -667,6 +694,10 @@
                     <span id="taskListCount">0/0</span>
                 </div>
                 <ul id="taskList" class="note-list"><li class="note-empty">No tasks yet</li></ul>
+                <div class="note-nosignal">
+                    <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M32 34v22M24 56h16"/><circle cx="32" cy="30" r="4"/><path d="M21 19a15 15 0 0 0 0 22M43 19a15 15 0 0 1 0 22" opacity=".55"/><path d="M13 11a26 26 0 0 0 0 38M51 11a26 26 0 0 1 0 38" opacity=".3"/><path d="M8 6l48 52"/></svg>
+                    <p>communications<br>sabotaged</p>
+                </div>
             </div>
         </aside>
     </div>
@@ -1065,6 +1096,24 @@
                 if (d.type === 'reactor') sab.reactor = false;
                 sabRender();
                 showToast(d.type === 'o2' ? 'O2 restored' : 'Reactor stabilised', 'success');
+            });
+
+            // ---- comms sabotaged: the server goes quiet; only reporting and "I'm dead" are left ----
+            var commsWasDown = false;
+            socket.on('comms_state', function(d) {
+                var down = !!(d && d.down);
+                document.body.classList.toggle('comms-down', down);
+                if (down && 'alive' in d) {
+                    isAlive = !!d.alive;
+                    reportBtn.hidden = !isAlive;
+                    document.getElementById('shatterOverlay').classList.toggle('active', !isAlive);
+                }
+                if (down) {
+                    if (window.TabletMap && window.TabletMap.close) { try { window.TabletMap.close(); } catch (e) {} }
+                } else if (commsWasDown) {
+                    showToast('Communications restored', 'success');
+                }
+                commsWasDown = down;
             });
 
             socket.on("restart_game", function(data){

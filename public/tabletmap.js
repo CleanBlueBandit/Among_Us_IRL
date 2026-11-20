@@ -418,13 +418,24 @@ if (typeof socket !== 'undefined') {
     socket.on('sabotage_data_request', onSabotage);
 }
 
-fetch('/map/data', { credentials: 'same-origin' })
-    .then(r => (r.ok ? r.json() : null))
-    .then(d => {
-        if (d) setData(d);
-        S.loaded = true;
-        const ok = S.floors.length > 0;
-        document.querySelectorAll('[data-map-open]').forEach(b => { b.hidden = !ok; });
-        document.dispatchEvent(new CustomEvent('tabletmap:ready', { detail: { hasMap: ok } }));
-    })
-    .catch(() => { S.loaded = true; });
+// The server refuses the map while comms are sabotaged; it is fetched again once they are back.
+let mapBlocked = false;
+function loadMap() {
+    return fetch('/map/data', { credentials: 'same-origin' })
+        .then(r => { mapBlocked = r.status === 503; return r.ok ? r.json() : null; })
+        .then(d => {
+            if (d) setData(d);
+            S.loaded = true;
+            const ok = S.floors.length > 0;
+            document.querySelectorAll('[data-map-open]').forEach(b => { b.hidden = !ok; });
+            document.dispatchEvent(new CustomEvent('tabletmap:ready', { detail: { hasMap: ok } }));
+        })
+        .catch(() => { S.loaded = true; });
+}
+loadMap();
+if (typeof socket !== 'undefined') {
+    socket.on('comms_state', d => {
+        if (d && d.down) { if (S.open) close(false); }
+        else if (mapBlocked) loadMap();
+    });
+}
