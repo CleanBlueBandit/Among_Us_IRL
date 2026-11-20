@@ -869,9 +869,9 @@ const sabotageTimers = new Map();
 
 // ---- Fixing a sabotage (only once the alarm is going off) ----
 // O2: every living player's tablet shows their own override code. Two different players' codes typed
-//     into the O2 keypad restore O2. Impostors are shown a decoy code that looks the same but never works.
+//     into the O2 keypad restore O2. Impostors' codes work too, so a code never gives anyone away.
 // Reactor: the reactor screen shows a QR code, new for every meltdown. Scanning it opens the manual
-//     override lever; two crewmates holding their levers at the same time for a few seconds stops it.
+//     override lever; two living players holding their levers at the same time for a few seconds stops it.
 // Codes and the QR token live only in memory and only ever go to the one player / the reactor device.
 const OVERRIDE_NEED = 2;
 const REACTOR_HOLD_MS = 3000;
@@ -895,7 +895,7 @@ function newO2Code(taken) {
     taken.add(c);
     return c;
 }
-// Every living player gets a code (crewmates a real one, impostors a decoy), made on first need.
+// Every living player gets a code (impostors included), made on first need.
 function ensureO2Fix(data) {
     if (!o2Fix) o2Fix = { codes: new Map(), accepted: new Set(), misses: 0, lockUntil: 0, total: meltdownCountdownSeconds };
     const taken = new Set(o2Fix.codes.values());
@@ -924,7 +924,7 @@ function reactorHolding(data) {
     const crew = new Set();
     for (const s of reactorFix.holders.values()) {
         const p = data.players[s];
-        if (p && p.alive !== false && !p.impostor) crew.add(s);
+        if (p && p.alive !== false) crew.add(s);   // impostors count too, or their lever would expose them
     }
     return crew.size;
 }
@@ -1971,7 +1971,7 @@ io.on("connection", async (socket) => {
                 let owner = null;
                 if (/^\d{5}$/.test(code)) for (const [s, c] of fix.codes) if (c === code) { owner = s; break; }
                 const p = owner && d.players[owner];
-                if (!p || p.alive === false || p.impostor) {
+                if (!p || p.alive === false) {
                     fix.misses++;
                     if (fix.misses >= O2_MAX_MISSES) { fix.misses = 0; fix.lockUntil = Date.now() + O2_LOCK_MS; }
                     io.emit('o2_override_status', o2Status(d));
