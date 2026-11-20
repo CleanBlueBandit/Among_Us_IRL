@@ -6,6 +6,7 @@
     <title>Reactor Core Control</title>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/serverdevice.js"></script>
+    <script src="/alarmaudio.js"></script>
     <style>
         :root {
             --bg: #07090a; --panel: #0e1311; --edge: #22302a; --text: #dbe7df; --dim: #6c8577;
@@ -169,12 +170,10 @@
         </div>
     </div>
 
-    <audio id="alarm-sound" loop src="alarm.mp3"></audio>
 
     <script>
         const $ = id => document.getElementById(id);
-        const alarmSound = $('alarm-sound');
-        let socket = null, audio = null;
+        let socket = null, audio = null, alarm = null;   // alarm: the looping alarm and its voice (alarmaudio.js)
         let state = 'stable';   // stable | crisis | restored | game-over
         let endTime = 0, total = 0, need = 2, holding = 0, since = 0, holdMs = 3000, qrId = null;
         let restoredTimer = null;
@@ -272,10 +271,9 @@
                 $('lampText').textContent = 'ALARM';
                 renderSlots();
                 if (socket) socket.emit('unstable', { activated: true });
-                alarmSound.currentTime = 0;
-                alarmSound.play().catch(() => {});
+                if (alarm) alarm.start();
             } else {
-                alarmSound.pause(); alarmSound.currentTime = 0;
+                if (alarm) alarm.stop();
                 $('qrImg').removeAttribute('src');
                 $('qrUrl').textContent = ''; $('qrUrl').href = '#';
                 qrId = null; qrShown = false; holding = 0; since = 0;
@@ -342,6 +340,7 @@
             $('connect').hidden = true;
             try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audio = null; }
             socket = io();
+            if (audio) alarm = AlarmAudio.create(audio, socket);
             setupSocketListeners();
             // game over / restart happen on this page, so sound stays allowed to play
             ServerDevice.attach(socket, { role: 'reactor', onGameOver: stopForGameOver, onReset: resetToStable });

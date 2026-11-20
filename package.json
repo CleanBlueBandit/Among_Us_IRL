@@ -21,7 +21,10 @@
     "express": "^5.2.1",
     "marked": "^18.0.9",
     "qrcode": "^1.5.4",
-    "socket.io": "^4.5.4"
+    "sherpa-onnx-node": "1.13.8",
+    "socket.io": "^4.5.4",
+    "tar": "^7.5.23",
+    "unbzip2-stream": "^1.4.3"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
