@@ -400,7 +400,8 @@
         .note-head h2 { margin: 0; font-size: 1.7rem; font-weight: 700; line-height: 1; }
         .note-head span { font-size: 1.3rem; font-weight: 700; }
 
-        .note-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; max-height: 50vh; overflow-y: auto; }
+        .note-list { list-style: none; margin: 0; display: flex; flex-direction: column; gap: 9px; max-height: 50vh; padding: 3px 0 4px; overflow-x: hidden; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; }
+        .note-list::-webkit-scrollbar { display: none; }
         .note-task { display: flex; gap: 10px; align-items: flex-start; line-height: 1.05; }
         .box {
             flex: none;
@@ -462,12 +463,12 @@
         .note-pin:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
         /* ---- Wide screens: tablet stays dead centre, note hangs off its right side ---- */
-        @media (min-width: 860px) {
+        @media (min-width: 1000px) {
             .note { position: absolute; left: calc(100% + 40px); top: 90px; transform: rotate(2.5deg); }
         }
 
         /* ---- Phones: note is folded into the bottom-right corner until tapped ---- */
-        @media (max-width: 859px) {
+        @media (max-width: 999px) {
             body { padding-bottom: 100px; }
 
             .note {
@@ -481,7 +482,7 @@
                 transform-origin: 100% 100%;
                 transform: none;
                 filter: drop-shadow(0 4px 5px rgba(15, 23, 42, 0.38));
-                transition: transform 0.7s cubic-bezier(0.25, 0.8, 0.25, 1);
+                transition: transform 0.6s cubic-bezier(0.45, 0, 0.25, 1);
             }
             .note.open { transform: translate(-14px, -16px) rotate(-2.5deg); }
 
@@ -506,7 +507,7 @@
                     100% calc(100% - var(--curl)),
                     100% 100%,
                     calc(100% - var(--curl)) 100%);
-                transition: clip-path 0.7s cubic-bezier(0.35, 0.75, 0.25, 1);
+                transition: clip-path 0.6s cubic-bezier(0.45, 0, 0.25, 1);
             }
             .note.open .note-sheet {
                 clip-path: polygon(-14px -26px, calc(100% + 14px) -26px, calc(100% + 14px) calc(100% + 14px), -14px calc(100% + 14px));
@@ -526,9 +527,12 @@
                     rgba(255, 255, 255, 0.55) 60%,
                     rgba(255, 244, 150, 0.1) 100%);
                 border-radius: 0 0 14px 0;
-                transition: opacity 0.35s ease;
+                clip-path: polygon(100% 0, 100% 100%, 0 100%); /* only ever the folded-over triangle, never a square */
+                /* folding: the curl only shows up as the paper reaches the corner */
+                transition: opacity 0.12s linear 0.48s;
             }
-            .note.open .note-sheet::after { opacity: 0; }
+            /* unfolding: it stays until the paper has grown well past it */
+            .note.open .note-sheet::after { opacity: 0; transition: opacity 0.15s linear 0.22s; }
 
             /* a single gentle lift of the corner until the hint has been used */
             .note.nudge:not(.open) .note-sheet { animation: curl-nudge 3.2s ease-in-out 1.2s infinite; }
@@ -848,7 +852,7 @@
 
             var note = document.getElementById('note');
             var hint = document.getElementById('screenHint');
-            var mq = window.matchMedia('(max-width: 859px)');
+            var mq = window.matchMedia('(max-width: 999px)');
             var HINT_KEY = 'crewTaskHintSeen';
             var hintSeen = false;
             try { hintSeen = localStorage.getItem(HINT_KEY) === '1'; } catch (e) {}
