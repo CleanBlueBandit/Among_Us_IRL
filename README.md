@@ -262,6 +262,7 @@ When the O2 or reactor alarm goes off, its station plays the alarm sound (`publi
 - The voice is made on the server, offline, with [Piper](https://github.com/rhasspy/piper) (the Lessac voice) through `sherpa-onnx-node`. A line takes a fraction of a second on a desktop processor.
 - The voice (about 80 MB) is downloaded once from GitHub, the first time the server starts, into `voice/models/`. Without internet at that moment, or on a system it can't run on (Alpine Linux in Docker, for example), the alarms play without the voice and the reason is in `error.log`.
 - The station mixes the alarm and the voice in its browser, with reverb over both. Press **Connect** on the station so the browser allows sound.
+- When the game ends, the reactor station plays the crewmate or impostor win sound (`public/sounds/win_crewmates.mp3`, `public/sounds/win_impostors.mp3`), or the O2 station if no reactor station is connected. If the station is still speaking (*"Containment lost."*), the sound starts once the line is over.
 
 Everything is set in `voice.json` next to `server.js`. It is read each time an alarm starts, so changes apply to the next alarm without a restart. Leave a key out (or delete the file) and the default is used.
 
@@ -275,6 +276,7 @@ Everything is set in `voice.json` next to `server.js`. It is read each time an a
 | `schedule.statusDelay` | Seconds to wait after the repair changes before reading out the status, so a lever pushed and let go quickly is read out once. It also waits for the voice to be free. |
 | `audio.alarmVolume`, `audio.voiceVolume` | 0 to 1. |
 | `audio.duckTo` | How loud the alarm stays while the voice speaks (0.35 = 35%). |
+| `audio.winVolume` | How loud the end-of-game sound is, 0 to 1. |
 | `audio.reverb.mix`, `.seconds`, `.decay` | How much reverb, how long it rings, and how fast it fades (higher decay = smaller room). `o2.audio` and `reactor.audio` override these per station; O2 gets less by default because its sound already has reverb. |
 | `sections` | Patterns for the section an alarm names: `#` becomes a random digit, `@` a random letter (never I or O). `"#@"` gives sections like 4B. `o2.sections` or `reactor.sections` override it for one station. |
 | `start`, `countdown`, `final`, `fixed`, `failed` | The lines (under `o2` and `reactor`). One is picked at random each time. They can use `{section}`, `{time}` (time left in words), `{seconds}` and `{status}` (the status line below). |
@@ -290,4 +292,4 @@ In the host lobby, **Test minigames** opens a test bench (host only): every mini
 ## Important security note
 This server is meant to be hosted on **localhost only**. Several serious vulnerabilities are present intentionally, because I didnt bother to fix them. (It aint like im building this for a megacorporation or something)
 
-The client is **completely trusted** (well, mostly), so if you play this game, keep in mind that anyone with decent cybersecurity skills can cheat. (though they'd need external tools that aren't easily obtainable on mobile) This risk is much higher if you use one of the remote-access methods above, since the server is no longer confined to your local network.
+The client is **completely trusted** (well, mostly), so if you play this game, keep in mind that anyone with decent cybersecurity skills can cheat. (though they'd need external tools that aren't easily obtainable on mobile) This risk is much higher if you use one of the remote-access methods above, since the server is no longer confined to your local network.

@@ -127,9 +127,35 @@ function commsSabotaged(data) {
         data.activeSabotages.comms && data.activeSabotages.comms.sabotaged && data.activeSabotages.comms.down);
 }
 const ioEmitAll = io.emit.bind(io);
-io.emit = (ev, ...args) => (commsDown && !COMMS_THROUGH.has(ev))
-    ? io.except(TABLETS).emit(ev, ...args)
-    : ioEmitAll(ev, ...args);
+io.emit = (ev, ...args) => {
+    if (ev === 'game_over') playWinSound(args[0]);
+    return (commsDown && !COMMS_THROUGH.has(ev))
+        ? io.except(TABLETS).emit(ev, ...args)
+        : ioEmitAll(ev, ...args);
+};
+
+// ---- End of game: the win sound ----
+// Played by the reactor station, or the O2 station if no reactor is connected. If that station is
+// still announcing (e.g. "containment lost"), the sound waits until the line is over.
+const WIN_SOUNDS = { crewmates: '/sounds/win_crewmates.mp3', impostors: '/sounds/win_impostors.mp3' };
+let winSoundAt = 0;
+async function playWinSound(info) {
+    const url = info && WIN_SOUNDS[info.winner];
+    if (!url || Date.now() - winSoundAt < 5000) return;   // one sound per game end
+    winSoundAt = Date.now();
+    try {
+        const data = await loadGame();
+        const online = s => (io.sockets.adapter.rooms.get(s) || new Set()).size > 0;
+        const stations = type => Object.entries(data.servers || {}).filter(([s, role]) => role === type && online(s)).map(([s]) => s);
+        const type = stations('reactor').length ? 'reactor' : 'o2';
+        const to = stations(type);
+        if (!to.length) return;
+        await alarmVoice.whenQuiet(type);
+        for (const s of to) io.to(s).emit('win_sound', { winner: info.winner, url });
+    } catch (e) {
+        logError('Win sound:', e);
+    }
+}
 
 app.use((req, res, next) => {
     if (req.path.endsWith('.html')) {
@@ -2983,4 +3009,4 @@ app.use((req, res, next) => {
     }
 
     next();
-});
+});
