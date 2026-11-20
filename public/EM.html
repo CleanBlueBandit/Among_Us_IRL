@@ -602,9 +602,8 @@
     if (countdownTick) clearInterval(countdownTick);
 
     const banner = document.getElementById('resultBanner');
-    const ejectedName = payload.ejected && payload.players[payload.ejected]
-      ? payload.players[payload.ejected].username
-      : null;
+    const ejected = payload.ejectedPlayer;   // only the ejected player's role is ever sent
+    const ejectedName = ejected ? ejected.username : null;
 
     banner.textContent = "Calculating the results..."
     
@@ -615,7 +614,7 @@
     setTimeout(() => {
       // 1. Update the banner at 5 seconds
       if (payload.result == "ejection") {
-        banner.textContent = `${ejectedName} ${payload.players[payload.ejected].impostor ? "was" : "was not"} An impostor`;
+        banner.textContent = `${ejectedName} ${ejected && ejected.impostor ? "was" : "was not"} An impostor`;
       } else {
         banner.textContent = `No one was ejected (${payload.result == "skip" ? "Skipped" : "Tie"})`;
       }
