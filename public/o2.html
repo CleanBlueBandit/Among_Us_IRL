@@ -2,275 +2,419 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>O2 Level Monitor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>O2 Life Support</title>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/serverdevice.js"></script>
     <style>
+        :root {
+            --bg: #07090c; --panel: #0e1319; --panel-2: #131a22; --edge: #222c38; --text: #d8e3ee; --dim: #6f8296;
+            --cyan: #00e5ff; --red: #ff3333; --green: #34d399; --amber: #fbbf24;
+            --c: var(--cyan);
+            --mono: "SFMono-Regular", Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; }
         body {
-            background-color: #111;
-            color: #fff;
-            font-family: 'Courier New', Courier, monospace;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
-            transition: background-color 0.5s ease;
+            margin: 0; background: var(--bg); color: var(--text); font-family: var(--mono);
+            overflow: hidden; user-select: none; -webkit-user-select: none;
         }
+        body.crisis { --c: var(--red); }
+        body.restored { --c: var(--green); }
 
-        .container {
-            text-align: center;
-            z-index: 10;
-        }
-
-        #status-display {
-            font-size: 3.5rem;
-            font-weight: bold;
-            letter-spacing: 2px;
-            margin-bottom: 20px;
-            transition: color 0.3s ease;
-        }
-
-        /* State Classes */
-        .stable {
-            color: #00e5ff;
-            text-shadow: 0 0 15px rgba(0, 229, 255, 0.6);
-        }
-
-        .depleting {
-            color: #ff0000;
-            text-shadow: 0 0 25px rgba(255, 0, 0, 0.8);
-            animation: pulse 1s infinite alternate;
-        }
-
-        /* Countdown Timer */
-        #countdown {
-            font-size: 6rem;
-            color: #ff3333;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-
-        /* Flashing Red Overlay */
         #overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background-color: rgba(255, 0, 0, 0.35);
-            opacity: 0;
-            pointer-events: none;
-            z-index: 5;
+            position: fixed; inset: 0; pointer-events: none; z-index: 5; opacity: 0;
+            background: radial-gradient(ellipse at center, transparent 35%, rgba(255, 0, 0, 0.45) 100%);
+        }
+        body.crisis #overlay { animation: flash 1.2s infinite; }
+        @keyframes flash { 0%, 100% { opacity: 0.15; } 50% { opacity: 1; } }
+
+        /* ---- connect ---- */
+        .connect { position: fixed; inset: 0; display: grid; place-items: center; z-index: 20; background: var(--bg); }
+        .connect[hidden] { display: none; }
+        .btn-connect {
+            font: 700 1.1rem var(--mono); letter-spacing: 0.12em; padding: 18px 34px; cursor: pointer;
+            color: var(--cyan); background: transparent; border: 2px solid var(--cyan); border-radius: 6px;
+            box-shadow: 0 0 14px rgba(0, 229, 255, 0.3);
+        }
+        .btn-connect:hover, .btn-connect:focus-visible { background: var(--cyan); color: #04131a; outline: none; }
+
+        /* ---- console ---- */
+        .console {
+            position: relative; z-index: 10; height: 100%; display: flex; flex-direction: column;
+            padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+            gap: 14px;
+        }
+        .bar {
+            display: flex; justify-content: space-between; align-items: center; gap: 12px;
+            font-size: 0.78rem; letter-spacing: 0.22em; color: var(--dim); text-transform: uppercase;
+            border-bottom: 1px solid var(--edge); padding-bottom: 10px;
+        }
+        .bar b { color: var(--text); font-weight: 700; }
+        .lamp { display: inline-flex; align-items: center; gap: 8px; color: var(--c); }
+        .lamp i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px var(--c); }
+        body.crisis .lamp i { animation: blink 0.6s steps(2) infinite; }
+        @keyframes blink { 50% { opacity: 0.15; } }
+
+        .main { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr; gap: 18px; align-content: center; }
+        body.crisis .main { grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.95fr); align-items: center; }
+
+        .status { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; min-width: 0; }
+        #state {
+            font-size: clamp(1.7rem, 5.4vw, 3.4rem); font-weight: 800; letter-spacing: 0.06em; line-height: 1.05;
+            color: var(--c); text-shadow: 0 0 18px color-mix(in srgb, var(--c) 55%, transparent);
+        }
+        body.crisis #state { animation: pulse 1s infinite alternate; }
+        @keyframes pulse { to { transform: scale(1.03); } }
+        #clock { font-size: clamp(3rem, 12vw, 6.5rem); font-weight: 800; color: var(--red); line-height: 1; font-variant-numeric: tabular-nums; }
+        #clock[hidden] { display: none; }
+
+        .gauge { width: min(420px, 100%); }
+        .gauge-label { display: flex; justify-content: space-between; font-size: 0.75rem; letter-spacing: 0.18em; color: var(--dim); margin-bottom: 6px; }
+        .gauge-label b { color: var(--c); font-variant-numeric: tabular-nums; }
+        .gauge-track { height: 16px; border: 1px solid var(--edge); background: #05080b; border-radius: 3px; padding: 2px; overflow: hidden; }
+        .gauge-fill {
+            height: 100%; width: 100%; border-radius: 2px; transition: width 1s linear, background-color 0.4s;
+            background: repeating-linear-gradient(90deg, var(--c) 0 10px, color-mix(in srgb, var(--c) 70%, #000) 10px 12px);
+            box-shadow: 0 0 10px color-mix(in srgb, var(--c) 50%, transparent);
         }
 
-        .flashing-overlay {
-            animation: flash 1s infinite;
+        .codes { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .codes[hidden] { display: none; }
+        .codes-label { font-size: 0.75rem; letter-spacing: 0.2em; color: var(--dim); }
+        .lights { display: flex; gap: 10px; }
+        .light {
+            width: 46px; height: 14px; border-radius: 3px; border: 1px solid #3a2020; background: #1a0d0d;
+            transition: background 0.3s, box-shadow 0.3s, border-color 0.3s;
         }
+        .light.on { background: var(--green); border-color: var(--green); box-shadow: 0 0 12px var(--green); }
+        .hint { margin: 0; max-width: 40ch; font-size: 0.8rem; line-height: 1.45; color: var(--dim); }
+        .hint[hidden] { display: none; }
 
-        @keyframes flash {
-            0% { opacity: 0; }
-            50% { opacity: 1; }
-            100% { opacity: 0; }
+        /* ---- keypad ---- */
+        .keypad {
+            justify-self: center; width: min(360px, 100%);
+            background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--edge); border-radius: 14px;
+            padding: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 10px 30px rgba(0,0,0,0.5);
         }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            100% { transform: scale(1.03); }
+        .keypad[hidden] { display: none; }
+        .kp-title { font-size: 0.7rem; letter-spacing: 0.24em; color: var(--dim); text-align: center; margin-bottom: 10px; }
+        .screen {
+            background: #031215; border: 1px solid #0c3a40; border-radius: 6px; padding: 10px 12px 8px;
+            box-shadow: inset 0 0 18px rgba(0, 229, 255, 0.12);
         }
-
-        /* Buttons */
-        .btn {
-            padding: 15px 30px;
-            background-color: #222;
-            font-family: inherit;
-            font-size: 1.2rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            margin: 10px;
+        .digits { display: flex; justify-content: center; gap: 8px; }
+        .digit {
+            width: 2.1ch; font-size: 2.2rem; font-weight: 800; text-align: center; color: var(--cyan); line-height: 1.1;
+            border-bottom: 2px solid #0f5a63; text-shadow: 0 0 10px rgba(0, 229, 255, 0.6); font-variant-numeric: tabular-nums;
         }
+        .digit.cursor { border-bottom-color: var(--cyan); animation: blink 1s steps(2) infinite; }
+        .screen-msg { margin-top: 8px; min-height: 1.2em; text-align: center; font-size: 0.78rem; letter-spacing: 0.16em; color: #4fb8c4; }
+        .screen.ok { border-color: var(--green); box-shadow: inset 0 0 22px rgba(52, 211, 153, 0.35); }
+        .screen.ok .digit, .screen.ok .screen-msg { color: var(--green); text-shadow: 0 0 10px rgba(52, 211, 153, 0.7); }
+        .screen.bad { border-color: var(--red); box-shadow: inset 0 0 22px rgba(255, 51, 51, 0.35); animation: shake 0.35s; }
+        .screen.bad .digit, .screen.bad .screen-msg { color: var(--red); text-shadow: 0 0 10px rgba(255, 51, 51, 0.6); }
+        .screen.warn .screen-msg { color: var(--amber); }
+        @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 
-        #start-btn {
-            color: #00e5ff;
-            border: 2px solid #00e5ff;
-            box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
+        .keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+        .key {
+            font: 800 1.6rem var(--mono); min-height: 62px; border-radius: 10px; cursor: pointer; color: #dfe8f1;
+            background: linear-gradient(180deg, #2a3542, #1b232d); border: 1px solid #0a0e13;
+            box-shadow: 0 4px 0 #090c10, inset 0 1px 0 rgba(255,255,255,0.12);
+            transition: transform 0.05s, box-shadow 0.05s;
+            touch-action: manipulation;
         }
+        .key:active, .key.pressed { transform: translateY(3px); box-shadow: 0 1px 0 #090c10, inset 0 1px 0 rgba(255,255,255,0.08); }
+        .key:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+        .key:disabled { opacity: 0.4; cursor: default; }
+        .key.clr { color: #ffb4b4; background: linear-gradient(180deg, #4a2226, #2e1518); }
+        .key.ok { color: #b9f6dd; background: linear-gradient(180deg, #1f4a3a, #143026); }
+        .key svg { width: 26px; height: 26px; vertical-align: middle; }
 
-        #start-btn:hover {
-            background-color: #00e5ff;
-            color: #111;
-            box-shadow: 0 0 20px rgba(0, 229, 255, 0.6);
+        @media (max-width: 720px) and (min-height: 501px) {
+            body.crisis .main { grid-template-columns: 1fr; align-content: start; overflow-y: auto; }
+            body.crisis .status { gap: 8px; }
+            body.crisis #state { font-size: 1.6rem; }
+            body.crisis #clock { font-size: 3rem; }
+            .key { min-height: 54px; font-size: 1.4rem; }
         }
-
-        #fix-btn {
-            color: #ff3333;
-            border: 2px solid #ff3333;
-            box-shadow: 0 0 10px rgba(255, 51, 51, 0.3);
-            display: none;
-        }
-
-        #fix-btn:hover {
-            background-color: #ff3333;
-            color: #111;
-            box-shadow: 0 0 20px rgba(255, 51, 51, 0.6);
+        /* short landscape screens (a phone on its side): keep two columns, shrink everything */
+        @media (max-height: 500px) {
+            .console { gap: 8px; }
+            .bar { padding-bottom: 6px; }
+            body.crisis .main { grid-template-columns: minmax(0, 1fr) minmax(240px, 300px); gap: 12px; }
+            body.crisis .status { gap: 6px; }
+            body.crisis #state { font-size: 1.4rem; }
+            body.crisis #clock { font-size: 2.6rem; }
+            .hint { display: none !important; }
+            .keypad { padding: 10px; }
+            .kp-title { display: none; }
+            .screen { padding: 6px 10px 4px; }
+            .digit { font-size: 1.6rem; }
+            .screen-msg { margin-top: 4px; }
+            .keys { gap: 6px; margin-top: 8px; }
+            .key { min-height: 40px; font-size: 1.15rem; box-shadow: 0 3px 0 #090c10, inset 0 1px 0 rgba(255,255,255,0.12); }
         }
     </style>
 </head>
 <body>
-
     <div id="overlay"></div>
 
-    <div class="container">
-        <button id="start-btn" class="btn">CONNECT TO O2 FEED</button>
-        <div id="status-display" style="display: none;">O2 RESERVES OPTIMAL</div>
-        <div id="countdown" style="display: none;">30</div>
-        <button id="fix-btn" class="btn">RESTORE O2</button>
+    <div class="connect" id="connect">
+        <button id="start-btn" class="btn-connect" type="button">CONNECT TO O2 FEED</button>
+    </div>
+
+    <div class="console">
+        <div class="bar">
+            <span><b>O2</b> // LIFE SUPPORT</span>
+            <span class="lamp" id="lamp"><i></i><span id="lampText">NOMINAL</span></span>
+        </div>
+        <div class="main">
+            <section class="status" aria-live="polite">
+                <div id="state">O2 RESERVES OPTIMAL</div>
+                <div id="clock" hidden>1:30</div>
+                <div class="gauge">
+                    <div class="gauge-label"><span>O2 RESERVE</span><b id="pct">100%</b></div>
+                    <div class="gauge-track"><div class="gauge-fill" id="fill"></div></div>
+                </div>
+                <div class="codes" id="codes" hidden>
+                    <span class="codes-label" id="codesLabel">OVERRIDE CODES 0 / 2</span>
+                    <div class="lights" id="lights"></div>
+                </div>
+                <p class="hint" id="hint" hidden>Every crewmate's tablet shows an override code. Enter codes from two different crewmates to restore O2.</p>
+            </section>
+
+            <section class="keypad" id="keypad" hidden aria-label="Override keypad">
+                <div class="kp-title">ENTER OVERRIDE CODE</div>
+                <div class="screen" id="screen">
+                    <div class="digits" id="digits" aria-hidden="true"></div>
+                    <div class="screen-msg" id="screenMsg" role="status">AWAITING INPUT</div>
+                </div>
+                <div class="keys" id="keys">
+                    <button class="key" type="button" data-k="1">1</button>
+                    <button class="key" type="button" data-k="2">2</button>
+                    <button class="key" type="button" data-k="3">3</button>
+                    <button class="key" type="button" data-k="4">4</button>
+                    <button class="key" type="button" data-k="5">5</button>
+                    <button class="key" type="button" data-k="6">6</button>
+                    <button class="key" type="button" data-k="7">7</button>
+                    <button class="key" type="button" data-k="8">8</button>
+                    <button class="key" type="button" data-k="9">9</button>
+                    <button class="key clr" type="button" data-k="clr" aria-label="Clear"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+                    <button class="key" type="button" data-k="0">0</button>
+                    <button class="key ok" type="button" data-k="ok" aria-label="Enter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></button>
+                </div>
+            </section>
+        </div>
     </div>
 
     <audio id="alarm-sound" loop src="alarm.mp3"></audio>
 
     <script>
-        // DOM Elements
-        const statusDisplay = document.getElementById('status-display');
-        const countdownDisplay = document.getElementById('countdown');
-        const overlay = document.getElementById('overlay');
-        const alarmSound = document.getElementById('alarm-sound');
-        const startBtn = document.getElementById('start-btn');
-        const fixBtn = document.getElementById('fix-btn');
+        const $ = id => document.getElementById(id);
+        const CODE_LEN = 5;
+        const alarmSound = $('alarm-sound');
+        let socket = null, audio = null;
+        let state = 'stable';          // stable | crisis | restored | game-over
+        let endTime = 0, total = 0, need = 2, accepted = 0, lockUntil = 0;
+        let entry = '', busy = false, msgTimer = null, tickTimer = null, restoredTimer = null;
 
-        // State Tracking
-        let socket;
-        let countdownInterval = null;
-        let timeLeft = 30;
-        let currentState = 'stable';
+        // ---- sound: short synth blips, allowed by the connect tap ----
+        function tone(freq, ms, type, gain) {
+            if (!audio) return;
+            const o = audio.createOscillator(), g = audio.createGain();
+            o.type = type || 'square'; o.frequency.value = freq;
+            g.gain.setValueAtTime(gain || 0.06, audio.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + ms / 1000);
+            o.connect(g).connect(audio.destination); o.start(); o.stop(audio.currentTime + ms / 1000);
+        }
+        const sfx = {
+            key: () => tone(1250, 60, 'square', 0.04),
+            ok: () => { tone(880, 110, 'sine', 0.12); setTimeout(() => tone(1320, 170, 'sine', 0.12), 110); },
+            bad: () => tone(150, 380, 'sawtooth', 0.09),
+            done: () => [660, 880, 1100, 1320].forEach((f, i) => setTimeout(() => tone(f, 160, 'sine', 0.12), i * 120))
+        };
 
-        // Connect and initialize user gesture requirement for audio
-        startBtn.addEventListener('click', () => {
-            startBtn.style.display = 'none';
-            statusDisplay.style.display = 'block';
-            statusDisplay.className = 'stable';
-
-            // Initialize Socket.IO connection
-            socket = io();
-
-            setupSocketListeners();
-            // game over / restart happen on this page, so the alarm stays allowed to play
-            ServerDevice.attach(socket, { role: 'o2', onGameOver: stopForGameOver, onReset: resetToOptimal });
-        });
-
-        // Emit fix command when user clicks "Restore O2"
-        fixBtn.addEventListener('click', () => {
-            if (socket) {
-                socket.emit('fix_sabotage', { type: 'o2' });
+        // ---- display ----
+        function renderDigits() {
+            const box = $('digits'); box.innerHTML = '';
+            for (let i = 0; i < CODE_LEN; i++) {
+                const d = document.createElement('span');
+                d.className = 'digit' + (i === entry.length ? ' cursor' : '');
+                d.textContent = entry[i] || ' ';
+                box.appendChild(d);
             }
-        });
-
-        function setupSocketListeners() {
-            // Check active O2 state on connect/update
-            socket.on('sabotage_data_request', ({ sData, endTime }) => {
-                const o2 = sData.o2;
-                if (!o2) return;
-
-                if (o2.sabotaged && o2.depleted) {
-                    enterO2DepletionUI();
-                    const secondsLeft = Math.max(0, Math.round((endTime - Date.now()) / 1000));
-                    timeLeft = secondsLeft;
-                    countdownDisplay.textContent = timeLeft;
-                } else {
-                    resetToOptimal();
-                }
-            });
-
-            // Handle direct game over events
-            socket.on('o2_depleted', () => triggerGameOver());
-            
-            socket.on('game_over', (payload) => {
-                if (payload.winner === 'impostors') triggerGameOver();
-            });
-
-            // Listen for fix acknowledgments
-            socket.on('fix_ack', (ack) => {
-                if (ack.ok) {
-                    resetToOptimal();
-                } else {
-                    console.warn("O2 restoration failed or not active.");
-                }
-            });
-
-            // Listen for global resolution broadcast
-            socket.on('sabotage_fixed', (data) => {
-                if (data.type === 'o2') {
-                    resetToOptimal();
-                }
-            });
-
-            // Errors
-            socket.on('Err', (err) => {
-                console.error("Server Error Received:", err.error);
-            });
+        }
+        function screenMsg(text, cls, holdMs) {
+            clearTimeout(msgTimer);
+            $('screen').className = 'screen' + (cls ? ' ' + cls : '');
+            $('screenMsg').textContent = text;
+            if (holdMs) msgTimer = setTimeout(() => { entry = ''; renderDigits(); idleMsg(); }, holdMs);
+        }
+        function idleMsg() {
+            if (Date.now() < lockUntil) return;
+            screenMsg(entry.length ? 'ENTER ' + (CODE_LEN - entry.length) + ' MORE' : 'AWAITING INPUT');
+        }
+        function renderCodes() {
+            $('codesLabel').textContent = 'OVERRIDE CODES ' + Math.min(accepted, need) + ' / ' + need;
+            const box = $('lights'); box.innerHTML = '';
+            for (let i = 0; i < need; i++) {
+                const l = document.createElement('span');
+                l.className = 'light' + (i < accepted ? ' on' : '');
+                box.appendChild(l);
+            }
+        }
+        function fmt(sec) { sec = Math.max(0, Math.ceil(sec)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
+        function tick() {
+            const now = Date.now();
+            if (state === 'crisis') {
+                const left = Math.max(0, (endTime - now) / 1000);
+                $('clock').textContent = fmt(left);
+                const p = total > 0 ? Math.max(0, Math.min(1, left / total)) : 0;
+                $('pct').textContent = Math.round(p * 100) + '%';
+                $('fill').style.width = (p * 100) + '%';
+            }
+            const locked = now < lockUntil;
+            document.querySelectorAll('.key').forEach(k => { k.disabled = locked || busy; });
+            if (locked) screenMsg('KEYPAD LOCKED ' + Math.ceil((lockUntil - now) / 1000) + 'S', 'bad warn');
+            else if ($('screen').classList.contains('warn')) { entry = ''; renderDigits(); screenMsg('AWAITING INPUT'); }
         }
 
-        function enterO2DepletionUI() {
-            if (currentState === 'unstable' || currentState === 'game-over') return;
-            currentState = 'unstable';
+        function setState(next) {
+            if (state === next) return;
+            state = next;
+            document.body.classList.toggle('crisis', next === 'crisis');
+            document.body.classList.toggle('restored', next === 'restored');
+            const crisis = next === 'crisis';
+            $('clock').hidden = !crisis;
+            $('keypad').hidden = !crisis;
+            $('codes').hidden = !crisis;
+            $('hint').hidden = !crisis;
+            if (crisis) {
+                $('state').textContent = 'O2 DEPLETING';
+                $('lampText').textContent = 'ALARM';
+                entry = ''; renderDigits(); idleMsg(); renderCodes();
+                if (socket) socket.emit('unstable', { activated: true });
+                alarmSound.currentTime = 0;
+                alarmSound.play().catch(() => {});
+            } else {
+                alarmSound.pause(); alarmSound.currentTime = 0;
+                $('pct').textContent = '100%'; $('fill').style.width = '100%';
+                if (next === 'restored') { $('state').textContent = 'O2 RESTORED'; $('lampText').textContent = 'RESTORED'; }
+                else if (next === 'stable') { $('state').textContent = 'O2 RESERVES OPTIMAL'; $('lampText').textContent = 'NOMINAL'; }
+                else { $('lampText').textContent = 'OFFLINE'; }
+            }
+        }
+        function restored() {
+            if (state !== 'crisis') return;
+            sfx.done();
+            setState('restored');
+            clearTimeout(restoredTimer);
+            restoredTimer = setTimeout(() => { if (state === 'restored') setState('stable'); }, 4000);
+        }
 
-            socket.emit("unstable", {activated:true});
-            
-            statusDisplay.textContent = 'O2 CRITICAL - DEPLETING';
-            statusDisplay.className = 'depleting';
-            countdownDisplay.style.display = 'block';
-            fixBtn.style.display = 'inline-block';
-            overlay.classList.add('flashing-overlay');
-            
-            alarmSound.currentTime = 0;
-            alarmSound.play().catch(err => console.log("Audio waiting for interaction."));
-            
-            clearInterval(countdownInterval);
-            countdownInterval = setInterval(() => {
-                timeLeft--;
-                countdownDisplay.textContent = timeLeft;
-                if (timeLeft <= 0) clearInterval(countdownInterval);
-            }, 1000);
+        // ---- keypad input ----
+        function press(k) {
+            if (state !== 'crisis' || busy || Date.now() < lockUntil) return;
+            if ($('screen').classList.contains('ok') || $('screen').classList.contains('bad')) { entry = ''; screenMsg(''); }
+            if (k === 'clr') { sfx.key(); entry = ''; renderDigits(); idleMsg(); return; }
+            if (k === 'ok') {
+                if (entry.length < CODE_LEN) { sfx.bad(); screenMsg('CODE TOO SHORT', 'bad', 1400); return; }
+                busy = true; tick();
+                screenMsg('VERIFYING…');
+                socket.emit('o2_code', { code: entry });
+                return;
+            }
+            if (entry.length >= CODE_LEN) return;
+            sfx.key();
+            entry += k; renderDigits(); idleMsg();
+        }
+        $('keys').addEventListener('click', e => {
+            const b = e.target.closest('.key'); if (b) press(b.dataset.k);
+        });
+        document.addEventListener('keydown', e => {
+            let k = null;
+            if (/^[0-9]$/.test(e.key)) k = e.key;
+            else if (e.key === 'Enter') k = 'ok';
+            else if (e.key === 'Backspace' || e.key === 'Escape' || e.key === 'Delete') k = 'clr';
+            if (!k || state !== 'crisis') return;
+            e.preventDefault();
+            const b = document.querySelector('.key[data-k="' + k + '"]');
+            if (b) { b.classList.add('pressed'); setTimeout(() => b.classList.remove('pressed'), 90); }
+            press(k);
+        });
+
+        function onAck(r) {
+            busy = false;
+            if (!r) return;
+            if (r.result === 'accepted') {
+                sfx.ok();
+                accepted = r.accepted; need = r.need || need; renderCodes();
+                screenMsg(r.done ? 'OVERRIDE COMPLETE' : 'CODE ACCEPTED', 'ok', 1600);
+            } else if (r.result === 'used') {
+                sfx.bad(); screenMsg('CODE ALREADY USED', 'bad', 1600);
+            } else if (r.result === 'locked') {
+                sfx.bad(); lockUntil = r.lockUntil || lockUntil; screenMsg('INVALID CODE', 'bad');
+            } else if (r.result === 'invalid') {
+                sfx.bad(); screenMsg('INVALID CODE', 'bad', 1600);
+            } else if (r.result === 'meeting') {
+                screenMsg('MEETING IN PROGRESS', 'bad', 1600);
+            } else if (r.result !== 'busy') {
+                screenMsg('NO OVERRIDE ACTIVE', 'bad', 1600);
+            }
+            tick();
+        }
+
+        // ---- server ----
+        function setupSocketListeners() {
+            socket.on('sabotage_data_request', ({ sData, endTime: end }) => {
+                const o2 = sData && sData.o2;
+                if (!o2 || state === 'game-over') return;
+                if (o2.sabotaged && o2.depleted) {
+                    endTime = end || endTime;
+                    if (!total) total = Math.max(1, Math.round((endTime - Date.now()) / 1000));
+                    setState('crisis');
+                } else if (state === 'crisis') {
+                    restored();
+                }
+            });
+            socket.on('o2_override_status', st => {
+                if (!st || !st.active) return;
+                need = st.need || need; accepted = st.accepted || 0;
+                if (st.total) total = st.total;
+                if (st.lockUntil > lockUntil) lockUntil = st.lockUntil;
+                renderCodes(); tick();
+            });
+            socket.on('o2_code_ack', onAck);
+            socket.on('sabotage_fixed', d => { if (d && d.type === 'o2') restored(); });
+            socket.on('o2_depleted', stopForGameOver);
+            socket.on('game_over', stopForGameOver);
+            socket.on('Err', err => console.error('Server error:', err.error));
         }
 
         function resetToOptimal() {
-            currentState = 'stable';
-            
-            // Stop timers & hide emergency UI
-            clearInterval(countdownInterval);
-            countdownDisplay.style.display = 'none';
-            fixBtn.style.display = 'none';
-            
-            // Reset visuals
-            document.body.style.backgroundColor = '#111';
-            statusDisplay.textContent = 'O2 RESERVES OPTIMAL';
-            statusDisplay.className = 'stable';
-            overlay.classList.remove('flashing-overlay');
-            
-            // Silence alarm
-            alarmSound.pause();
-            alarmSound.currentTime = 0;
+            clearTimeout(restoredTimer);
+            total = 0; accepted = 0; lockUntil = 0; entry = ''; busy = false;
+            state = '';
+            setState('stable');
         }
-
         // The game ended for any reason: stop everything; serverdevice.js shows the result.
         function stopForGameOver() {
-            if (currentState !== 'game-over') triggerGameOver();
+            if (state === 'game-over') return;
+            setState('game-over');
         }
 
-        function triggerGameOver() {
-            currentState = 'game-over';
-            clearInterval(countdownInterval);
-            
-            // Stop alarm & reset layout
-            alarmSound.pause();
-            overlay.classList.remove('flashing-overlay');
-            countdownDisplay.style.display = 'none';
-            fixBtn.style.display = 'none';
-            
-            // the win screen is shown over this page by serverdevice.js
-        }
+        $('start-btn').addEventListener('click', () => {
+            $('connect').hidden = true;
+            try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audio = null; }
+            socket = io();
+            setupSocketListeners();
+            // game over / restart happen on this page, so sound stays allowed to play
+            ServerDevice.attach(socket, { role: 'o2', onGameOver: stopForGameOver, onReset: resetToOptimal });
+            tickTimer = setInterval(tick, 250);
+        });
+        renderDigits();
     </script>
 </body>
 </html>

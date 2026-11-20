@@ -2,292 +2,305 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reactor Status Monitor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Reactor Core Control</title>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/serverdevice.js"></script>
     <style>
-        body {
-            background-color: #111;
-            color: #fff;
-            font-family: 'Courier New', Courier, monospace;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
-            transition: background-color 0.5s ease;
+        :root {
+            --bg: #07090a; --panel: #0e1311; --edge: #22302a; --text: #dbe7df; --dim: #6c8577;
+            --green: #39ff6a; --red: #ff3333; --amber: #fbbf24;
+            --c: var(--green);
+            --mono: "SFMono-Regular", Consolas, "Liberation Mono", "Courier New", monospace;
         }
+        * { box-sizing: border-box; }
+        html, body { height: 100%; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--mono); overflow: hidden; user-select: none; -webkit-user-select: none; }
+        body.crisis { --c: var(--red); }
 
-        .container {
-            text-align: center;
-            z-index: 10;
-        }
-
-        #status-display {
-            font-size: 3.5rem;
-            font-weight: bold;
-            letter-spacing: 2px;
-            margin-bottom: 20px;
-            transition: color 0.3s ease;
-        }
-
-        /* State Classes */
-        .stable {
-            color: #00ff00;
-            text-shadow: 0 0 15px rgba(0, 255, 0, 0.6);
-        }
-
-        .meltdown {
-            color: #ff0000;
-            text-shadow: 0 0 25px rgba(255, 0, 0, 0.8);
-            animation: pulse 1s infinite alternate;
-        }
-
-        .game-over {
-            color: #ffffff;
-            font-size: 5rem;
-            letter-spacing: 5px;
-        }
-
-        /* Countdown Timer */
-        #countdown {
-            font-size: 6rem;
-            color: #ff3333;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-
-        /* Flashing Red Overlay */
         #overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background-color: rgba(255, 0, 0, 0.35);
-            opacity: 0;
-            pointer-events: none;
-            z-index: 5;
+            position: fixed; inset: 0; pointer-events: none; z-index: 5; opacity: 0;
+            background: radial-gradient(ellipse at center, transparent 40%, rgba(255, 0, 0, 0.5) 100%);
         }
+        body.crisis #overlay { animation: flash 1s infinite; }
+        @keyframes flash { 0%, 100% { opacity: 0.15; } 50% { opacity: 1; } }
 
-        .flashing-overlay {
-            animation: flash 1s infinite;
+        .connect { position: fixed; inset: 0; display: grid; place-items: center; z-index: 20; background: var(--bg); }
+        .connect[hidden] { display: none; }
+        .btn-connect {
+            font: 700 1.1rem var(--mono); letter-spacing: 0.12em; padding: 18px 34px; cursor: pointer;
+            color: var(--green); background: transparent; border: 2px solid var(--green); border-radius: 6px;
+            box-shadow: 0 0 14px rgba(57, 255, 106, 0.3);
         }
+        .btn-connect:hover, .btn-connect:focus-visible { background: var(--green); color: #04150a; outline: none; }
 
-        @keyframes flash {
-            0% { opacity: 0; }
-            50% { opacity: 1; }
-            100% { opacity: 0; }
+        .console {
+            position: relative; z-index: 10; height: 100%; display: flex; flex-direction: column; gap: 14px;
+            padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
         }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            100% { transform: scale(1.03); }
+        .bar {
+            display: flex; justify-content: space-between; align-items: center; gap: 12px;
+            font-size: 0.78rem; letter-spacing: 0.22em; color: var(--dim); text-transform: uppercase;
+            border-bottom: 1px solid var(--edge); padding-bottom: 10px;
         }
+        .bar b { color: var(--text); }
+        .lamp { display: inline-flex; align-items: center; gap: 8px; color: var(--c); }
+        .lamp i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px var(--c); }
+        body.crisis .lamp i { animation: blink 0.5s steps(2) infinite; }
+        @keyframes blink { 50% { opacity: 0.15; } }
 
-        /* Buttons */
-        .btn {
-            padding: 15px 30px;
-            background-color: #222;
-            font-family: inherit;
-            font-size: 1.2rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            margin: 10px;
+        .main { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr; gap: 22px; align-content: center; justify-items: center; }
+        body.crisis .main { grid-template-columns: auto minmax(0, 1fr); align-items: center; }
+
+        /* QR */
+        .qr { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .qr[hidden] { display: none; }
+        .qr-frame {
+            --s: min(62vh, 44vw);
+            width: var(--s); height: var(--s); padding: 14px; background: #fff; border-radius: 10px; position: relative;
+            box-shadow: 0 0 0 4px #1a1a1a, 0 0 0 7px var(--red), 0 0 36px rgba(255, 51, 51, 0.5);
         }
-
-        #start-btn {
-            color: #00ff00;
-            border: 2px solid #00ff00;
-            box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        .qr-frame img { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+        .qr-frame img:not([src]) { visibility: hidden; }
+        .qr-frame .scanline {
+            position: absolute; left: 6px; right: 6px; height: 2px; top: 10%; background: rgba(255, 51, 51, 0.7);
+            box-shadow: 0 0 8px rgba(255, 51, 51, 0.9); animation: scan 2.4s ease-in-out infinite alternate; pointer-events: none;
         }
+        @keyframes scan { to { top: 90%; } }
+        .qr-label { font-size: 0.82rem; letter-spacing: 0.22em; color: var(--red); font-weight: 700; text-align: center; }
 
-        #start-btn:hover {
-            background-color: #00ff00;
-            color: #111;
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.6);
+        .status { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; min-width: 0; width: 100%; }
+        #state {
+            font-size: clamp(1.7rem, 5.4vw, 3.6rem); font-weight: 800; letter-spacing: 0.06em; line-height: 1.05;
+            color: var(--c); text-shadow: 0 0 18px color-mix(in srgb, var(--c) 55%, transparent);
         }
+        body.crisis #state { animation: pulse 1s infinite alternate; }
+        @keyframes pulse { to { transform: scale(1.03); } }
+        #clock { font-size: clamp(3rem, 11vw, 6.5rem); font-weight: 800; color: var(--red); line-height: 1; font-variant-numeric: tabular-nums; }
+        #clock[hidden] { display: none; }
 
-        #fix-btn {
-            color: #ff3333;
-            border: 2px solid #ff3333;
-            box-shadow: 0 0 10px rgba(255, 51, 51, 0.3);
-            display: none;
+        .readout { display: flex; gap: 22px; font-size: 0.78rem; letter-spacing: 0.16em; color: var(--dim); }
+        .readout b { display: block; margin-top: 4px; font-size: 1.15rem; color: var(--c); font-variant-numeric: tabular-nums; letter-spacing: 0.06em; }
+
+        .levers { display: flex; flex-direction: column; gap: 10px; width: min(440px, 100%); }
+        .levers[hidden] { display: none; }
+        .slots { display: flex; gap: 10px; }
+        .slot {
+            flex: 1; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px;
+            background: var(--panel); border: 1px solid #3a1d1d; font-size: 0.8rem; letter-spacing: 0.14em; color: var(--dim);
+            transition: border-color 0.2s, box-shadow 0.2s, color 0.2s;
         }
+        .slot i { width: 12px; height: 12px; border-radius: 50%; background: #3b1616; flex: none; transition: background 0.2s, box-shadow 0.2s; }
+        .slot.on { border-color: var(--amber); color: var(--amber); box-shadow: 0 0 14px rgba(251, 191, 36, 0.25); }
+        .slot.on i { background: var(--amber); box-shadow: 0 0 10px var(--amber); }
+        .stab-label { display: flex; justify-content: space-between; font-size: 0.72rem; letter-spacing: 0.2em; color: var(--dim); }
+        .stab-track { height: 12px; background: #050807; border: 1px solid var(--edge); border-radius: 3px; overflow: hidden; }
+        .stab-fill { height: 100%; width: 0; background: var(--green); box-shadow: 0 0 10px var(--green); }
+        .hint { margin: 0; max-width: 44ch; font-size: 0.8rem; line-height: 1.45; color: var(--dim); }
+        .hint[hidden] { display: none; }
 
-        #fix-btn:hover {
-            background-color: #ff3333;
-            color: #111;
-            box-shadow: 0 0 20px rgba(255, 51, 51, 0.6);
+        @media (max-height: 500px) {
+            .console { gap: 8px; }
+            .qr-frame { --s: min(70vh, 40vw); padding: 8px; }
+            body.crisis #state { font-size: 1.5rem; }
+            body.crisis #clock { font-size: 2.6rem; }
+            .status { gap: 8px; }
+            .hint { display: none !important; }
+        }
+        @media (max-width: 720px) and (min-height: 501px) {
+            body.crisis .main { grid-template-columns: 1fr; align-content: start; overflow-y: auto; gap: 14px; }
+            .qr-frame { --s: min(78vw, 46vh); }
+            body.crisis #state { font-size: 1.6rem; }
+            body.crisis #clock { font-size: 3rem; }
         }
     </style>
 </head>
 <body>
-
     <div id="overlay"></div>
 
-    <div class="container">
-        <button id="start-btn" class="btn">CONNECT TO REACTOR FEED</button>
-        <div id="status-display" style="display: none;">REACTOR STABLE</div>
-        <div id="countdown" style="display: none;">30</div>
-        <button id="fix-btn" class="btn">FIX REACTOR</button>
+    <div class="connect" id="connect">
+        <button id="start-btn" class="btn-connect" type="button">CONNECT TO REACTOR FEED</button>
+    </div>
+
+    <div class="console">
+        <div class="bar">
+            <span><b>REACTOR</b> // CORE CONTROL</span>
+            <span class="lamp"><i></i><span id="lampText">NOMINAL</span></span>
+        </div>
+        <div class="main">
+            <section class="qr" id="qr" hidden>
+                <div class="qr-frame" role="img" aria-label="Reactor manual override QR code"><img id="qrImg" alt=""><div class="scanline"></div></div>
+                <div class="qr-label">SCAN FOR MANUAL OVERRIDE</div>
+            </section>
+
+            <section class="status" aria-live="polite">
+                <div id="state">REACTOR STABLE</div>
+                <div id="clock" hidden>1:30</div>
+                <div class="readout">
+                    <div>CORE TEMP<b id="temp">612°C</b></div>
+                    <div>OUTPUT<b id="output">100%</b></div>
+                </div>
+                <div class="levers" id="levers" hidden>
+                    <div class="slots" id="slots"></div>
+                    <div>
+                        <div class="stab-label"><span id="stabText">MANUAL OVERRIDE</span><span id="stabPct"></span></div>
+                        <div class="stab-track"><div class="stab-fill" id="stabFill"></div></div>
+                    </div>
+                </div>
+                <p class="hint" id="hint" hidden>Two crewmates scan the code, then hold their override levers down at the same time.</p>
+            </section>
+        </div>
     </div>
 
     <audio id="alarm-sound" loop src="alarm.mp3"></audio>
 
     <script>
-        // DOM Elements
-        const statusDisplay = document.getElementById('status-display');
-        const countdownDisplay = document.getElementById('countdown');
-        const overlay = document.getElementById('overlay');
-        const alarmSound = document.getElementById('alarm-sound');
-        const startBtn = document.getElementById('start-btn');
-        const fixBtn = document.getElementById('fix-btn');
+        const $ = id => document.getElementById(id);
+        const alarmSound = $('alarm-sound');
+        let socket = null, audio = null;
+        let state = 'stable';   // stable | crisis | restored | game-over
+        let endTime = 0, total = 0, need = 2, holding = 0, since = 0, holdMs = 3000, qrId = null;
+        let restoredTimer = null;
 
-        // State Tracking
-        let socket;
-        let countdownInterval = null;
-        let timeLeft = 30;
-        let currentState = 'stable';
-
-        // Connect and initialize user gesture requirement for audio
-        startBtn.addEventListener('click', () => {
-            startBtn.style.display = 'none';
-            statusDisplay.style.display = 'block';
-            statusDisplay.className = 'stable';
-
-            // Initialize Socket.IO connection
-            socket = io(); // Pass server URL here if backend is on another port/domain (e.g., io('http://localhost:3000'))
-
-            setupSocketListeners();
-            // game over / restart happen on this page, so the alarm stays allowed to play
-            ServerDevice.attach(socket, { role: 'reactor', onGameOver: stopForGameOver, onReset: resetToStable });
-        });
-
-        // Emit fix command when user clicks "Fix Reactor"
-        fixBtn.addEventListener('click', () => {
-            if (socket) {
-                socket.emit('fix_sabotage', { type: 'reactor' });
-            }
-        });
-
-        function setupSocketListeners() {
-            // Initial state on connect, and on stage1 -> stage2 transition
-            socket.on('sabotage_data_request', ({ sData, endTime }) => {
-                const reactor = sData.reactor;
-                if (!reactor) return;
-
-                if (reactor.sabotaged && reactor.meltdown) {
-                    // Stage 2: crisis phase - THIS is when the alarm shows
-                    enterMeltdownUI();
-                    const secondsLeft = Math.max(0, Math.round((endTime - Date.now()) / 1000));
-                    timeLeft = secondsLeft;
-                    countdownDisplay.textContent = timeLeft;
-                } else {
-                    // Either fully fixed, or still in the silent stage-1 delay phase.
-                    // Both look identical to the crew: "REACTOR STABLE".
-                    resetToStable();
-                }
-            });
-
-            // Stage-1 ticks exist server-side but are intentionally not shown to players.
-            // (No UI update here - the crew has no early warning.)
-            socket.on('sabotage_tick', ({ type, timeLeft: tl }) => {
-                // no-op for reactor UI by design
-            });
-
-            socket.on('reactor_meltdown', () => triggerGameOver());
-            
-            socket.on('game_over', (payload) => {
-                if (payload.winner === 'impostors') triggerGameOver();
-            });
-
-            // Listen for sabotage acknowledgment responses
-            socket.on('sabotage_ack', (ack) => {
-                if (!ack.ok) {
-                    console.warn("Sabotage request rejected or already active.");
-                }
-            });
-
-            // Listen for fix acknowledgment response from server
-            socket.on('fix_ack', (ack) => {
-                if (ack.ok) {
-                    resetToStable();
-                } else {
-                    console.warn("Fix failed or nothing to fix.");
-                }
-            });
-
-            // Global broadcast when any sabotage is resolved
-            socket.on('sabotage_fixed', (data) => {
-                if (data.type === 'reactor') {
-                    resetToStable();
-                }
-            });
-
-            // Listen for generic errors from server
-            socket.on('Err', (err) => {
-                console.error("Server Error Received:", err.error);
-            });
+        function tone(freq, ms, type, gain) {
+            if (!audio) return;
+            const o = audio.createOscillator(), g = audio.createGain();
+            o.type = type || 'sine'; o.frequency.value = freq;
+            g.gain.setValueAtTime(gain || 0.08, audio.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + ms / 1000);
+            o.connect(g).connect(audio.destination); o.start(); o.stop(audio.currentTime + ms / 1000);
         }
 
-        function enterMeltdownUI() {
-            if (currentState === 'unstable' || currentState === 'game-over') return;
-            currentState = 'unstable';
-            socket.emit("unstable", {activated:true})
-            statusDisplay.textContent = 'REACTOR MELTDOWN';
-            statusDisplay.className = 'meltdown';
-            countdownDisplay.style.display = 'block';
-            fixBtn.style.display = 'inline-block';
-            overlay.classList.add('flashing-overlay');
-            alarmSound.currentTime = 0;
-            alarmSound.play().catch(err => console.log("Audio waiting for interaction."));
-            clearInterval(countdownInterval);
-            countdownInterval = setInterval(() => {
-                timeLeft--;
-                countdownDisplay.textContent = timeLeft;
-                if (timeLeft <= 0) clearInterval(countdownInterval); // server drives actual game_over via reactor_meltdown/game_over
-            }, 1000);
+        function fmt(sec) { sec = Math.max(0, Math.ceil(sec)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
+
+        function renderSlots() {
+            const box = $('slots'); box.innerHTML = '';
+            for (let i = 0; i < need; i++) {
+                const s = document.createElement('div');
+                const on = i < holding;
+                s.className = 'slot' + (on ? ' on' : '');
+                s.innerHTML = '<i></i><span></span>';
+                s.querySelector('span').textContent = 'LEVER ' + String.fromCharCode(65 + i) + ': ' + (on ? 'HELD' : 'OPEN');
+                box.appendChild(s);
+            }
+        }
+
+        function tick() {
+            const now = Date.now();
+            if (state === 'crisis') {
+                const left = Math.max(0, (endTime - now) / 1000);
+                $('clock').textContent = fmt(left);
+                const heat = total > 0 ? 1 - Math.max(0, Math.min(1, left / total)) : 0;
+                const jitter = (Math.floor(now / 700) * 7) % 9;
+                $('temp').textContent = (2400 + Math.round(heat * 2600) + jitter).toLocaleString('en-US') + '°C';
+                $('output').textContent = (100 + Math.round(heat * 180)) + '%';
+                if (since > 0) {
+                    const p = Math.min(1, (now - since) / holdMs);
+                    $('stabFill').style.width = (p * 100) + '%';
+                    $('stabPct').textContent = Math.round(p * 100) + '%';
+                    $('stabText').textContent = 'STABILISING';
+                } else {
+                    $('stabFill').style.width = '0';
+                    $('stabPct').textContent = '';
+                    $('stabText').textContent = holding ? 'WAITING FOR ' + (need - holding) + ' MORE' : 'MANUAL OVERRIDE';
+                }
+            } else if (state === 'stable') {
+                $('temp').textContent = (612 + (Math.floor(now / 1500) * 5) % 6) + '°C';
+            }
+        }
+
+        function loadQr() {
+            $('qrImg').src = '/reactor/qr.svg?q=' + encodeURIComponent(qrId || Date.now());
+        }
+
+        function setState(next) {
+            if (state === next) return;
+            state = next;
+            const crisis = next === 'crisis';
+            document.body.classList.toggle('crisis', crisis);
+            $('clock').hidden = !crisis;
+            $('qr').hidden = !crisis;
+            $('levers').hidden = !crisis;
+            $('hint').hidden = !crisis;
+            if (crisis) {
+                $('state').textContent = 'REACTOR MELTDOWN';
+                $('lampText').textContent = 'ALARM';
+                renderSlots();
+                if (socket) socket.emit('unstable', { activated: true });
+                alarmSound.currentTime = 0;
+                alarmSound.play().catch(() => {});
+            } else {
+                alarmSound.pause(); alarmSound.currentTime = 0;
+                $('qrImg').removeAttribute('src');
+                qrId = null; holding = 0; since = 0;
+                $('output').textContent = '100%';
+                if (next === 'restored') { $('state').textContent = 'REACTOR STABILISED'; $('lampText').textContent = 'RESTORED'; }
+                else if (next === 'stable') { $('state').textContent = 'REACTOR STABLE'; $('lampText').textContent = 'NOMINAL'; }
+                else $('lampText').textContent = 'OFFLINE';
+            }
+            tick();
+        }
+        function restored() {
+            if (state !== 'crisis') return;
+            [520, 700, 880, 1040].forEach((f, i) => setTimeout(() => tone(f, 180, 'sine', 0.12), i * 130));
+            setState('restored');
+            clearTimeout(restoredTimer);
+            restoredTimer = setTimeout(() => { if (state === 'restored') setState('stable'); }, 4000);
+        }
+
+        function setupSocketListeners() {
+            socket.on('sabotage_data_request', ({ sData, endTime: end }) => {
+                const r = sData && sData.reactor;
+                if (!r || state === 'game-over') return;
+                if (r.sabotaged && r.meltdown) {
+                    endTime = end || endTime;
+                    if (!total) total = Math.max(1, Math.round((endTime - Date.now()) / 1000));
+                    setState('crisis');
+                    if (!$('qrImg').getAttribute('src')) loadQr();
+                } else if (state === 'crisis') {
+                    restored();
+                }
+            });
+            socket.on('reactor_override_status', st => {
+                if (!st || !st.active || state === 'game-over') return;
+                if (st.total) total = st.total;
+                need = st.need || need; holdMs = st.holdMs || holdMs;
+                const before = holding;
+                holding = st.holding || 0;
+                if (holding > before) tone(440 + holding * 160, 120, 'square', 0.05);
+                since = st.since || 0;
+                if (st.qr && st.qr !== qrId) { qrId = st.qr; if (state === 'crisis') loadQr(); }
+                renderSlots(); tick();
+            });
+            socket.on('sabotage_fixed', d => { if (d && d.type === 'reactor') restored(); });
+            socket.on('reactor_meltdown', stopForGameOver);
+            socket.on('game_over', stopForGameOver);
+            socket.on('Err', err => console.error('Server error:', err.error));
         }
 
         function resetToStable() {
-            currentState = 'stable';
-            
-            // Stop timers & hide meltdown UI
-            clearInterval(countdownInterval);
-            countdownDisplay.style.display = 'none';
-            fixBtn.style.display = 'none';
-            
-            // Reset visuals
-            document.body.style.backgroundColor = '#111';
-            statusDisplay.textContent = 'REACTOR STABLE';
-            statusDisplay.className = 'stable';
-            overlay.classList.remove('flashing-overlay');
-            
-            // Silence alarm
-            alarmSound.pause();
-            alarmSound.currentTime = 0;
+            clearTimeout(restoredTimer);
+            total = 0; holding = 0; since = 0; qrId = null;
+            state = '';
+            setState('stable');
         }
-
         // The game ended for any reason: stop everything; serverdevice.js shows the result.
         function stopForGameOver() {
-            if (currentState !== 'game-over') triggerGameOver();
+            if (state === 'game-over') return;
+            setState('game-over');
         }
 
-        function triggerGameOver() {
-            currentState = 'game-over';
-            clearInterval(countdownInterval);
-            
-            // Stop components
-            alarmSound.pause();
-            overlay.classList.remove('flashing-overlay');
-            countdownDisplay.style.display = 'none';
-            fixBtn.style.display = 'none';
-            
-            // the win screen is shown over this page by serverdevice.js
-        }
+        $('qrImg').addEventListener('error', () => { if (state === 'crisis') setTimeout(loadQr, 1500); });
+
+        $('start-btn').addEventListener('click', () => {
+            $('connect').hidden = true;
+            try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audio = null; }
+            socket = io();
+            setupSocketListeners();
+            // game over / restart happen on this page, so sound stays allowed to play
+            ServerDevice.attach(socket, { role: 'reactor', onGameOver: stopForGameOver, onReset: resetToStable });
+            setInterval(tick, 200);
+        });
     </script>
 </body>
 </html>
