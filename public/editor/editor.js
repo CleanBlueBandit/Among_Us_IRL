@@ -1,6 +1,6 @@
 // Floor plan editor. Draw walls and doors per floor, name the rooms they enclose, and place every task's
 // QR codes in rooms. The rules live in geometry.js, shared with the server, which checks them again on save.
-import { analyzeFloor, validatePlan, project, same, dist, onInterior, EPS } from './geometry.js';
+import { analyzeFloor, validatePlan, project, same, dist, onInterior, interiorPoint, EPS } from './geometry.js';
 
 const $ = id => document.getElementById(id);
 const GRID = 25;          // cm
@@ -277,7 +277,8 @@ function overwriteWalls(door) {
 }
 
 // ---- hit testing -----------------------------------------------------------------------------------
-function labelBox(r) { const w = Math.max(60, (r.name || 'Unnamed room').length * 7.4 + 18) / view.k, h = 22 / view.k; return [r.at[0] - w / 2, r.at[1] - h / 2, w, h]; }
+const labelText = r => (r.void ? 'Void' : (r.name || '').trim() || 'Unnamed room');
+function labelBox(r) { const w = Math.max(60, labelText(r).length * 7.4 + 18) / view.k, h = 22 / view.k; return [r.at[0] - w / 2, r.at[1] - h / 2, w, h]; }
 function hitTest(w) {
     const f = floor(), t = HIT / view.k;
     if (tool === 'select') { const r = selectedRotatable(); if (r && dist(w, rotateHandle(r)) < 13 / view.k) return { kind: 'rotate', r }; }
@@ -328,7 +329,7 @@ function render() {
     const selRoomFaces = new Set([...sel].map(id => { const r = f.rooms.find(x => x.id === id); const fc = r && analysis.roomAt(r.at); return fc && fc.id; }).filter(Boolean));
     $('gFaces').innerHTML = analysis.faces.map(fc => {
         const d = polyPath(fc.poly) + fc.holes.map(polyPath).join('');
-        const fill = !fc.name ? 'url(#hatch)' : selRoomFaces.has(fc.id) ? 'var(--room-sel)' : 'var(--room)';
+        const fill = fc.void ? (fc.door ? 'url(#hatch)' : 'url(#voidHatch)') : !fc.name ? 'url(#hatch)' : selRoomFaces.has(fc.id) ? 'var(--room-sel)' : 'var(--room)';
         return `<path d="${d}" fill="${fill}" fill-rule="evenodd"/>`;
     }).join('');
     // lines
@@ -351,9 +352,10 @@ function render() {
     $('gLines').innerHTML = lines;
     // room names
     $('gRooms').innerHTML = f.rooms.map(r => {
-        const b = labelBox(r), s = sel.has(r.id), unnamed = !(r.name || '').trim();
-        return `<g><rect x="${b[0]}" y="${b[1]}" width="${b[2]}" height="${b[3]}" rx="${px(11)}" fill="${s ? 'rgba(255,176,46,.22)' : 'rgba(13,16,22,.85)'}" stroke="${s ? 'var(--accent)' : unnamed ? 'var(--bad)' : 'rgba(255,255,255,.18)'}" stroke-width="${px(1.2)}"/>`
-            + `<text x="${r.at[0]}" y="${r.at[1] + px(4.5)}" text-anchor="middle" font-size="${px(12.5)}" font-weight="600" fill="${unnamed ? 'var(--bad)' : 'var(--text)'}" font-style="${unnamed ? 'italic' : 'normal'}">${esc(unnamed ? 'Unnamed room' : r.name)}</text></g>`;
+        const b = labelBox(r), s = sel.has(r.id), unnamed = !r.void && !(r.name || '').trim();
+        const ink = unnamed ? 'var(--bad)' : r.void ? 'var(--dim)' : 'var(--text)';
+        return `<g><rect x="${b[0]}" y="${b[1]}" width="${b[2]}" height="${b[3]}" rx="${px(11)}" fill="${s ? 'rgba(255,176,46,.22)' : 'rgba(13,16,22,.85)'}" stroke="${s ? 'var(--accent)' : unnamed ? 'var(--bad)' : r.void ? 'rgba(255,255,255,.1)' : 'rgba(255,255,255,.18)'}" stroke-width="${px(1.2)}" ${r.void && !s ? `stroke-dasharray="${px(4)} ${px(3)}"` : ''}/>`
+            + `<text x="${r.at[0]}" y="${r.at[1] + px(4.5)}" text-anchor="middle" font-size="${px(12.5)}" font-weight="600" fill="${ink}" font-style="${unnamed || r.void ? 'italic' : 'normal'}">${esc(labelText(r))}</text></g>`;
     }).join('');
     // task pins; a label is only drawn where it fits (room names first), the rest show on hover or selection
     const known = new Set(units.flatMap(u => u.parts.map(p => p.code)));
@@ -474,7 +476,11 @@ function renderInspector() {
           </div>
           <div class="sec"><h3>On this floor</h3>
             <div class="kv"><span>Walls</span><b>${walls}</b></div><div class="kv"><span>Doors</span><b>${doors}</b></div>
-            <div class="kv"><span>Rooms</span><b>${analysis.faces.length}</b></div><div class="kv"><span>Tasks placed</span><b>${f.pins.length}</b></div>
+            <div class="kv"><span>Rooms</span><b>${analysis.faces.filter(x => !x.void).length}</b></div><div class="kv"><span>Void spaces</span><b>${analysis.faces.filter(x => x.void).length}</b></div><div class="kv"><span>Tasks placed</span><b>${f.pins.length}</b></div>
+          </div>
+          <div class="sec"><h3>Clean up</h3>
+            <div class="row"><button class="btn" id="fSlice" title="Mark every unnamed space without a door as void">Slice void</button><button class="btn" id="fCorrect" title="Straighten every line to a multiple of 45°">Correct edges</button></div>
+            <p class="muted"><b>Slice void</b> marks every unnamed space without a door as void. <b>Correct edges</b> turns every wall and door to the nearest 45° (0°, 45°, 90°…), keeping corners joined.</p>
           </div>
           <div class="sec"><h3>Reference image</h3>
             ${ref ? `
@@ -488,11 +494,14 @@ function renderInspector() {
     }
     const parts = [];
     if (s.lines.length) parts.push(`${s.lines.length} line${s.lines.length > 1 ? 's' : ''}`);
-    if (s.rooms.length) parts.push(`${s.rooms.length} room name${s.rooms.length > 1 ? 's' : ''}`);
+    const nVoid = s.rooms.filter(r => r.void).length, nName = s.rooms.length - nVoid;
+    if (nName) parts.push(`${nName} room name${nName > 1 ? 's' : ''}`);
+    if (nVoid) parts.push(`${nVoid} void marker${nVoid > 1 ? 's' : ''}`);
     if (s.pins.length) parts.push(`${s.pins.length} task${s.pins.length > 1 ? 's' : ''}`);
     const grouped = allItems().some(x => sel.has(x.id) && x.group);
     let html = `<div class="sec"><h3>Selection</h3><p style="margin:0 0 10px">${parts.join(', ')}</p>`;
-    if (n === 1 && s.rooms.length) html += `<div class="field"><label for="roomName">Room name</label><input type="text" id="roomName" maxlength="60" placeholder="e.g. Kitchen" value="${esc(s.rooms[0].name)}"></div>`;
+    if (n === 1 && nVoid) html += `<p class="muted">This space is void: not part of the game. It can't have doors or tasks. Delete the marker to make it a room again.</p>`;
+    else if (n === 1 && s.rooms.length) html += `<div class="field"><label for="roomName">Room name</label><input type="text" id="roomName" maxlength="60" placeholder="e.g. Kitchen" value="${esc(s.rooms[0].name)}"></div>`;
     if (s.lines.length) {
         const doors = s.lines.filter(l => l.type === 'door').length;
         html += `<div class="field"><label>Type</label><div class="seg"><button id="tWall" class="${doors === 0 ? 'on' : ''}">Wall</button><button id="tDoor" class="${doors === s.lines.length ? 'on' : ''}">Door</button></div></div>`;
@@ -513,7 +522,7 @@ function renderTop() {
     document.body.classList.toggle('dirty', JSON.stringify(doc) !== savedState);
     $('save').disabled = saving;
     document.querySelectorAll('.tool[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === tool));
-    stage.classList.toggle('draw', tool === 'wall' || tool === 'door' || tool === 'room' || tool === 'erase');
+    stage.classList.toggle('draw', tool === 'wall' || tool === 'door' || tool === 'room' || tool === 'void' || tool === 'erase');
     stage.classList.toggle('pan', tool === 'pan' || spaceDown);
     $('gridBtn').classList.toggle('on', snapGrid);
     $('stSel').textContent = sel.size ? `${sel.size} selected` : '';
@@ -522,6 +531,7 @@ function renderTop() {
         wall: drawing ? 'Click for each corner · click an existing line to connect and stop · Enter or double-click to stop · Shift = 45°' : 'Click to start a wall',
         door: drawing ? 'Click where the door ends, on a wall' : 'Click where the door starts: a wall end, or a point along a wall',
         room: 'Click inside an enclosed room to name it',
+        void: 'Click inside an enclosed space without doors to mark it as void',
         erase: 'Click a line to erase the piece between its junctions · drag across lines to erase several',
         pan: 'Drag to move around'
     };
@@ -690,6 +700,112 @@ function openNamePopup(roomId) {
 }
 function closeNamePopup() { if (popup) { popup.box.remove(); popup = null; } }
 
+// ---- void ------------------------------------------------------------------------------------------
+// A void is a space that isn't part of the game. It is marked like a room name, with void: true.
+const markerAt = (f, face) => f.rooms.find(r => r.id === face.roomId);
+function placeVoid(w, hit) {
+    const f = floor();
+    if (hit && hit.kind === 'room') { sel = new Set([hit.id]); refresh(); return; }
+    const face = analysis.roomAt(w);
+    if (!face) { toast('Click inside an enclosed space. Close the walls around it first.'); return; }
+    const old = face.roomId && markerAt(f, face);
+    if (old && old.void) { sel = new Set([old.id]); refresh(); return; }
+    const at = [Math.round(w[0]), Math.round(w[1])];
+    const id = old ? old.id : uid('r');
+    change(() => {
+        if (old) { old.void = true; old.name = ''; }
+        else f.rooms.push({ id, name: '', at, void: true });
+        sel = new Set([id]);
+    });
+    if (face.door) toast('This space has a door, so it can\'t be void. Remove the door, or delete the void marker.', 'bad');
+    else if (old && old.name) toast(`"${old.name}" is now void. Undo to keep it as a room.`);
+}
+// Marks every unnamed space that no door touches as void.
+function sliceVoid() {
+    const f = floor();
+    const targets = analysis.faces.filter(fc => !fc.roomId && !fc.door && !f.pins.some(p => analysis.roomAt(p.at) === fc));
+    const skipped = analysis.faces.filter(fc => !fc.roomId && !fc.door).length - targets.length;
+    if (!targets.length) { toast(skipped ? 'Every unnamed space without a door has a task in it. Move the tasks out first.' : 'No unnamed spaces without doors on this floor.'); return; }
+    change(() => {
+        for (const fc of targets) {
+            const p = interiorPoint(fc.poly, fc.holes);
+            f.rooms.push({ id: uid('r'), name: '', at: [Math.round(p[0] * 100) / 100, Math.round(p[1] * 100) / 100], void: true });
+        }
+    });
+    toast(`Marked ${targets.length} space${targets.length > 1 ? 's' : ''} as void.` + (skipped ? ` ${skipped} with tasks in ${skipped > 1 ? 'them were' : 'it was'} left alone.` : ''), 'good');
+}
+
+// ---- correct edges ---------------------------------------------------------------------------------
+// Turns every line to the nearest multiple of 45°, moving the corners as little as possible: each line asks
+// for its ends to sit along its snapped direction, each end lying along another line asks to stay on it,
+// and the corners are nudged until every ask holds (each nudge is the smallest move that satisfies one).
+function correctEdges() {
+    const f = floor();
+    const lines = f.lines.filter(l => dist(l.a, l.b) >= EPS);
+    if (!lines.length) { toast('There are no lines on this floor.'); return; }
+    const pts = [];
+    const vertex = p => { for (let i = 0; i < pts.length; i++) if (same(pts[i], p)) return i; pts.push([p[0], p[1]]); return pts.length - 1; };
+    const ends = lines.map(l => [vertex(l.a), vertex(l.b)]);
+    const STEP = Math.PI / 4;
+    const snap = lines.map(l => Math.round(Math.atan2(l.b[1] - l.a[1], l.b[0] - l.a[0]) / STEP));   // in 45° steps
+    const off = (l, i) => Math.abs(Math.atan2(l.b[1] - l.a[1], l.b[0] - l.a[0]) - snap[i] * STEP);
+    if (lines.every((l, i) => off(l, i) < 1e-9)) { toast('Every edge is already at a multiple of 45°.'); return; }
+    const normal = i => [-Math.sin(snap[i] * STEP), Math.cos(snap[i] * STEP)];
+    const cons = [];   // n · Σ k·p(v) = 0
+    lines.forEach((l, i) => cons.push({ n: normal(i), terms: [[ends[i][1], 1], [ends[i][0], -1]] }));
+    const tees = [];   // [vertex, line it sits along]
+    lines.forEach((m, j) => {
+        for (let v = 0; v < pts.length; v++) {
+            if (v === ends[j][0] || v === ends[j][1] || !onInterior(pts[v], m.a, m.b)) continue;
+            cons.push({ n: normal(j), terms: [[v, 1], [ends[j][0], -1]] });
+            tees.push([v, j]);
+        }
+    });
+    let worst = Infinity;
+    for (let it = 0; it < 20000 && worst > 1e-9; it++) {
+        worst = 0;
+        for (const c of cons) {
+            let val = 0, nn = 0;
+            for (const [v, k] of c.terms) { val += k * (c.n[0] * pts[v][0] + c.n[1] * pts[v][1]); nn += k * k; }
+            worst = Math.max(worst, Math.abs(val));
+            const s = val / nn;
+            for (const [v, k] of c.terms) { pts[v][0] -= k * s * c.n[0]; pts[v][1] -= k * s * c.n[1]; }
+        }
+    }
+    // Lines that ended up level or upright share one exact coordinate along their whole run.
+    const parent = new Map(), find = k => { while (parent.get(k) !== k) k = parent.get(k); return k; };
+    const join = (x, y) => { for (const k of [x, y]) if (!parent.has(k)) parent.set(k, k); parent.set(find(x), find(y)); };
+    const level = i => ((snap[i] % 4) + 4) % 4;   // 0 = level, 2 = upright
+    lines.forEach((l, i) => {
+        if (level(i) === 0) join('y' + ends[i][0], 'y' + ends[i][1]);
+        if (level(i) === 2) join('x' + ends[i][0], 'x' + ends[i][1]);
+    });
+    for (const [v, j] of tees) {
+        if (level(j) === 0) join('y' + v, 'y' + ends[j][0]);
+        if (level(j) === 2) join('x' + v, 'x' + ends[j][0]);
+    }
+    const groups = new Map();
+    for (const k of parent.keys()) { const r = find(k); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(k); }
+    for (const ks of groups.values()) {
+        const axis = ks[0][0] === 'x' ? 0 : 1;
+        const mean = Math.round(ks.reduce((s, k) => s + pts[+k.slice(1)][axis], 0) / ks.length * 1000) / 1000;
+        for (const k of ks) pts[+k.slice(1)][axis] = mean;
+    }
+    for (const p of pts) { p[0] = Math.round(p[0] * 1000) / 1000; p[1] = Math.round(p[1] * 1000) / 1000; }
+    // A shape whose snapped angles can't all hold (a thin triangle, say) would collapse a line: refuse.
+    const bad = lines.findIndex((l, i) => dist(pts[ends[i][0]], pts[ends[i][1]]) < 1);
+    if (worst > 0.01 || bad >= 0) {
+        if (bad >= 0) sel = new Set([lines[bad].id]);
+        refresh();
+        toast('These walls can\'t all be turned to 45° steps without collapsing a line' + (bad >= 0 ? ' (the selected one)' : '') + '. Adjust it by hand, then try again.', 'bad');
+        return;
+    }
+    const before = analysis.problems.length;
+    change(() => { lines.forEach((l, i) => { l.a = [...pts[ends[i][0]]]; l.b = [...pts[ends[i][1]]]; }); });
+    const after = analyzeFloor(floor()).problems.length;
+    toast(after > before ? 'Edges corrected, but that caused new problems. Check the Problems tab, or undo.' : `Corrected ${lines.length} line${lines.length > 1 ? 's' : ''} to 45° steps.`, after > before ? 'bad' : 'good');
+}
+
 // ---- pointer handling on the canvas ----------------------------------------------------------------
 const pointers = new Map();
 svg.addEventListener('pointerdown', e => {
@@ -719,7 +835,7 @@ svg.addEventListener('pointerdown', e => {
         renderTop(); renderOverlay();
         return;
     }
-    if (tool === 'room') { drag = { mode: 'click', c: [e.clientX, e.clientY] }; return; }
+    if (tool === 'room' || tool === 'void') { drag = { mode: 'click', c: [e.clientX, e.clientY] }; return; }
     if (tool === 'erase') {
         drag = { mode: 'erase', before: snapshot(), done: 0 };
         if (erasePiece(pieceAt(w))) { drag.done++; erasePreview = pieceAt(w); quickRefresh(); }
@@ -795,7 +911,7 @@ svg.addEventListener('pointermove', e => {
         return;
     }
     if (!drag) {
-        const h = tool === 'select' || tool === 'room' ? hitTest(w) : null;
+        const h = tool === 'select' || tool === 'room' || tool === 'void' ? hitTest(w) : null;
         const hp = h && h.kind === 'pin' ? h.id : null;
         if (hp !== hoverPin) { hoverPin = hp; render(); }
         return;
@@ -856,13 +972,18 @@ function endPointer(e) {
     const d = drag; drag = null;
     if (d.mode === 'click' && tool === 'room' && Math.hypot(e.clientX - d.c[0], e.clientY - d.c[1]) < 5) {
         const hit = hitTest(w);
-        if (hit && hit.kind === 'room') { sel = new Set([hit.id]); refresh(); openNamePopup(hit.id); return; }
+        const named = id => { sel = new Set([id]); refresh(); if (!floor().rooms.find(x => x.id === id).void) openNamePopup(id); };
+        if (hit && hit.kind === 'room') { named(hit.id); return; }
         const face = analysis.roomAt(w);
         if (!face) { toast('Click inside an enclosed room. Close the walls around it first.'); return; }
-        if (face.roomId) { sel = new Set([face.roomId]); refresh(); openNamePopup(face.roomId); return; }
+        if (face.roomId) { named(face.roomId); return; }
         const id = uid('r');
         change(() => { floor().rooms.push({ id, name: '', at: [Math.round(w[0]), Math.round(w[1])] }); sel = new Set([id]); });
         openNamePopup(id);
+        return;
+    }
+    if (d.mode === 'click' && tool === 'void' && Math.hypot(e.clientX - d.c[0], e.clientY - d.c[1]) < 5) {
+        placeVoid(w, hitTest(w));
         return;
     }
     if (d.mode === 'corner' && !d.moved) {
@@ -955,7 +1076,9 @@ $('pane-inspect').addEventListener('click', e => {
         if (!confirm(`Delete "${f.name}" and everything on it? Its tasks go back to the task list.`)) return;
         change(() => { doc.floors.splice(fi, 1); fi = Math.max(0, fi - 1); });
         fit();
-    } else if (id === 'rImp') { $('refFile').click(); }
+    } else if (id === 'fSlice') sliceVoid();
+    else if (id === 'fCorrect') correctEdges();
+    else if (id === 'rImp') { $('refFile').click(); }
     else if (id === 'rVis') { change(() => { f.reference.visible = !f.reference.visible; }); }
     else if (id === 'rAdj') { refAdjust = !refAdjust; if (refAdjust) setTool('select'); renderInspector(); render(); }
     else if (id === 'rDel') { refAdjust = false; change(() => { f.reference = null; }); }
@@ -974,7 +1097,7 @@ $('pane-inspect').addEventListener('click', e => {
 $('pane-inspect').addEventListener('change', e => {
     const f = floor(), id = e.target.id, v = e.target.value;
     if (id === 'fName') change(() => { f.name = v.trim(); });
-    else if (id === 'roomName') { const r = selected().rooms[0]; if (r) change(() => { r.name = v.trim(); }); }
+    else if (id === 'roomName') { const r = selected().rooms[0]; if (r && !r.void) change(() => { r.name = v.trim(); }); }
     else if (id === 'lAng') { const r = selectedRotatable(); if (r && Number.isFinite(+v)) change(() => setAngle(r, +v)); }
     else if (id === 'rOp') change(() => { f.reference.opacity = +v; });
     else if (id === 'rW') { const w = Math.max(100, +v * 100); if (w) change(() => { const s = w / f.reference.w; f.reference.w = w; f.reference.h *= s; }); }
@@ -1156,7 +1279,7 @@ document.addEventListener('keydown', e => {
     if (e.key === '?') { $('help').classList.add('on'); return; }
     if (e.key === '[') { rotateBy(15); return; }
     if (e.key === ']') { rotateBy(-15); return; }
-    const tools = { v: 'select', w: 'wall', d: 'door', r: 'room', e: 'erase', h: 'pan' };
+    const tools = { v: 'select', w: 'wall', d: 'door', r: 'room', x: 'void', e: 'erase', h: 'pan' };
     if (tools[key]) { setTool(tools[key]); return; }
     if (key === 'g') { snapGrid = !snapGrid; renderTop(); toast(snapGrid ? 'Grid snap on' : 'Grid snap off'); return; }
     if (key === 'f') { fit(); return; }
