@@ -64,6 +64,9 @@
             alarmSrc.buffer = alarmBuf;
             alarmSrc.loop = true;
             alarmSrc.connect(alarmGain);
+            // a looping source never ends by itself; if the browser stops it anyway, start it again
+            const src = alarmSrc;
+            src.onended = () => { if (alarmSrc === src) { alarmSrc = null; if (wantAlarm) startSource(); } };
             alarmGain.gain.setValueAtTime(0, ctx.currentTime);
             alarmSrc.start();
             setAlarmLevel(0.05);
@@ -93,6 +96,15 @@
                 playNext();
             }
         }
+
+        // Phones and tablets pause web audio when the screen dims or another app takes the sound. Wake it
+        // straight back up while the alarm should be playing, instead of waiting for the next voice line.
+        function keepAlive() { if ((wantAlarm || speaking || queue.length) && ctx.state !== 'running' && ctx.state !== 'closed') ctx.resume().catch(() => {}); }
+        ctx.addEventListener('statechange', () => setTimeout(keepAlive, 200));
+        document.addEventListener('visibilitychange', keepAlive);
+        window.addEventListener('focus', keepAlive);
+        ['pointerdown', 'keydown', 'touchstart'].forEach(ev => document.addEventListener(ev, keepAlive, true));
+        setInterval(keepAlive, 1000);
 
         if (socket) {
             socket.on('alarm_voice', d => {
