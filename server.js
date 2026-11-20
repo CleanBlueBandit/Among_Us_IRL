@@ -172,7 +172,8 @@ const DEFAULT_GAME_STATE = {
     aliveImpostors: 0,
     playerCount: 0,
     alivePlayers: 0,
-    lastEjection: null
+    lastEjection: null,
+    meetingReport: null   // { reporterId, reporter, bodyId, body } while a reported-body meeting runs
 };
 
 
@@ -1023,25 +1024,50 @@ function emergencyVoterIds(data) {
     });
 }
 
-async function startEmergencyMeeting() {
+// Players who can be named in a body report: everyone but the reporter, minus the dead whose
+// death is already public (ejected, or shown crossed out at an earlier meeting).
+// Whether someone is really dead is only checked when the report is made - the client is
+// trusted not to probe it.
+function reportCandidates(data, reporterId) {
+    return Object.entries(data.players)
+        .filter(([id, p]) => id !== reporterId && !(p.alive === false && !p.body))
+        .map(([id, p]) => ({ id, name: p.username }));
+}
+
+// report: { reporterId, bodyId } for a reported body, or nothing for the emergency button.
+// Returns '' when the meeting started, or the reason it didn't.
+async function startEmergencyMeeting(report) {
     const data = await loadGame();
 
     if (!data.gameState.started || data.gameState.impostorsWon || data.gameState.crewmatesWon) {
         logDebug("Emergency meeting rejected: Game not actively running.");
-        io.emit('Err', { error: 'cannot call an emergency meeting right now' });
-        return;
+        if (!report) io.emit('Err', { error: 'cannot call an emergency meeting right now' });
+        return 'The game is not running';
     }
 
     if (data.gameState.emergencyMeeting) {
         logDebug("Emergency meeting rejected: Meeting already underway.");
-        return;
+        return 'A meeting is already underway';
     }
 
     if (data.activeSabotages.o2.depleted || data.activeSabotages.reactor.meltdown) {
         logDebug("Emergency meeting rejected: Crisis is underway.");
-        return;
+        return 'The ship is in crisis';
     }
 
+    if (report) {
+        const reporter = data.players[report.reporterId], body = data.players[report.bodyId];
+        if (!reporter || reporter.alive === false) return 'Dead players cannot report';
+        if (!body || report.bodyId === report.reporterId) return 'Unknown player';
+        if (body.alive !== false) return `${body.username} is not dead`;
+        if (!body.body) return `${body.username}'s body was already found`;
+        data.gameState.meetingReport = { reporterId: report.reporterId, reporter: reporter.username, bodyId: report.bodyId, body: body.username };
+        logDebug(`${reporter.username} reported ${body.username}'s body.`);
+    } else {
+        data.gameState.meetingReport = null;
+    }
+    // every meeting clears the bodies: the dead are public from here on, and can't be reported again
+    for (const p of Object.values(data.players)) if (p.body) p.body = false;
 
     logDebug("Emergency meeting started.");
     clearEmergencyMeetingTimer();
@@ -1054,7 +1080,7 @@ async function startEmergencyMeeting() {
     data.gameState.emergencyMeetingEndTime = endTime;
     await saveGame(data);
 
-    io.emit('emergency_ack', { countdown, endTime, players: buildEmergencyRoster(data) });
+    io.emit('emergency_ack', { countdown, endTime, players: buildEmergencyRoster(data), report: data.gameState.meetingReport });
     io.emit('game_data_request', data.gameState);
 
     emergencyMeetingTimer = setTimeout(async () => {
@@ -1062,6 +1088,7 @@ async function startEmergencyMeeting() {
         emergencyMeetingTimer = null;
         await resolveEmergencyMeeting({ votes: tallyEmergencyVotes() });
     }, countdown * 1000);
+    return '';
 }
 
 async function resolveEmergencyMeeting(resultData) {
@@ -1075,6 +1102,7 @@ async function resolveEmergencyMeeting(resultData) {
 
     data.gameState.emergencyMeeting = false;
     data.gameState.emergencyMeetingEndTime = 0;
+    data.gameState.meetingReport = null;
     emergencyVotes = {};
 
     const votes = (resultData && typeof resultData.votes === 'object' && resultData.votes) ? resultData.votes : {};
@@ -1467,7 +1495,8 @@ io.on("connection", async (socket) => {
                 socket.emit("emergency_ack", {
                     countdown: Math.max(0, Math.round((data.gameState.emergencyMeetingEndTime - Date.now()) / 1000)),
                     endTime: data.gameState.emergencyMeetingEndTime,
-                    players: buildEmergencyRoster(data)
+                    players: buildEmergencyRoster(data),
+                    report: data.gameState.meetingReport
                 });
             }
         }
@@ -1561,6 +1590,33 @@ io.on("connection", async (socket) => {
             }
         });
 
+        // Body reports skip the button's cooldown, like the real thing.
+        socket.on("report_candidates", async () => {
+            try {
+                const d = await loadGame();
+                const me = d.players[cookies.session];
+                if (!me) return socket.emit('report_candidates', { ok: false, reason: 'not part of this game' });
+                if (me.alive === false) return socket.emit('report_candidates', { ok: false, reason: 'Dead players cannot report' });
+                socket.emit('report_candidates', { ok: true, players: reportCandidates(d, cookies.session) });
+            } catch (e) {
+                logError("Report candidates error:", e);
+                socket.emit('report_candidates', { ok: false, reason: e.message });
+            }
+        });
+
+        socket.on("report_body", async (payload) => {
+            try {
+                const target = payload && typeof payload.target === 'string' ? payload.target : '';
+                const d = await loadGame();
+                if (!d.players[cookies.session]) return socket.emit('report_ack', { ok: false, reason: 'not part of this game' });
+                const reason = await withGameLock(() => startEmergencyMeeting({ reporterId: cookies.session, bodyId: target }));
+                socket.emit('report_ack', reason ? { ok: false, reason } : { ok: true });
+            } catch (e) {
+                logError("Report body error:", e);
+                socket.emit('report_ack', { ok: false, reason: e.message });
+            }
+        });
+
         socket.on("settings_data_request", async (payload) => {
             const data = await loadGame();
             // FIXED: Corrected typo in event name (was "settings_data_requst")
@@ -1650,6 +1706,7 @@ io.on("connection", async (socket) => {
                 }
 
                 player.alive = false;
+                player.body = true;   // a body to report, until the next meeting
                 d.gameState.alivePlayers = Math.max(0, d.gameState.alivePlayers - 1);
                 if (player.impostor) {
                     d.gameState.aliveImpostors = Math.max(0, d.gameState.aliveImpostors - 1);

@@ -259,6 +259,56 @@
         .btn-action:disabled { opacity: 0.6; cursor: not-allowed; pointer-events: none; }
         .btn-action:focus-visible { outline: 2px solid #fca5a5; outline-offset: 2px; }
 
+        /* ---------- Body report ---------- */
+        .btn-report {
+            margin-top: auto;
+            width: 100%;
+            padding: 12px;
+            display: flex; align-items: center; justify-content: center; gap: 9px;
+            font-family: inherit; font-size: 0.92rem; font-weight: 800; letter-spacing: 0.02em;
+            color: #1c1302;
+            background: linear-gradient(180deg, #fbbf24, #d97706);
+            border: 1px solid #92400e;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #92400e, inset 0 1px 1px rgba(255, 255, 255, 0.45);
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+        .btn-report svg { width: 20px; height: 20px; flex: none; }
+        .btn-report:active { transform: translateY(3px); box-shadow: 0 1px 0 #92400e; }
+        .btn-report:focus-visible { outline: 2px solid #fde68a; outline-offset: 2px; }
+        .btn-report[hidden] { display: none; }
+        .btn-report:not([hidden]) ~ .btn-action { margin-top: 0; }
+
+        /* the screen turns into the report picker */
+        .report-panel {
+            position: absolute !important; inset: 0; z-index: 6;
+            display: flex; flex-direction: column; gap: 10px;
+            padding: 16px 14px 14px;
+            background: linear-gradient(175deg, #1a1408, var(--screen-bottom) 70%);
+            opacity: 0; visibility: hidden; transform: translateY(10px);
+            transition: opacity 0.22s ease, transform 0.22s ease, visibility 0s 0.22s;
+        }
+        .report-panel.open { opacity: 1; visibility: visible; transform: none; transition: opacity 0.22s ease, transform 0.22s ease; }
+        .report-head { display: flex; align-items: center; gap: 10px; }
+        .report-head h2 { margin: 0; flex: 1; font-size: 1.05rem; letter-spacing: 0.04em; text-transform: uppercase; color: #fbbf24; }
+        .report-x { width: 36px; height: 36px; flex: none; border-radius: 10px; border: 1px solid #334155; background: rgba(255,255,255,0.04);
+            color: var(--screen-text); display: grid; place-items: center; cursor: pointer; padding: 0; }
+        .report-x svg { width: 18px; height: 18px; }
+        .report-sub { margin: -4px 0 2px; font-size: 0.85rem; color: #94a3b8; }
+        .report-list { list-style: none; margin: 0; padding: 0 2px 2px 0; flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 7px; }
+        .report-pick { width: 100%; min-height: 46px; display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+            border-radius: 11px; border: 1px solid #1e293b; background: rgba(255, 255, 255, 0.03);
+            color: var(--screen-text); font: inherit; font-size: 0.98rem; font-weight: 700; text-align: left; cursor: pointer; }
+        .report-pick::before { content: ""; width: 16px; height: 16px; flex: none; border-radius: 50%; border: 2px solid #475569; box-sizing: border-box; }
+        .report-pick[aria-checked="true"] { border-color: #fbbf24; background: rgba(251, 191, 36, 0.1); }
+        .report-pick[aria-checked="true"]::before { border-color: #fbbf24; background: radial-gradient(circle, #fbbf24 0 4px, transparent 5px); }
+        .report-pick:focus-visible { outline: 2px solid #fbbf24; outline-offset: 1px; }
+        .report-empty { color: #94a3b8; font-size: 0.9rem; padding: 18px 4px; text-align: center; }
+        .report-err { min-height: 1.2em; margin: 0; font-size: 0.85rem; font-weight: 600; color: #fca5a5; }
+        .report-go:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: 0 4px 0 #92400e; transform: none; }
+        @media (prefers-reduced-motion: reduce) { .report-panel, .report-panel.open { transition: none; transform: none; } }
+
         /* ---------- Sticky note ---------- */
         @property --curl { syntax: "<length>"; inherits: true; initial-value: 84px; }
 
@@ -445,6 +495,8 @@
                 90% { --curl: 98px; }
             }
 
+            body.reporting .note { visibility: hidden; }   /* the folded corner would sit on the report button */
+
             .screen-hint {
                 display: flex;
                 align-items: flex-end;
@@ -561,7 +613,19 @@
                         <svg viewBox="0 0 54 44" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6 C 22 2, 40 12, 44 34"/><path d="M34 27 L44 36 L48 23"/></svg>
                     </div>
 
+                    <button id="reportBtn" class="btn-report" type="button" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10v4a1 1 0 0 0 1 1h3l6 4V5L7 9H4a1 1 0 0 0-1 1z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg><span>Report body</span></button>
                     <button id="actionBtn" class="btn-action">I'm dead</button>
+
+                    <div class="report-panel" id="reportPanel" role="dialog" aria-modal="true" aria-labelledby="reportTitle" aria-hidden="true">
+                        <div class="report-head">
+                            <h2 id="reportTitle">Report a body</h2>
+                            <button class="report-x" id="reportClose" type="button" aria-label="Cancel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+                        </div>
+                        <p class="report-sub">Whose body did you find?</p>
+                        <ul class="report-list" id="reportList" role="radiogroup" aria-labelledby="reportTitle"></ul>
+                        <p class="report-err" id="reportErr" role="alert"></p>
+                        <button class="btn-report report-go" id="reportGo" type="button" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10v4a1 1 0 0 0 1 1h3l6 4V5L7 9H4a1 1 0 0 0-1 1z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg><span>Pick a player</span></button>
+                    </div>
                 </div>
                 <div class="home-bar"></div>
             </div>
@@ -637,6 +701,86 @@
             }
 
             actionBtn.addEventListener('click', handleAction);
+
+            // ---- body report: pick one player, the server checks the body and calls the meeting ----
+            var reportBtn = document.getElementById('reportBtn');
+            var reportPanel = document.getElementById('reportPanel');
+            var reportList = document.getElementById('reportList');
+            var reportGo = document.getElementById('reportGo');
+            var reportErr = document.getElementById('reportErr');
+            var reportPick = null, reportBusy = false;
+
+            function reportGoLabel(text) { reportGo.querySelector('span').textContent = text; }
+            function openReport() {
+                if (!isAlive) return;
+                reportPick = null; reportBusy = false;
+                reportErr.textContent = '';
+                reportList.innerHTML = '<li class="report-empty">Loading players…</li>';
+                reportGo.disabled = true; reportGoLabel('Pick a player');
+                reportPanel.classList.add('open');
+                document.body.classList.add('reporting');
+                reportPanel.setAttribute('aria-hidden', 'false');
+                document.getElementById('reportClose').focus();
+                socket.emit('report_candidates');
+            }
+            function closeReport() {
+                reportPanel.classList.remove('open');
+                document.body.classList.remove('reporting');
+                reportPanel.setAttribute('aria-hidden', 'true');
+                reportBtn.focus();
+            }
+            function choose(btn) {
+                reportList.querySelectorAll('.report-pick').forEach(function(b) {
+                    var on = b === btn;
+                    b.setAttribute('aria-checked', String(on));
+                    b.tabIndex = on ? 0 : -1;
+                });
+                reportPick = { id: btn.dataset.id, name: btn.dataset.name };
+                reportErr.textContent = '';
+                reportGo.disabled = false;
+                reportGoLabel('Report ' + reportPick.name);
+            }
+            reportBtn.addEventListener('click', openReport);
+            document.getElementById('reportClose').addEventListener('click', closeReport);
+            reportPanel.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') { closeReport(); return; }
+                var picks = [].slice.call(reportList.querySelectorAll('.report-pick'));
+                var i = picks.indexOf(document.activeElement);
+                if (i < 0 || !/^(ArrowDown|ArrowUp|ArrowRight|ArrowLeft)$/.test(e.key)) return;
+                e.preventDefault();
+                var next = picks[(i + (/Down|Right/.test(e.key) ? 1 : picks.length - 1)) % picks.length];
+                next.focus(); choose(next);
+            });
+            reportGo.addEventListener('click', function() {
+                if (!reportPick || reportBusy) return;
+                reportBusy = true; reportGo.disabled = true; reportErr.textContent = '';
+                reportGoLabel('Calling a meeting…');
+                socket.emit('report_body', { target: reportPick.id });
+            });
+            socket.on('report_candidates', function(res) {
+                if (!reportPanel.classList.contains('open')) return;
+                reportList.innerHTML = '';
+                if (!res || !res.ok) { reportList.innerHTML = '<li class="report-empty"></li>'; reportList.firstChild.textContent = (res && res.reason) || 'Could not load players'; return; }
+                if (!res.players.length) { reportList.innerHTML = '<li class="report-empty">Nobody to report</li>'; return; }
+                res.players.sort(function(a, b) { return a.name.localeCompare(b.name); }).forEach(function(p, i) {
+                    var li = document.createElement('li');
+                    var b = document.createElement('button');
+                    b.type = 'button'; b.className = 'report-pick';
+                    b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', 'false');
+                    b.tabIndex = i === 0 ? 0 : -1;
+                    b.dataset.id = p.id; b.dataset.name = p.name;
+                    b.textContent = p.name;
+                    b.addEventListener('click', function() { if (!reportBusy) choose(b); });
+                    li.appendChild(b); reportList.appendChild(li);
+                });
+            });
+            socket.on('report_ack', function(res) {
+                if (res && res.ok) { reportGoLabel('Meeting called'); return; }   // game_data_request takes us to the meeting
+                reportBusy = false;
+                reportErr.textContent = (res && res.reason) || 'Could not report';
+                reportGo.disabled = !reportPick;
+                reportGoLabel(reportPick ? 'Report ' + reportPick.name : 'Pick a player');
+            });
 
             var seenDone = {};
             var firstRender = true;
@@ -788,6 +932,8 @@
                 var badge = document.getElementById('alive-badge');
                 var shatter = document.getElementById('shatterOverlay');
                 isAlive = !!data.alive;
+                reportBtn.hidden = !isAlive;
+                if (!isAlive && reportPanel.classList.contains('open')) closeReport();
                 if (isAlive) {
                     badge.innerText = 'Alive';
                     badge.className = 'status-pill status-alive';

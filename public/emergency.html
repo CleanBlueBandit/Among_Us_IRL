@@ -335,13 +335,16 @@
     setStatus(`Meeting called - ${payload.countdown}s to discuss.`);
     
     let remaining = parseInt(payload.countdown);
+    const r = payload.report;
+    if (r) updateButton(true, "BODY<br>REPORTED");
+    const who = r ? `${r.reporter} reported ${r.body}'s body - ` : '';
     const tick = () => {
       if (remaining <= 0) {
-        setStatus('Voting Ended', false);
+        setStatus(who + 'Voting Ended', false);
         clearInterval(countdownTick);
         return;
       }
-      setStatus(`Voting Ends In: ${remaining}s`, remaining <= 10);
+      setStatus(`${who}Voting Ends In: ${remaining}s`, remaining <= 10);
       remaining--;
     };
     tick();

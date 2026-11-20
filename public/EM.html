@@ -262,6 +262,40 @@
     }
     .timer.urgent { color: #cc2020; }
 
+    /* ── BODY REPORT ── */
+    .report-line {
+      display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;
+      margin: -2px auto 0; padding: 6px 14px; border-radius: 999px;
+      background: #fff4d6; border: 2px solid #e0a419; color: #5a3b00;
+      font-weight: 800; font-size: clamp(13px, 1.8vw, 17px); text-align: center;
+    }
+    .report-line[hidden] { display: none; }
+    .report-line svg { width: 20px; height: 20px; flex: none; }
+    .report-line b { color: #2a3548; }
+    .tag {
+      display: inline-block; vertical-align: middle; margin-left: 8px; padding: 2px 7px; border-radius: 5px;
+      font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 900; letter-spacing: 0.06em; text-decoration: none;
+    }
+    .tag.body { background: #c81c1c; color: #fff; }
+    .tag.reporter { background: #e0a419; color: #2b1d00; }
+    .card.is-body { border-color: #e08080; }
+
+    .report-splash {
+      position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+      background: radial-gradient(ellipse at center, rgba(120, 12, 12, 0.94), rgba(30, 4, 4, 0.97));
+      color: #fff; text-align: center; padding: 24px; opacity: 0; pointer-events: none; transition: opacity 0.35s ease;
+    }
+    .report-splash.show { opacity: 1; pointer-events: auto; }
+    .report-splash .big {
+      font-family: 'Fredoka One', cursive; font-size: clamp(34px, 9vw, 72px); line-height: 1.05; letter-spacing: 1px;
+      text-shadow: 0 4px 0 #4a0505; transform: scale(1.4); transition: transform 0.45s cubic-bezier(.2,1.5,.35,1);
+    }
+    .report-splash.show .big { transform: scale(1); }
+    .report-splash .who { font-weight: 800; font-size: clamp(16px, 4.2vw, 26px); color: #ffd9d9; }
+    .report-splash .who b { color: #fff; }
+    .report-splash svg { width: clamp(54px, 12vw, 88px); height: auto; color: #ffd166; }
+    @media (prefers-reduced-motion: reduce) { .report-splash, .report-splash .big { transition: none; transform: none; } }
+
     /* ── RESULT OVERLAY ── */
     .result-banner {
       display: none;
@@ -337,6 +371,9 @@
       <h1 class="title">Who Is The Impostor?</h1>
     </div>
 
+    <!-- WHO REPORTED WHOM (reported-body meetings only) -->
+    <div class="report-line" id="reportLine" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10v4a1 1 0 0 0 1 1h3l6 4V5L7 9H4a1 1 0 0 0-1 1z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg><span><b id="rlReporter"></b> reported <b id="rlBody"></b>'s body</span></div>
+
     <!-- RESULT BANNER (shown once the meeting resolves) -->
     <div class="result-banner" id="resultBanner"></div>
 
@@ -358,6 +395,12 @@
 
 </div>
 
+<div class="report-splash" id="reportSplash" aria-hidden="true">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10v4a1 1 0 0 0 1 1h3l6 4V5L7 9H4a1 1 0 0 0-1 1z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+  <div class="big">DEAD BODY<br>REPORTED</div>
+  <div class="who"><b id="rsReporter"></b> found <b id="rsBody"></b></div>
+</div>
+
 <script src="/socket.io/socket.io.js"></script>
 <script>
   const socket = io();
@@ -372,6 +415,28 @@
   let votingOpen = false;     // true while an emergency meeting is active
   let meetingEndTime = null;  // ms timestamp, for the live countdown
   let countdownTick = null;
+  let report = null;          // { reporterId, reporter, bodyId, body } when a body was reported
+
+  function showReport(r, endTime) {
+    report = r || null;
+    const line = document.getElementById('reportLine');
+    line.hidden = !report;
+    if (!report) return;
+    document.getElementById('rlReporter').textContent = report.reporter;
+    document.getElementById('rlBody').textContent = report.body;
+    // the splash plays once per meeting, not on every reconnect
+    const key = 'reportSplash:' + endTime;
+    let seen = false;
+    try { seen = sessionStorage.getItem(key) === '1'; sessionStorage.setItem(key, '1'); } catch (e) {}
+    if (seen) return;
+    const splash = document.getElementById('reportSplash');
+    document.getElementById('rsReporter').textContent = report.reporter;
+    document.getElementById('rsBody').textContent = report.body;
+    requestAnimationFrame(() => splash.classList.add('show'));
+    const hide = () => splash.classList.remove('show');
+    splash.addEventListener('click', hide, { once: true });
+    setTimeout(hide, 2600);
+  }
 
   // ── I VOTED BADGE ─────────────────────────────────────────────
   const BADGE = `<div class="voted-badge"><span class="vi">I</span><span class="vt">VOTED</span></div>`;
@@ -404,14 +469,16 @@
     const canClick = votingOpen && !hasVoted && !p.dead && !isLocal;
     const noHover = !canClick;
     const clickAttr = canClick ? `onclick="selectPlayer('${p.id}')"` : '';
-    const cls = ['card', isSel ? 'selected' : '', noHover ? 'no-hover' : ''].filter(Boolean).join(' ');
+    const isBody = report && report.bodyId === p.id, isReporter = report && report.reporterId === p.id;
+    const cls = ['card', isSel ? 'selected' : '', noHover ? 'no-hover' : '', isBody ? 'is-body' : ''].filter(Boolean).join(' ');
+    const tags = (isBody ? '<span class="tag body">BODY</span>' : '') + (isReporter ? '<span class="tag reporter">REPORTER</span>' : '');
 
     return `
       <div class="${cls}" ${clickAttr}>
         <div class="crewmate-wrap">
           ${p.voted ? BADGE : ''}
         </div>
-        <span class="player-name${p.dead ? " dead" : ""}">${p.name}${isLocal ? '<span class="you-tag">(you)</span>' : ''}</span>
+        <span class="player-name${p.dead ? " dead" : ""}">${p.name}${isLocal ? '<span class="you-tag">(you)</span>' : ''}${tags}</span>
         ${rightSlot}
       </div>`;
   }
@@ -509,6 +576,7 @@
     document.getElementById('playerGrid').style.display = '';
 
     if (Array.isArray(payload.players)) players = payload.players;
+    showReport(payload.report, payload.endTime);
     syncLocalVoteStatus();
     startCountdown(payload.endTime);
     render();
