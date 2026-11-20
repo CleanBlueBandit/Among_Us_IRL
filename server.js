@@ -885,11 +885,9 @@ function inCrisis(data, type) {
     if (!sab || !sab.sabotaged) return false;
     return type === 'o2' ? !!sab.depleted : !!sab.meltdown;
 }
-function aliveCrew(data) {
-    return Object.entries(data.players).filter(([, p]) => p.alive !== false && !p.impostor).map(([s]) => s);
-}
-function overrideNeed(data) {
-    return Math.max(1, Math.min(OVERRIDE_NEED, aliveCrew(data).length));
+// Always two: two different crewmates' codes for O2, two crewmates on the levers for the reactor.
+function overrideNeed() {
+    return OVERRIDE_NEED;
 }
 function newO2Code(taken) {
     let c;
