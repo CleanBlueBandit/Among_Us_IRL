@@ -4,12 +4,14 @@
         "model": "vits-piper-en_US-lessac-medium",
         "speaker": 0,
         "speed": 0.95,
+        "pause": 0.3,
         "downloadUrl": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/{model}.tar.bz2"
     },
     "schedule": {
         "every": 15,
         "finalFrom": 10,
-        "finalEvery": 5
+        "finalEvery": 5,
+        "statusDelay": 1.5
     },
     "audio": {
         "alarmVolume": 0.6,
@@ -32,19 +34,25 @@
             }
         },
         "start": [
-            "Warning! Reactor section {section} is unstable. Meltdown in {time}.",
-            "Alert! Reactor section {section} is unstable. Two crewmates, hold the override levers. Meltdown in {time}."
+            "Warning! Reactor section... {section}... is unstable. Meltdown in... {time}.",
+            "Alert! Reactor section... {section}... is unstable. Two crewmates, hold the override levers. Meltdown in... {time}."
         ],
         "countdown": [
-            "Reactor meltdown in {time}.",
-            "Reactor section {section} unstable. Meltdown in {time}.",
-            "{time} to core meltdown."
+            "Reactor meltdown in... {time}. {status}",
+            "Reactor section... {section}... unstable. Meltdown in... {time}. {status}",
+            "{time}... to core meltdown. {status}"
         ],
         "final": [
             "{seconds}."
         ],
+        "status": [
+            "{count} override lever{s} pushed... {need} needed for an override."
+        ],
+        "ready": [
+            "Override engaged. Hold the levers."
+        ],
         "fixed": [
-            "Reactor section {section} stable."
+            "Reactor section... {section}... stable."
         ],
         "failed": [
             "Reactor meltdown. Containment lost."
@@ -58,19 +66,23 @@
             }
         },
         "start": [
-            "Warning! Oxygen section {section} is unstable. Oxygen depleted in {time}.",
-            "Alert! Oxygen section {section} is unstable. Enter override codes from two crewmates. Oxygen depleted in {time}."
+            "Warning! Oxygen section... {section}... is unstable. Oxygen depleted in... {time}.",
+            "Alert! Oxygen section... {section}... is unstable. Enter override codes from two crewmates. Oxygen depleted in... {time}."
         ],
         "countdown": [
-            "Oxygen depleted in {time}.",
-            "Oxygen section {section} unstable. Oxygen depleted in {time}.",
-            "{time} of oxygen left."
+            "Oxygen depleted in... {time}. {status}",
+            "Oxygen section... {section}... unstable. Oxygen depleted in... {time}. {status}",
+            "{time}... of oxygen left. {status}"
         ],
         "final": [
             "{seconds}."
         ],
+        "status": [
+            "{count} code{s} provided... {need} are needed for an override."
+        ],
+        "ready": [],
         "fixed": [
-            "Oxygen section {section} stable."
+            "Oxygen section... {section}... stable."
         ],
         "failed": [
             "Oxygen depleted. Life support failure."

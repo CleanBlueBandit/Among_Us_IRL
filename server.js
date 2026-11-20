@@ -994,7 +994,7 @@ function startOverride(data, type) {
     }
     logDebug(`Override started for ${type}.`);
     const sab = data.activeSabotages && data.activeSabotages[type];
-    alarmVoice.start(type, sab && sab.timeLeft > 0 ? sab.timeLeft : meltdownCountdownSeconds).catch(e => logError('Alarm voice:', e));
+    if (data.gameState.started) alarmVoice.start(type, sab && sab.timeLeft > 0 ? sab.timeLeft : meltdownCountdownSeconds).catch(e => logError('Alarm voice:', e));
 }
 function clearOverride(type) {
     if (type === 'o2') {
@@ -1049,6 +1049,7 @@ async function evaluateReactorHold() {
         reactorFix.timer = null;
         reactorFix.since = 0;
     }
+    alarmVoice.status('reactor', { count: reactorHolding(data), need: overrideNeed(data) });
     io.emit('reactor_override_status', reactorStatus(data));
 }
 // When the server restarted mid-crisis, or a player joined/died, bring the override state up to date.
@@ -2152,6 +2153,7 @@ io.on("connection", async (socket) => {
                 fix.misses = 0;
                 if (fix.accepted.has(owner)) return ack({ ok: false, result: 'used' });
                 fix.accepted.add(owner);
+                alarmVoice.status('o2', { count: fix.accepted.size, need: overrideNeed(d) });
                 logDebug(`O2 override code accepted (${fix.accepted.size}/${overrideNeed(d)}).`);
                 io.to(owner).emit('o2_override', o2CodeFor(d, owner));
                 const done = fix.accepted.size >= overrideNeed(d);
