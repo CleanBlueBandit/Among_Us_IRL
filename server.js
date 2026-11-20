@@ -183,6 +183,27 @@ const DEFAULT_SABOTAGES = {
     reactor: { sabotaged: false, meltdown: false, timeLeft: 0 }
 };
 
+// ---- What other clients may see ----
+// A player's id in game.json is their login session (the cookie). It never leaves the server:
+// everyone else sees a public id derived from it. The secret is per server run, so public ids
+// stay stable for as long as the server is up.
+const PID_SECRET = crypto.randomBytes(32);
+function pidOf(session) {
+    return crypto.createHmac('sha256', PID_SECRET).update(String(session)).digest('base64url').slice(0, 16);
+}
+function sessionOfPid(data, pid) {
+    if (typeof pid !== 'string' || !pid) return null;
+    return Object.keys(data.players).find(id => pidOf(id) === pid) || null;
+}
+// A player's own data, as sent to that player: the session is swapped for the public id.
+function selfView(session, player) {
+    return player ? { ...player, id: pidOf(session) } : player;
+}
+// Server devices are listed by role only; their sessions stay private too.
+function serversView(servers) {
+    return { roles: Object.values(servers || {}).filter(r => r && r !== 'none'), operational: isGameOperational(servers) };
+}
+
 function validateServer(servers, session) {
     if (!servers || !session) return false;
     return servers.hasOwnProperty(session);
@@ -414,7 +435,7 @@ async function loadGame() {
 async function saveGame(data) {
     await fs.writeFile('./game.json', JSON.stringify(data, null, 2), 'utf-8');
     io.emit('game_data_request', data.gameState);
-    io.emit('servers_data_request', { servers: data.servers, operational: false });
+    io.emit('servers_data_request', serversView(data.servers));
 
     let sabEndTime = 0;
     const { o2, reactor } = data.activeSabotages;
@@ -426,7 +447,7 @@ async function saveGame(data) {
     io.emit('sabotage_data_request', { sData: data.activeSabotages, endTime: sabEndTime });
     // Each player has a private socket room named after their session id.
     for (const [playerId, player] of Object.entries(data.players)) {
-        io.to(playerId).emit('player_data_request', player);
+        io.to(playerId).emit('player_data_request', selfView(playerId, player));
     }
     logDebug("data saved and brodcasted");
 }
@@ -534,10 +555,7 @@ app.post('/enter-host', async (req, res) => {
                 data.servers[UUID] = "none";
                 await saveGame(data);
                 // Let the host lobby know a new device just connected (relevant to isGameOperational()).
-                io.emit('servers_data_request', {
-                    servers: data.servers,
-                    operational: isGameOperational(data.servers)
-                });
+                io.emit('servers_data_request', serversView(data.servers));
 
                 logDebug(`New server joined with ID ${UUID}`);
                 return res.sendFile(path.join(__dirname, 'public', 'server.html'));
@@ -745,10 +763,7 @@ app.get('/logout', async (req, res) => {
             logDebug(`Server device logged out: ${session}`);
             delete data.servers[session];
             await saveGame(data);
-            io.emit('servers_data_request', {
-                servers: data.servers,
-                operational: isGameOperational(data.servers)
-            });
+            io.emit('servers_data_request', serversView(data.servers));
         }
     });
 
@@ -809,10 +824,7 @@ app.post("/deviceFunc", async (req, res) => {
         logDebug(`Server ${session} is now: ${sf}`);
         await saveGame(data);
 
-        io.emit('servers_data_request', {
-            servers: data.servers,
-            operational: isGameOperational(data.servers)
-        });
+        io.emit('servers_data_request', serversView(data.servers));
         io.emit('server_lobby_update', {});
 
         return res.status(200).json({ ok: true, role: sf });
@@ -1039,7 +1051,7 @@ function clearEmergencyMeetingTimer() {
 
 function buildEmergencyRoster(data) {
     return Object.entries(data.players).map(([id, p]) => ({
-        id,
+        id: pidOf(id),
         name: p.username,
         dead: p.alive === false,
         voted: Object.prototype.hasOwnProperty.call(emergencyVotes, id)
@@ -1068,7 +1080,7 @@ function emergencyVoterIds(data) {
 function reportCandidates(data, reporterId) {
     return Object.entries(data.players)
         .filter(([id, p]) => id !== reporterId && !(p.alive === false && !p.body))
-        .map(([id, p]) => ({ id, name: p.username }));
+        .map(([id, p]) => ({ id: pidOf(id), name: p.username }));
 }
 
 // report: { reporterId, bodyId } for a reported body, or nothing for the emergency button.
@@ -1098,7 +1110,7 @@ async function startEmergencyMeeting(report) {
         if (!body || report.bodyId === report.reporterId) return 'Unknown player';
         if (body.alive !== false) return `${body.username} is not dead`;
         if (!body.body) return `${body.username}'s body was already found`;
-        data.gameState.meetingReport = { reporterId: report.reporterId, reporter: reporter.username, bodyId: report.bodyId, body: body.username };
+        data.gameState.meetingReport = { reporterId: pidOf(report.reporterId), reporter: reporter.username, bodyId: pidOf(report.bodyId), body: body.username };
         logDebug(`${reporter.username} reported ${body.username}'s body.`);
     } else {
         data.gameState.meetingReport = null;
@@ -1184,7 +1196,7 @@ async function resolveEmergencyMeeting(resultData) {
 
     data.gameState.lastEjection = {
         result: _result,
-        playerId: ejectedId,
+        playerId: ejectedId ? pidOf(ejectedId) : null,
         playerName: ejectedId && data.players[ejectedId] ? data.players[ejectedId].username : null,
         wasImpostor: ejectedId && data.players[ejectedId] ? !!data.players[ejectedId].impostor : null
     };
@@ -1195,9 +1207,12 @@ async function resolveEmergencyMeeting(resultData) {
     const cooldownSeconds = btoActive ? betaTestingOverride.meetingCooldown : data.settings.emergencyCooldown;
     cooldownTime = Date.now() + (cooldownSeconds * 1000);
 
+    // Only the ejected player's role is revealed - never anyone else's.
+    const ejectedPlayer = ejectedId && data.players[ejectedId] ? data.players[ejectedId] : null;
     io.emit('emergency_result', {
-        ejected: ejectedId,
-        players: data.players,
+        ejected: ejectedId ? pidOf(ejectedId) : null,
+        ejectedPlayer: ejectedPlayer ? { username: ejectedPlayer.username, impostor: !!ejectedPlayer.impostor } : null,
+        impostorsRemaining: data.gameState.aliveImpostors,
         gameState: data.gameState,
         result: _result,
         cooldownEndTime: cooldownTime
@@ -1510,7 +1525,7 @@ io.on("connection", async (socket) => {
 
     try {
         if (data.players[cookies.session]) {
-            socket.emit("player_data_request", data.players[cookies.session]);
+            socket.emit("player_data_request", selfView(cookies.session, data.players[cookies.session]));
             socket.emit("game_data_request", data.gameState);
 
             let targetEndTimestamp = 0;
@@ -1556,10 +1571,7 @@ io.on("connection", async (socket) => {
                 endTime: targetEndTimestamp
             });
             socket.emit("game_data_request", data.gameState);
-            socket.emit("servers_data_request", {
-                servers: data.servers,
-                operational: isGameOperational(data.servers)
-            });
+            socket.emit('servers_data_request', serversView(data.servers));
         }
         else {
             logDebug(`Socket connection rejected: username not found for session ${cookies.session}`);
@@ -1607,12 +1619,13 @@ io.on("connection", async (socket) => {
 
         socket.on("emergency", async () => {
             try {
-                // Only known sessions can call a meeting. Results are never accepted from a client:
+                // Results are never accepted from a client:
                 // the server tallies votes itself (timer, or as soon as everyone has voted).
+                // Only the emergency button device calls meetings this way (players report bodies instead).
                 const d = await loadGame();
-                if (!d.players[cookies.session] && !validateServer(d.servers, cookies.session)) {
+                if (d.servers[cookies.session] !== 'emergency') {
                     logDebug(`Unauthorised emergency meeting request from ${cookies.session || 'unknown'}`);
-                    socket.emit('Err', { error: 'not part of this game' });
+                    socket.emit('Err', { error: 'only the emergency button can call a meeting' });
                     return;
                 }
                 logDebug(`Client (${cookies.session}) triggered emergency meeting.`);
@@ -1644,9 +1657,9 @@ io.on("connection", async (socket) => {
 
         socket.on("report_body", async (payload) => {
             try {
-                const target = payload && typeof payload.target === 'string' ? payload.target : '';
                 const d = await loadGame();
                 if (!d.players[cookies.session]) return socket.emit('report_ack', { ok: false, reason: 'not part of this game' });
+                const target = sessionOfPid(d, payload && payload.target) || '';
                 const reason = await withGameLock(() => startEmergencyMeeting({ reporterId: cookies.session, bodyId: target }));
                 socket.emit('report_ack', reason ? { ok: false, reason } : { ok: true });
             } catch (e) {
@@ -1691,8 +1704,8 @@ io.on("connection", async (socket) => {
                     return;
                 }
 
-                const target = payload && payload.target;
-                const targetIsSkip = target === 'skip';
+                const targetIsSkip = payload && payload.target === 'skip';
+                const target = targetIsSkip ? 'skip' : sessionOfPid(d, payload && payload.target);
                 const targetPlayer = !targetIsSkip ? d.players[target] : null;
 
                 if (!targetIsSkip && (!targetPlayer || targetPlayer.alive === false)) {
@@ -1759,7 +1772,7 @@ io.on("connection", async (socket) => {
                 logDebug(`${cookies.session} death confirmed`);
 
                 socket.emit("imdead_ack", { ok: true });
-                socket.emit("player_data_request", player);
+                socket.emit("player_data_request", selfView(cookies.session, player));
                 io.emit("game_data_request", d.gameState);
 
                 if (!d.gameState.started && (d.gameState.crewmatesWon || d.gameState.impostorsWon)) {
@@ -1778,9 +1791,17 @@ io.on("connection", async (socket) => {
         socket.on("fix_sabotage", async (payload) => {
             logDebug(`Client (${cookies.session}) requested to fix sabotage: ${payload ? payload.type : 'unknown'}`);
             try {
-                if (!payload || !payload.type) {
+                if (!payload || (payload.type !== 'o2' && payload.type !== 'reactor')) {
                     socket.emit('Err', { error: 'invalid fix payload' });
                     socket.emit('fix_ack', {ok:false})
+                    return;
+                }
+                // Only the device that is that room's server can fix it.
+                const who = await loadGame();
+                if (who.servers[cookies.session] !== payload.type) {
+                    logDebug(`Unauthorised ${payload.type} fix attempt by ${cookies.session}`);
+                    socket.emit('Err', { error: 'only the ' + payload.type + ' server can fix this' });
+                    socket.emit('fix_ack', { ok: false });
                     return;
                 }
                 const fixed = await fixSabotage(payload.type);
@@ -1801,7 +1822,10 @@ io.on("connection", async (socket) => {
             }
         });
 
-        socket.on("unstable", (payload) => {
+        socket.on("unstable", async (payload) => {
+            const who = await loadGame();
+            const role = who.servers[cookies.session];
+            if (role !== 'o2' && role !== 'reactor') return;
             // This previously lived on io.on("unstable", ...) at module scope, outside any
             // connection handler - io never emits custom app events itself (only sockets do),
             // and "socket" wasn't even in scope there, so this could never actually fire.
@@ -2458,7 +2482,7 @@ async function reset(req, res){
     // Everything just got wiped - make sure every connected client (players, host, and
     // room devices) hears about it instead of being left showing stale state.
     io.emit('game_data_request', data.gameState);
-    io.emit('servers_data_request', { servers: data.servers, operational: false });
+    io.emit('servers_data_request', serversView(data.servers));
     io.emit('sabotage_data_request', { sData: data.activeSabotages, endTime: 0 });
     io.emit('restart_game', {});
 
