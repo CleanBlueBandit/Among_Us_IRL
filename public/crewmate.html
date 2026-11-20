@@ -391,6 +391,20 @@
             }
             .note.open { transform: translate(-14px, -16px) rotate(-2.5deg); }
 
+            /* folded, the box is still full size: only the visible corner may take taps */
+            .note:not(.open), .note:not(.open) * { pointer-events: none; }
+            .note:not(.open)::before {
+                content: "";
+                position: absolute;
+                right: 0;
+                bottom: 0;
+                z-index: 3;
+                width: 100px;
+                height: 100px;
+                clip-path: polygon(100% 0, 100% 100%, 0 100%); /* the fold's triangle, a little generous */
+                pointer-events: auto;
+            }
+
             .note-sheet {
                 box-shadow: none;
                 clip-path: polygon(
@@ -646,9 +660,19 @@
                 try { localStorage.setItem(HINT_KEY, '1'); } catch (e) {}
             }
 
+            // the "show on map" pins can't be reached while the note is folded
+            function syncPins() {
+                var off = noteFolded();
+                note.querySelectorAll('.note-pin').forEach(function(p) {
+                    p.disabled = off;
+                    p.tabIndex = off ? -1 : 0;
+                });
+            }
+
             function setOpen(open) {
                 note.classList.toggle('open', open);
                 note.setAttribute('aria-expanded', String(open));
+                syncPins();
                 if (open) {
                     dismissHint();
                     // cross out anything finished while it was folded, once the paper has unfolded
@@ -671,6 +695,7 @@
                     note.removeAttribute('aria-expanded');
                     note.setAttribute('aria-label', 'My tasks');
                 }
+                syncPins();
             }
             syncMode();
             if (mq.addEventListener) mq.addEventListener('change', syncMode);
@@ -728,8 +753,11 @@
                         pin.className = 'note-pin';
                         pin.setAttribute('aria-label', 'Show ' + t.name + ' on the map');
                         pin.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg>';
+                        pin.disabled = noteFolded();
+                        pin.tabIndex = pin.disabled ? -1 : 0;
                         pin.addEventListener('click', function(ev) {
                             ev.stopPropagation();
+                            if (noteFolded()) return;
                             if (window.TabletMap) window.TabletMap.focusTask(t.id);
                         });
                         li.appendChild(pin);
