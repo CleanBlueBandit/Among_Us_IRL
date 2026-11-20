@@ -98,7 +98,7 @@
                 <div class="slot"></div><div class="ticks l"></div><div class="ticks"></div>
                 <div class="handle"><div class="stem"></div><div class="grip"></div></div>
             </div>
-            <div class="label">PRESS AND HOLD</div>
+            <div class="label" id="leverLabel">PRESS AND HOLD</div>
         </div>
     </div>
 
@@ -182,24 +182,36 @@
             if (!quiet || socket.connected) send(false);
             render();
         }
+        // Test mode (the server's btoActive): one tap pulls the lever down, the next lets it go,
+        // so one person can work several levers in different tabs.
+        let toggle = false;
+        function setToggle(on) {
+            toggle = !!on;
+            $('leverLabel').textContent = toggle ? 'TAP TO TOGGLE · TEST MODE' : 'PRESS AND HOLD';
+            lever.setAttribute('aria-label', toggle ? 'Override lever. Tap to pull or release.' : 'Override lever. Press and hold.');
+        }
         lever.addEventListener('pointerdown', e => {
             if (!live) return;
             e.preventDefault();
+            if (toggle) { wanted ? release() : grab(); return; }
             try { lever.setPointerCapture(e.pointerId); } catch (_) {}
             grab();
         });
-        ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => lever.addEventListener(ev, () => release()));
-        lever.addEventListener('keydown', e => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); grab(); } });
-        lever.addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'Enter') release(); });
-        lever.addEventListener('blur', () => release());
+        ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => lever.addEventListener(ev, () => { if (!toggle) release(); }));
+        lever.addEventListener('keydown', e => {
+            if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); if (toggle && wanted) release(); else grab(); }
+        });
+        lever.addEventListener('keyup', e => { if ((e.key === ' ' || e.key === 'Enter') && !toggle) release(); });
+        lever.addEventListener('blur', () => { if (!toggle) release(); });
         document.addEventListener('contextmenu', e => e.preventDefault());
-        document.addEventListener('visibilitychange', () => { if (document.hidden) release(); });
+        document.addEventListener('visibilitychange', () => { if (document.hidden && !toggle) release(); });
 
         // ---- server ----
         socket.on('connect', () => send(wanted));
         socket.on('reactor_lever_ack', r => {
             if (!r || ended) return;
             if (r.status) status = r.status;
+            if ('toggle' in r) setToggle(r.toggle);
             if (r.state === 'ok') { if (!live) showLever(); else render(); }
             else showCard(TEXT[r.state] || TEXT.expired);
             if (r.state === 'nologin') { $('cardLink').textContent = 'Log in'; $('cardLink').href = '/'; }

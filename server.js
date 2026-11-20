@@ -2018,12 +2018,12 @@ io.on("connection", async (socket) => {
                 else if (d.gameState.emergencyMeeting) state = 'meeting';
                 if (state !== 'ok') {
                     if (reactorFix && reactorFix.holders.delete(socket.id)) evaluateReactorHold();
-                    return socket.emit('reactor_lever_ack', { state, status: reactorStatus(d) });
+                    return socket.emit('reactor_lever_ack', { state, toggle: btoActive, status: reactorStatus(d) });
                 }
                 const before = reactorFix.holders.get(socket.id);
                 if (payload.hold) reactorFix.holders.set(socket.id, cookies.session);
                 else reactorFix.holders.delete(socket.id);
-                socket.emit('reactor_lever_ack', { state, holding: !!payload.hold, status: reactorStatus(d) });
+                socket.emit('reactor_lever_ack', { state, toggle: btoActive, holding: !!payload.hold, status: reactorStatus(d) });
                 if (!!before !== !!payload.hold) await evaluateReactorHold();
             } catch (e) {
                 logError("Reactor lever error:", e);
