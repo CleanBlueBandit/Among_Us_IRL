@@ -112,7 +112,7 @@ const COMMS_THROUGH = new Set(['comms_state', 'game_over', 'restart_game', 'repo
 let commsDown = false;
 function commsSabotaged(data) {
     return !!(data && data.gameState && data.gameState.started && data.activeSabotages &&
-        data.activeSabotages.comms && data.activeSabotages.comms.sabotaged);
+        data.activeSabotages.comms && data.activeSabotages.comms.sabotaged && data.activeSabotages.comms.down);
 }
 const ioEmitAll = io.emit.bind(io);
 io.emit = (ev, ...args) => (commsDown && !COMMS_THROUGH.has(ev))
@@ -194,7 +194,7 @@ const DEFAULT_SABOTAGES = {
     cooldown : 0,
     o2: { sabotaged: false, depleted: false, timeLeft: 0 },
     reactor: { sabotaged: false, meltdown: false, timeLeft: 0 },
-    comms: { sabotaged: false, since: 0 }
+    comms: { sabotaged: false, down: false, timeLeft: 0 }   // sabotaged during the delay, down once it hits
 };
 
 // ---- What other clients may see ----
@@ -454,10 +454,7 @@ async function saveGame(data) {
     io.emit('game_data_request', data.gameState);
     io.emit('servers_data_request', serversView(data.servers));
 
-    let sabEndTime = 0;
-    const { o2, reactor } = data.activeSabotages;
-    if (o2.sabotaged) sabEndTime = Date.now() + (o2.timeLeft * 1000);
-    else if (reactor.sabotaged) sabEndTime = Date.now() + (reactor.timeLeft * 1000);
+    const sabEndTime = sabEndTimeOf(data);
 
 
     // I know this is insecure, but i dont want to write multiple step handshakes and authentication
@@ -873,7 +870,9 @@ app.get("/reactor", async (req, res) => {
     return res.status(200).sendFile(publicPath("reactor"));
 })
 
-app.get("/comms", async (req, res) => {
+// the device page lives at /communications; /comms (the role's name) leads there
+app.get("/comms", (req, res) => res.redirect("/communications"));
+app.get("/communications", async (req, res) => {
     const data = await loadGame();
     if (!validateServer(data.servers, req.cookies.session)) {
         return res.status(401).json({ err: "401 unauthorised" })
@@ -882,7 +881,7 @@ app.get("/comms", async (req, res) => {
         const role = data.servers[req.cookies.session];
         return res.redirect(SERVER_ROLES.includes(role) ? "/" + role : "/waiting");
     }
-    return res.status(200).sendFile(publicPath("comms"));
+    return res.status(200).sendFile(publicPath("communications"));
 })
 
 app.get("/emergency", async (req, res) => {
@@ -1043,9 +1042,10 @@ function syncOverride(data) {
     if (inCrisis(data, 'reactor')) { if (!reactorFix) startOverride(data, 'reactor'); else evaluateReactorHold(); }
 }
 function sabEndTimeOf(data) {
-    const { o2, reactor } = data.activeSabotages || {};
+    const { o2, reactor, comms } = data.activeSabotages || {};
     if (o2 && o2.sabotaged) return Date.now() + (o2.timeLeft * 1000);
     if (reactor && reactor.sabotaged) return Date.now() + (reactor.timeLeft * 1000);
+    if (comms && comms.sabotaged && !comms.down) return Date.now() + (comms.timeLeft * 1000);
     return 0;
 }
 
@@ -1224,8 +1224,34 @@ function sendCommsTask(data) {
     if (!commsSabotaged(data)) return;
     for (const s of commsDevices(data)) io.to(s).emit('comms_task', { freq: ensureCommsFreq(), tolerance: COMMS_FREQ_TOLERANCE });
 }
+// Like O2 and reactor, the impostor picks a delay first; comms only go down when it runs out
+// (paused during meetings).
+async function startCommsCountdown(seconds) {
+    if (sabotageTimers.has('comms')) { clearInterval(sabotageTimers.get('comms')); sabotageTimers.delete('comms'); }
+    const data = await loadGame();
+    data.activeSabotages.comms = { sabotaged: true, down: false, timeLeft: seconds };
+    logDebug(`Sabotage started: comms with initial delay of ${seconds} seconds.`);
+    await saveGame(data);
+    const timer = setInterval(async () => {
+        try {
+            const d = await loadGame();
+            const c = d.activeSabotages.comms;
+            if (!d.gameState.started || !c || !c.sabotaged || c.down) {
+                clearInterval(timer); sabotageTimers.delete('comms'); return;
+            }
+            if (d.gameState.emergencyMeeting) return;
+            c.timeLeft = Math.max(0, c.timeLeft - 1);
+            if (c.timeLeft > 0) { await saveGame(d); io.emit('sabotage_tick', { type: 'comms', timeLeft: c.timeLeft }); return; }
+            clearInterval(timer); sabotageTimers.delete('comms');
+            await startCommsSabotage(d);
+        } catch (e) {
+            logError('Error in comms sabotage timer:', e);
+        }
+    }, 1000);
+    sabotageTimers.set('comms', timer);
+}
 async function startCommsSabotage(data) {
-    data.activeSabotages.comms = { sabotaged: true, since: Date.now() };
+    data.activeSabotages.comms = { sabotaged: true, down: true, timeLeft: 0 };
     commsFreq = null;
     logDebug('Sabotage started: comms.');
     await saveGame(data);   // the blackout starts here
@@ -1859,7 +1885,7 @@ io.on("connection", async (socket) => {
                 if (freshData.gameState.emergencyMeeting) return reject('No sabotage during an emergency meeting');
                 const isComms = sabdata && sabdata.type === 'comms';
                 if (!sabdata || (sabdata.type !== 'o2' && sabdata.type !== 'reactor' && !isComms) ||
-                    (!isComms && (typeof sabdata.countdown !== 'number' || !Number.isFinite(sabdata.countdown)))) {
+                    typeof sabdata.countdown !== 'number' || !Number.isFinite(sabdata.countdown)) {
                     return reject('invalid sabotage payload');
                 }
                 if (Date.now() < sabCooldownTime) {
@@ -1868,18 +1894,18 @@ io.on("connection", async (socket) => {
                 }
                 if (freshData.activeSabotages.o2.sabotaged || freshData.activeSabotages.reactor.sabotaged ||
                     freshData.activeSabotages.reactor.meltdown || freshData.activeSabotages.o2.depleted ||
-                    commsSabotaged(freshData)) {
+                    freshData.activeSabotages.comms.sabotaged) {
                     return reject('already sabotaged');
-                }
-                if (isComms) {
-                    // Comms can only be fixed at the comms device (or by a body report), so it has to exist.
-                    if (!commsDevices(freshData).length) return reject('No comms server is connected');
-                    socket.emit('sabotage_ack', { ok: true });
-                    await startCommsSabotage(freshData);
-                    return;
                 }
                 // The delay is the impostor's choice, but the server keeps it in a sane range.
                 const countdown = Math.min(120, Math.max(5, Math.round(sabdata.countdown)));
+                if (isComms) {
+                    // Comms can only be fixed at the comms device (or by a body report), so it has to exist.
+                    if (!commsDevices(freshData).length) return reject('No communications server is connected');
+                    await startCommsCountdown(countdown);
+                    socket.emit('sabotage_ack', { ok: true });
+                    return;
+                }
                 await startSabotageCountdown(sabdata.type, countdown);
                 socket.emit('sabotage_ack', { ok: true });
             } catch (e) {
@@ -2450,7 +2476,7 @@ app.post("/start", async (req, res) => {
 // complete a task by accident. It then shows the task's minigame, which POSTs back to the same URL
 // (via completeTask()) to actually complete the task.
 const COMMS_TASK_OUTCOME = { accepted: false, status: 503, title: 'Communications sabotaged',
-    message: 'No signal. Tasks are offline until comms are fixed.', next: '/dashboard' };
+    message: 'No signal. Tasks are offline until communications are fixed.', next: '/dashboard' };
 app.get("/task/:token", async (req, res) => {
     try {
         const data = await loadGame();

@@ -58,7 +58,7 @@
             nosig.className = 'sd-nosig';
             nosig.hidden = true;
             nosig.setAttribute('role', 'alert');
-            nosig.innerHTML = NO_SIGNAL_SVG + '<b>COMMUNICATIONS SABOTAGED</b><span>NO SIGNAL &middot; WAITING FOR COMMS</span>';
+            nosig.innerHTML = NO_SIGNAL_SVG + '<b>COMMUNICATIONS SABOTAGED</b><span>NO SIGNAL &middot; WAITING FOR COMMUNICATIONS</span>';
             document.body.appendChild(nosig);
             socket.on('comms_state', function (d) {
                 var down = !!(d && d.down);

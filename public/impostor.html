@@ -210,7 +210,6 @@
         }
 
         /* Main Sabotage Trigger Buttons */
-        .comms-note { margin: 0 0 10px; font-size: 0.78rem; line-height: 1.4; opacity: 0.75; }
         .comms-err { margin: 8px 0 0; min-height: 1.2em; font-size: 0.8rem; color: #fca5a5; }
         .btn-sabotage {
             width: 100%;
@@ -348,8 +347,12 @@
 
         <div class="control-group">
             <h4>Disrupt Communications</h4>
-            <p class="comms-note">Not deadly, no timer: the crew's tablets go dark (no tasks, map or meetings) until comms are fixed or someone reports a body.</p>
-            <button id="comms_sabotage" class="btn-sabotage" onclick="sabotage_comms()">Sabotage Comms</button>
+            <div class="stepper">
+                <button class="btn-stepper" onclick="adjustValue('comms_val', false, 120, 5)">&lt;</button>
+                <div class="val-display" id="comms_val">30</div>
+                <button class="btn-stepper" onclick="adjustValue('comms_val', true, 120, 5)">&gt;</button>
+            </div>
+            <button id="comms_sabotage" class="btn-sabotage" onclick="sabotage_comms()">Sabotage Communications</button>
             <p class="comms-err" id="commsErr" role="alert"></p>
         </div>
 
@@ -363,7 +366,7 @@
                 <span id="o2" class="stable">stable</span>
             </div>
             <div class="status-row">
-                <span>Comms:</span>
+                <span>Communications:</span>
                 <span id="comms" class="stable">online</span>
             </div>
             <div id="time"></div>
@@ -585,11 +588,21 @@
                 return;
             }
 
-            if (data.sData.comms && data.sData.comms.sabotaged) {
+            const comms = data.sData.comms;
+            if (comms && comms.sabotaged && comms.down) {
                 sabotageActive = true;
                 setSabotageButtonsDisabled(true);
                 setCommsStatus(true);
-                setCooldownStatic("COMMS DOWN");
+                setCooldownStatic("COMMUNICATIONS DOWN");
+                return;
+            }
+            if (comms && comms.sabotaged) {
+                sabotageActive = true;
+                setSabotageButtonsDisabled(true);
+                const el = document.getElementById("comms");
+                el.innerText = "sabotaged"; el.className = "unstable";
+                animateCountdown(data.endTime);
+                setCooldownStatic("SABOTAGED");
                 return;
             }
 
@@ -609,26 +622,28 @@
         // Comms: while they are down this page hears nothing else from the server (like every tablet).
         function setCommsStatus(down) {
             const el = document.getElementById("comms");
-            el.innerText = down ? "sabotaged" : "online";
+            el.innerText = down ? "down" : "online";
             el.className = down ? "unstable" : "stable";
         }
         socket.on("comms_state", (d) => {
             if (d && d.down) {
+                if (clientAnimationId) { cancelAnimationFrame(clientAnimationId); clientAnimationId = null; }
+                document.getElementById("time").innerText = "";
                 sabotageActive = true;
                 setSabotageButtonsDisabled(true);
                 setCommsStatus(true);
-                setCooldownStatic("COMMS DOWN");
+                setCooldownStatic("COMMUNICATIONS DOWN");
             } else {
                 setCommsStatus(false);
             }
         });
         socket.on("sabotage_ack", (data) => {
-            document.getElementById("commsErr").innerText = (!data.ok && data.reason === 'No comms server is connected') ? 'No comms server is connected, so comms can\'t be sabotaged.' : '';
+            document.getElementById("commsErr").innerText = (!data.ok && data.reason === 'No communications server is connected') ? 'No communications server is connected.' : '';
         });
 
         function sabotage_comms() {
             document.getElementById("commsErr").innerText = '';
-            socket.emit("sabotage", { type: "comms" });
+            socket.emit("sabotage", { type: "comms", countdown: parseInt(get("comms_val").innerText) });
         }
 
         function sabotage_o2() {
