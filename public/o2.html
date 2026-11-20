@@ -93,12 +93,14 @@
 
         /* ---- keypad ---- */
         .keypad {
-            justify-self: center; width: min(360px, 100%);
+            position: relative; justify-self: center; width: min(360px, 100%); cursor: text;
             background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--edge); border-radius: 14px;
             padding: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 10px 30px rgba(0,0,0,0.5);
         }
         .keypad[hidden] { display: none; }
         .kp-title { font-size: 0.7rem; letter-spacing: 0.24em; color: var(--dim); text-align: center; margin-bottom: 10px; }
+        .kp-foot { font-size: 0.66rem; letter-spacing: 0.2em; color: var(--dim); text-align: center; margin-top: 10px; }
+        .kp-input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
         .screen {
             background: #031215; border: 1px solid #0c3a40; border-radius: 6px; padding: 10px 12px 8px;
             box-shadow: inset 0 0 18px rgba(0, 229, 255, 0.12);
@@ -117,27 +119,12 @@
         .screen.warn .screen-msg { color: var(--amber); }
         @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 
-        .keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
-        .key {
-            font: 800 1.6rem var(--mono); min-height: 62px; border-radius: 10px; cursor: pointer; color: #dfe8f1;
-            background: linear-gradient(180deg, #2a3542, #1b232d); border: 1px solid #0a0e13;
-            box-shadow: 0 4px 0 #090c10, inset 0 1px 0 rgba(255,255,255,0.12);
-            transition: transform 0.05s, box-shadow 0.05s;
-            touch-action: manipulation;
-        }
-        .key:active, .key.pressed { transform: translateY(3px); box-shadow: 0 1px 0 #090c10, inset 0 1px 0 rgba(255,255,255,0.08); }
-        .key:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
-        .key:disabled { opacity: 0.4; cursor: default; }
-        .key.clr { color: #ffb4b4; background: linear-gradient(180deg, #4a2226, #2e1518); }
-        .key.ok { color: #b9f6dd; background: linear-gradient(180deg, #1f4a3a, #143026); }
-        .key svg { width: 26px; height: 26px; vertical-align: middle; }
 
         @media (max-width: 720px) and (min-height: 501px) {
             body.crisis .main { grid-template-columns: 1fr; align-content: start; overflow-y: auto; }
             body.crisis .status { gap: 8px; }
             body.crisis #state { font-size: 1.6rem; }
             body.crisis #clock { font-size: 3rem; }
-            .key { min-height: 54px; font-size: 1.4rem; }
         }
         /* short landscape screens (a phone on its side): keep two columns, shrink everything */
         @media (max-height: 500px) {
@@ -149,12 +136,9 @@
             body.crisis #clock { font-size: 2.6rem; }
             .hint { display: none !important; }
             .keypad { padding: 10px; }
-            .kp-title { display: none; }
             .screen { padding: 6px 10px 4px; }
             .digit { font-size: 1.6rem; }
             .screen-msg { margin-top: 4px; }
-            .keys { gap: 6px; margin-top: 8px; }
-            .key { min-height: 40px; font-size: 1.15rem; box-shadow: 0 3px 0 #090c10, inset 0 1px 0 rgba(255,255,255,0.12); }
         }
     </style>
 </head>
@@ -185,27 +169,16 @@
                 <p class="hint" id="hint" hidden>Every crewmate's tablet shows an override code. Enter codes from two different crewmates to restore O2.</p>
             </section>
 
-            <section class="keypad" id="keypad" hidden aria-label="Override keypad">
+            <section class="keypad" id="keypad" hidden aria-label="Override code entry">
                 <div class="kp-title">ENTER OVERRIDE CODE</div>
                 <div class="screen" id="screen">
                     <div class="digits" id="digits" aria-hidden="true"></div>
                     <div class="screen-msg" id="screenMsg" role="status">AWAITING INPUT</div>
                 </div>
-                <div class="keys" id="keys">
-                    <button class="key" type="button" data-k="1">1</button>
-                    <button class="key" type="button" data-k="2">2</button>
-                    <button class="key" type="button" data-k="3">3</button>
-                    <button class="key" type="button" data-k="4">4</button>
-                    <button class="key" type="button" data-k="5">5</button>
-                    <button class="key" type="button" data-k="6">6</button>
-                    <button class="key" type="button" data-k="7">7</button>
-                    <button class="key" type="button" data-k="8">8</button>
-                    <button class="key" type="button" data-k="9">9</button>
-                    <button class="key clr" type="button" data-k="clr" aria-label="Clear"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
-                    <button class="key" type="button" data-k="0">0</button>
-                    <button class="key ok" type="button" data-k="ok" aria-label="Enter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></button>
-                </div>
+                <div class="kp-foot">TYPE THE CODE · ENTER TO SUBMIT</div>
+                <input class="kp-input" id="kpInput" inputmode="numeric" autocomplete="off" aria-label="Override code" tabindex="-1">
             </section>
+
         </div>
     </div>
 
@@ -276,7 +249,6 @@
                 $('fill').style.width = (p * 100) + '%';
             }
             const locked = now < lockUntil;
-            document.querySelectorAll('.key').forEach(k => { k.disabled = locked || busy; });
             if (locked) screenMsg('KEYPAD LOCKED ' + Math.ceil((lockUntil - now) / 1000) + 'S', 'bad warn');
             else if ($('screen').classList.contains('warn')) { entry = ''; renderDigits(); screenMsg('AWAITING INPUT'); }
         }
@@ -319,6 +291,7 @@
             if (state !== 'crisis' || busy || Date.now() < lockUntil) return;
             if ($('screen').classList.contains('ok') || $('screen').classList.contains('bad')) { entry = ''; screenMsg(''); }
             if (k === 'clr') { sfx.key(); entry = ''; renderDigits(); idleMsg(); return; }
+            if (k === 'del') { if (entry) { sfx.key(); entry = entry.slice(0, -1); renderDigits(); idleMsg(); } return; }
             if (k === 'ok') {
                 if (entry.length < CODE_LEN) { sfx.bad(); screenMsg('CODE TOO SHORT', 'bad', 1400); return; }
                 busy = true; tick();
@@ -330,18 +303,18 @@
             sfx.key();
             entry += k; renderDigits(); idleMsg();
         }
-        $('keys').addEventListener('click', e => {
-            const b = e.target.closest('.key'); if (b) press(b.dataset.k);
-        });
+        // No on-screen keys: the code comes from a keyboard / number pad plugged into this device.
+        // On a touch screen, tapping the code panel brings up the system number pad.
+        $('keypad').addEventListener('click', () => { $('kpInput').value = ''; $('kpInput').focus(); });
+        $('kpInput').addEventListener('input', e => { e.target.value = ''; });
         document.addEventListener('keydown', e => {
             let k = null;
             if (/^[0-9]$/.test(e.key)) k = e.key;
             else if (e.key === 'Enter') k = 'ok';
-            else if (e.key === 'Backspace' || e.key === 'Escape' || e.key === 'Delete') k = 'clr';
+            else if (e.key === 'Backspace') k = 'del';
+            else if (e.key === 'Escape' || e.key === 'Delete') k = 'clr';
             if (!k || state !== 'crisis') return;
             e.preventDefault();
-            const b = document.querySelector('.key[data-k="' + k + '"]');
-            if (b) { b.classList.add('pressed'); setTimeout(() => b.classList.remove('pressed'), 90); }
             press(k);
         });
 
