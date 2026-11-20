@@ -1027,6 +1027,16 @@ app.get("/reactor/qr.svg", async (req, res) => {
     res.type('image/svg+xml').send(svg);
 });
 
+// How the reactor screen should show the override: a QR code, or (while testing, btoActive) the plain link.
+app.get("/reactor/override", async (req, res) => {
+    const data = await loadGame();
+    if (data.servers[req.cookies.session] !== 'reactor') return res.status(401).json({ err: "401 unauthorised" });
+    if (!reactorFix || !inCrisis(data, 'reactor')) return res.status(404).json({ err: "no meltdown" });
+    res.set('Cache-Control', 'no-store');
+    if (btoActive) return res.json({ mode: 'link', url: `${baseUrl()}/override/${reactorFix.token}` });
+    return res.json({ mode: 'qr' });
+});
+
 // What the reactor QR opens on a player's phone. The page checks the token over the socket.
 app.get("/override/:token", (req, res) => {
     res.set('Cache-Control', 'no-store');

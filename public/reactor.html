@@ -67,6 +67,18 @@
             box-shadow: 0 0 8px rgba(255, 51, 51, 0.9); animation: scan 2.4s ease-in-out infinite alternate; pointer-events: none;
         }
         @keyframes scan { to { top: 90%; } }
+        .qr-link {
+            width: min(46vw, 520px); padding: 18px; border-radius: 10px; background: #120707; border: 1px dashed var(--red);
+            display: flex; flex-direction: column; gap: 12px; text-align: center;
+        }
+        .qr-link[hidden], .qr-frame[hidden] { display: none; }
+        .qr-link small { font-size: 0.7rem; letter-spacing: 0.22em; color: var(--amber); }
+        .qr-link a { color: #fff; font-size: 1rem; line-height: 1.4; word-break: break-all; user-select: text; -webkit-user-select: text; }
+        .qr-link a:focus-visible, .qr-link button:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+        .qr-link button {
+            align-self: center; font: 700 0.8rem var(--mono); letter-spacing: 0.14em; padding: 9px 16px; cursor: pointer;
+            color: var(--amber); background: transparent; border: 1px solid var(--amber); border-radius: 6px;
+        }
         .qr-label { font-size: 0.82rem; letter-spacing: 0.22em; color: var(--red); font-weight: 700; text-align: center; }
 
         .status { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; min-width: 0; width: 100%; }
@@ -130,7 +142,12 @@
         <div class="main">
             <section class="qr" id="qr" hidden>
                 <div class="qr-frame" role="img" aria-label="Reactor manual override QR code"><img id="qrImg" alt=""><div class="scanline"></div></div>
-                <div class="qr-label">SCAN FOR MANUAL OVERRIDE</div>
+                <div class="qr-link" id="qrLink" hidden>
+                    <small>TEST MODE · OVERRIDE LINK</small>
+                    <a id="qrUrl" href="#" target="_blank" rel="noopener"></a>
+                    <button type="button" id="qrCopy">COPY LINK</button>
+                </div>
+                <div class="qr-label" id="qrLabel">SCAN FOR MANUAL OVERRIDE</div>
             </section>
 
             <section class="status" aria-live="polite">
@@ -209,9 +226,37 @@
             }
         }
 
-        function loadQr() {
-            $('qrImg').src = '/reactor/qr.svg?q=' + encodeURIComponent(qrId || Date.now());
+        // A QR code normally; with the server's test mode on, the plain link instead.
+        let qrLoading = false, qrShown = false;
+        async function loadQr() {
+            if (qrLoading) return;
+            qrLoading = true; qrShown = true;
+            try {
+                const res = await fetch('/reactor/override', { cache: 'no-store' });
+                if (!res.ok) throw new Error(res.status);
+                const how = await res.json();
+                if (state !== 'crisis') return;
+                const link = how.mode === 'link';
+                document.querySelector('.qr-frame').hidden = link;
+                $('qrLink').hidden = !link;
+                $('qrLabel').textContent = link ? 'OPEN ON A PLAYER\'S PHONE' : 'SCAN FOR MANUAL OVERRIDE';
+                $('hint').textContent = link ? 'Two crewmates open the link, then hold their override levers down at the same time.'
+                    : 'Two crewmates scan the code, then hold their override levers down at the same time.';
+                if (link) { $('qrUrl').textContent = how.url; $('qrUrl').href = how.url; }
+                else $('qrImg').src = '/reactor/qr.svg?q=' + encodeURIComponent(qrId || Date.now());
+            } catch (e) {
+                qrShown = false;
+                if (state === 'crisis') setTimeout(loadQr, 1500);
+            } finally {
+                qrLoading = false;
+            }
         }
+        $('qrCopy').addEventListener('click', () => {
+            const url = $('qrUrl').href;
+            const done = () => { $('qrCopy').textContent = 'COPIED'; setTimeout(() => { $('qrCopy').textContent = 'COPY LINK'; }, 1500); };
+            if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(url).then(done, () => {});
+            else { const r = document.createRange(); r.selectNodeContents($('qrUrl')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); try { document.execCommand('copy'); done(); } catch (e) {} }
+        });
 
         function setState(next) {
             if (state === next) return;
@@ -232,7 +277,8 @@
             } else {
                 alarmSound.pause(); alarmSound.currentTime = 0;
                 $('qrImg').removeAttribute('src');
-                qrId = null; holding = 0; since = 0;
+                $('qrUrl').textContent = ''; $('qrUrl').href = '#';
+                qrId = null; qrShown = false; holding = 0; since = 0;
                 $('output').textContent = '100%';
                 if (next === 'restored') { $('state').textContent = 'REACTOR STABILISED'; $('lampText').textContent = 'RESTORED'; }
                 else if (next === 'stable') { $('state').textContent = 'REACTOR STABLE'; $('lampText').textContent = 'NOMINAL'; }
@@ -256,7 +302,7 @@
                     endTime = end || endTime;
                     if (!total) total = Math.max(1, Math.round((endTime - Date.now()) / 1000));
                     setState('crisis');
-                    if (!$('qrImg').getAttribute('src')) loadQr();
+                    if (!qrShown) loadQr();
                 } else if (state === 'crisis') {
                     restored();
                 }
@@ -280,7 +326,7 @@
 
         function resetToStable() {
             clearTimeout(restoredTimer);
-            total = 0; holding = 0; since = 0; qrId = null;
+            total = 0; holding = 0; since = 0; qrId = null; qrShown = false;
             state = '';
             setState('stable');
         }
