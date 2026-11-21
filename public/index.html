@@ -265,10 +265,13 @@
 
         .fail-msg{
             margin: 12px 0 0;
-            min-height: 16px;
             font-size: 12.5px;
             line-height: 1.4;
             color: var(--signal);
+        }
+
+        .fail-msg:empty{
+            display: none;   /* no message, no gap */
         }
 
         @media (prefers-reduced-motion: reduce){
