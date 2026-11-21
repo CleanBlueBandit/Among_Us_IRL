@@ -77,13 +77,13 @@ const SOUNDS = [
     // once on the same stations when they're back
     { id: 'comms_alarm', label: 'Communications error', url: '/sounds/critical_error_communications.mp3',
         restored: '/sounds/communications_restored.mp3' },
-    // a meeting is called: everyone has to come to the emergency room. Fades out once they're all there.
-    { id: 'meeting_button', label: 'Emergency meeting called', url: '/sounds/emergency_meeting.mp3' },
-    { id: 'meeting_report', label: 'Dead body reported', url: '/sounds/body_reported.mp3' }
+    // a meeting is called: the alarm, a spoken call to the emergency room and, now and then, how many are
+    // there. Fades out once they all are.
+    { id: 'meeting_alarm', label: 'Meeting call', alarm: 'meeting' }
 ];
 const SOUND_IDS = new Set(SOUNDS.map(s => s.id));
 const SOUND_ROLES = ['o2', 'reactor', 'emergency', 'comms'];
-const DEFAULT_SOUND_ROUTES = { o2: ['o2_alarm'], reactor: ['reactor_alarm', 'crew_win', 'imp_win'], emergency: ['meeting_button', 'meeting_report'], comms: ['comms_alarm'] };
+const DEFAULT_SOUND_ROUTES = { o2: ['o2_alarm'], reactor: ['reactor_alarm', 'crew_win', 'imp_win'], emergency: ['meeting_alarm'], comms: ['comms_alarm'] };
 const SOUNDS_FILE = path.join(ROOT, 'sounds.json');
 // `known` lists the sounds the saved file already has a choice for; a sound added later starts on its
 // default stations instead of on none.
@@ -200,9 +200,10 @@ async function playWinSound(info) {
 // What each server device should be playing right now: its sounds, and which of its alarms are on
 // (an alarm is on while its manual override runs). Sent on connect and whenever either changes.
 const COMMS_SOUND = SOUNDS.find(s => s.id === 'comms_alarm');
+let meetingCalling = false;   // the meeting call is on while everyone is coming to the emergency room
 function stationSoundsFor(role) {
     const sounds = soundRoutes[role] || [];
-    const on = { o2: !!o2Fix, reactor: !!reactorFix };
+    const on = { o2: !!o2Fix, reactor: !!reactorFix, meeting: meetingCalling };
     return { sounds, alarms: SOUNDS.filter(s => s.alarm && on[s.alarm] && sounds.includes(s.id)).map(s => s.alarm) };
 }
 // Communications went down: the error announcement, once.
@@ -212,14 +213,6 @@ function commsErrorSound(data) {
 // Communications are back: the stations that played the error say so.
 function commsRestoredSound(data) {
     for (const s of soundSessions(data, COMMS_SOUND.id)) io.to(s).emit('play_sound', { id: 'comms_restored', url: COMMS_SOUND.restored });
-}
-// A meeting was called: the stations set to announce it play the call. stopMeetingSound fades it out.
-function meetingSound(data, reported) {
-    const sound = SOUNDS.find(s => s.id === (reported ? 'meeting_report' : 'meeting_button'));
-    for (const s of soundSessions(data, sound.id)) io.to(s).emit('play_sound', { id: 'meeting_call', url: sound.url });
-}
-function stopMeetingSound(data) {
-    for (const s of Object.keys(data.servers || {})) io.to(s).emit('stop_sound', { id: 'meeting_call' });
 }
 async function pushStationSounds(data) {
     try {
@@ -904,7 +897,7 @@ app.get('/logout', async (req, res) => {
             await saveGame(data);
             io.emit('game_data_request', data.gameState);
             if (data.gameState.meetingGather && data.gameState.started) {   // one fewer to wait for
-                io.emit('meeting_gather', gatherView(data));
+                announceGather(data);
                 await checkGathered(data);
             }
 
@@ -1230,7 +1223,7 @@ app.get("/alarm/settings", async (req, res) => {
     const data = await loadGame();
     if (!validateServer(data.servers, req.cookies.session)) return res.status(401).json({ err: "401 unauthorised" });
     const type = req.query.type || data.servers[req.cookies.session];
-    if (type !== 'o2' && type !== 'reactor') return res.status(400).json({ err: "unknown alarm" });
+    if (type !== 'o2' && type !== 'reactor' && type !== 'meeting') return res.status(400).json({ err: "unknown alarm" });
     res.set('Cache-Control', 'no-store');
     return res.json(await alarmVoice.settings(type));
 });
@@ -1478,6 +1471,7 @@ function clearCommsFor(data) {
 function clearAllSabotageTimers() {
     logDebug("Clearing all sabotage timers.");
     alarmVoice.reset();
+    meetingCalling = false;
     clearOverride('o2');
     clearOverride('reactor');
     for (const t of sabotageTimers.values()) {
@@ -1609,6 +1603,7 @@ async function startEmergencyMeeting(report) {
     data.gameState.emergencyMeetingEndTime = 0;
     data.gameState.meetingGather = { calledAt: Date.now(), present: [] };
     const commsFixed = clearCommsFor(data);
+    meetingCalling = true;   // the stations' meeting alarm (saveGame tells them)
     await saveGame(data);
     if (commsFixed) {
         io.emit('comms_state', { down: false });
@@ -1616,8 +1611,9 @@ async function startEmergencyMeeting(report) {
         io.emit('sabotage_fixed', { type: 'comms' });
         io.emit('sabotage_cooldown', { endTime: sabCooldownTime });
     }
-    meetingSound(data, !!report);
-    io.emit('meeting_gather', gatherView(data));
+    const view = gatherView(data);
+    alarmVoice.meetingStart(report ? 'report' : 'button', gatherCounts(view)).catch(e => logError('Meeting call:', e));
+    io.emit('meeting_gather', view);
     io.emit('game_data_request', data.gameState);
     await checkGathered(data);
     return '';
@@ -1634,6 +1630,16 @@ function gatherView(data) {
         players: emergencyVoterIds(data).map(id => ({ id: pidOf(id), name: data.players[id].username, present: g.present.includes(pidOf(id)) }))
     };
 }
+function gatherCounts(view) {
+    const players = (view && view.players) || [];
+    return { present: players.filter(p => p.present).length, total: players.length };
+}
+// Someone checked in (or left): tell the tablets and the emergency station, and keep the spoken count current.
+function announceGather(data) {
+    const view = gatherView(data);
+    alarmVoice.meetingCounts(gatherCounts(view));
+    io.emit('meeting_gather', view);
+}
 // Everyone's here: the meeting starts. Called after every check-in, and whenever a player leaves or dies.
 async function checkGathered(data) {
     const g = data.gameState.meetingGather;
@@ -1648,8 +1654,9 @@ async function beginMeeting(data) {
     const endTime = Date.now() + (countdown * 1000);
     data.gameState.meetingGather = null;
     data.gameState.emergencyMeetingEndTime = endTime;
+    meetingCalling = false;
+    alarmVoice.meetingEnd();
     await saveGame(data);
-    stopMeetingSound(data);
 
     io.emit('emergency_ack', { countdown, endTime, players: buildEmergencyRoster(data), report: data.gameState.meetingReport });
     io.emit('game_data_request', data.gameState);
@@ -2294,7 +2301,7 @@ io.on("connection", async (socket) => {
                         g.present.push(pid);
                         logDebug(`${me.username} is present for the meeting.`);
                         await saveGame(d);
-                        io.emit('meeting_gather', gatherView(d));
+                        announceGather(d);
                         await checkGathered(d);
                     }
                     return '';
@@ -2303,6 +2310,24 @@ io.on("connection", async (socket) => {
             } catch (e) {
                 logError("Present error:", e);
                 socket.emit('present_ack', { ok: false, reason: e.message });
+            }
+        });
+
+        // The host can start the meeting without waiting for everyone to check in.
+        socket.on("force_meeting", async () => {
+            try {
+                const reason = await withGameLock(async () => {
+                    const d = await loadGame();
+                    if (!isHostSession(d, cookies.session)) return 'Only the host can do that';
+                    if (!d.gameState.emergencyMeeting || !d.gameState.meetingGather || !d.gameState.started) return 'No meeting is being called';
+                    logDebug('The host started the meeting without waiting for everyone.');
+                    await beginMeeting(d);
+                    return '';
+                });
+                socket.emit('force_meeting_ack', reason ? { ok: false, reason } : { ok: true });
+            } catch (e) {
+                logError("Force meeting error:", e);
+                socket.emit('force_meeting_ack', { ok: false, reason: e.message });
             }
         });
 
@@ -2326,6 +2351,11 @@ io.on("connection", async (socket) => {
                     socket.emit("imdead_ack", { ok: true });
                     return;
                 }
+                // no killing once a meeting is called
+                if (d.gameState.emergencyMeeting) {
+                    socket.emit("imdead_ack", { ok: false, reason: 'No one can die during a meeting' });
+                    return;
+                }
 
                 player.alive = false;
                 player.body = true;   // a body to report, until the next meeting
@@ -2347,10 +2377,6 @@ io.on("connection", async (socket) => {
                 socket.emit("player_data_request", selfView(cookies.session, player));
                 syncOverride(d);
                 io.emit("game_data_request", d.gameState);
-                if (d.gameState.meetingGather && d.gameState.started) {   // one fewer to wait for
-                    io.emit('meeting_gather', gatherView(d));
-                    await checkGathered(d);
-                }
 
                 if (!d.gameState.started && (d.gameState.crewmatesWon || d.gameState.impostorsWon)) {
                     io.emit('game_over', {

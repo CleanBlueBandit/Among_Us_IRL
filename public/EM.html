@@ -343,6 +343,14 @@
     .present-btn[hidden] { display: none; }
     .gather-note { font-weight: 700; font-size: 15px; color: #f3c4c4; max-width: 420px; }
     .gather-note:empty { display: none; }
+    .host-btn {
+      margin-top: 4px; min-height: 44px; padding: 8px 18px; border-radius: 12px; cursor: pointer;
+      font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 15px; letter-spacing: 0.02em;
+      color: #ffe08a; background: rgba(0,0,0,0.3); border: 2px solid rgba(255, 224, 138, 0.55);
+    }
+    .host-btn:active { transform: translateY(1px); }
+    .host-btn:focus-visible { outline: 3px solid #ffe08a; outline-offset: 2px; }
+    .host-btn[hidden] { display: none; }
     .gather-err { font-weight: 800; font-size: 15px; color: #ffd166; }
     .gather-err:empty { display: none; }
 
@@ -476,9 +484,21 @@
     <ul class="gather-list" id="gatherList"></ul>
     <button class="present-btn" id="presentBtn" type="button">I'm present</button>
     <div class="gather-err" id="gatherErr" role="alert"></div>
+    <button class="host-btn" id="forceBtn" type="button" hidden>Host: start the meeting now</button>
     <div class="gather-note" id="gatherNote"></div>
   </div>
 </div>
+
+<dialog class="confirm" id="forceConfirm" aria-labelledby="forceTitle">
+  <div class="confirm-card">
+    <h2 id="forceTitle">Start the meeting now?</h2>
+    <p>The meeting and its voting countdown start straight away, without waiting for <span id="forceWho">the players who haven't checked in</span>.</p>
+    <div class="confirm-btns">
+      <button class="no" id="forceNo" type="button">Keep waiting</button>
+      <button class="yes" id="forceYes" type="button">Start now</button>
+    </div>
+  </div>
+</dialog>
 
 <dialog class="confirm" id="presentConfirm" aria-labelledby="confirmTitle">
   <div class="confirm-card">
@@ -544,6 +564,7 @@
   let calledAtLocal = 0;      // when the meeting was called, on this tablet's clock
   let amAlive = null;         // from player_data_request
   let presentBusy = false;
+  let myName = null, hostName = null;   // the host gets "start the meeting now"
   const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   function renderGather() {
@@ -560,6 +581,9 @@
       `<li class="${p.present ? 'here' : ''}">${p.present ? CHECK : ''}${esc(p.name)}${p.id === localPlayerId ? ' <span class="you">YOU</span>' : ''}</li>`).join('');
 
     const me = list.find(p => p.id === localPlayerId);
+    const waitingFor = list.filter(p => !p.present).map(p => p.name);
+    document.getElementById('forceBtn').hidden = !(myName && hostName && myName === hostName && waitingFor.length);
+    document.getElementById('forceWho').textContent = waitingFor.join(', ') || "the players who haven't checked in";
     const btn = document.getElementById('presentBtn'), note = document.getElementById('gatherNote');
     if (amAlive === false || (localPlayerId && !me && amAlive !== null)) {
       btn.hidden = true;
@@ -588,6 +612,16 @@
       if (!window.confirm('Are you in the emergency room? Only tap "I\'m present" when you are really there.')) return;
     }
     sendPresent();
+  });
+  const forceDlg = document.getElementById('forceConfirm');
+  document.getElementById('forceBtn').addEventListener('click', () => {
+    if (typeof forceDlg.showModal === 'function') { forceDlg.showModal(); document.getElementById('forceNo').focus(); }
+    else if (window.confirm('Start the meeting now, without waiting for everyone?')) socket.emit('force_meeting');
+  });
+  document.getElementById('forceNo').addEventListener('click', () => forceDlg.close());
+  document.getElementById('forceYes').addEventListener('click', () => { forceDlg.close(); socket.emit('force_meeting'); });
+  socket.on('force_meeting_ack', (r) => {
+    if (r && !r.ok) document.getElementById('gatherErr').textContent = r.reason || 'Could not start the meeting.';
   });
   document.getElementById('confirmNo').addEventListener('click', () => confirmDlg.close());
   document.getElementById('confirmYes').addEventListener('click', () => { confirmDlg.close(); sendPresent(); });
@@ -719,6 +753,7 @@
   // ── SOCKET WIRING ────────────────────────────────────────────
   socket.on('player_data_request', (me) => {
     localPlayerId = me.id;
+    myName = me.username;
     amAlive = me.alive !== false;
     votingOpen = me.alive;
     render();
@@ -726,6 +761,7 @@
   });
 
   socket.on('game_data_request', (gameState) => {
+    if (gameState && hostName !== gameState.host) { hostName = gameState.host; renderGather(); }
     // If we land on this page with no meeting in progress, there's nothing to vote on.
     if (!gameState.emergencyMeeting) {
       votingOpen = false;
@@ -741,6 +777,7 @@
   socket.on('emergency_ack', (payload) => {
     gather = null;   // everyone's here: the vote starts
     if (confirmDlg.open) confirmDlg.close();
+    if (forceDlg.open) forceDlg.close();
     renderGather();
     hasVoted = false;
     selectedId = null;

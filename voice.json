@@ -89,5 +89,26 @@
         "failed": [
             "Oxygen depleted. Life support failure."
         ]
+    },
+    "meeting": {
+        "alarm": "/sounds/meeting.mp3",
+        "loop": false,
+        "every": 20,
+        "audio": {
+            "duckTo": 0.7,
+            "reverb": {
+                "mix": 0.2
+            }
+        },
+        "button": [
+            "Emergency meeting... All personnel: remain calm... Gather in the emergency room."
+        ],
+        "report": [
+            "Dead body was found... Emergency meeting... All personnel: remain calm... Gather in the emergency room."
+        ],
+        "attendance": [
+            "{present} of {total} present... Waiting for {waiting} more.",
+            "{waiting} still on the way... {present} of {total} in the emergency room."
+        ]
     }
 }

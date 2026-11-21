@@ -1,4 +1,4 @@
-// Spoken alarms for the O2 and reactor stations.
+// Spoken alarms for the O2 and reactor stations, and the meeting call.
 //
 // When a sabotage's alarm goes off, the server picks a random section (like 4B), says it is unstable, counts
 // down, and says the same section is stable again once the crew fixes it. The
@@ -83,10 +83,24 @@ export const DEFAULTS = {
         ready: [],   // O2 is fixed the moment the last code goes in
         fixed: ['Oxygen section... {section}... stable.'],
         failed: ['Oxygen depleted. Life support failure.']
+    },
+    // A meeting was called (the emergency button, or a body report): everyone has to come to the emergency room.
+    // The alarm plays once (loop: false), with the "button" or "report" line over it; then, every `every`
+    // seconds until everyone is there, the "attendance" line. {present} players are in the room, {waiting}
+    // are still on their way, {total} are expected; {s} is "s" unless {waiting} is 1.
+    meeting: {
+        alarm: '/sounds/meeting.mp3',
+        loop: false,
+        every: 20,
+        audio: { duckTo: 0.7, reverb: { mix: 0.2 } },
+        button: ['Emergency meeting... All personnel: remain calm... Gather in the emergency room.'],
+        report: ['Dead body was found... Emergency meeting... All personnel: remain calm... Gather in the emergency room.'],
+        attendance: ['{present} of {total} present... Waiting for {waiting} more.', '{waiting} still on the way... {present} of {total} in the emergency room.']
     }
 };
 
-const TYPES = ['reactor', 'o2'];
+const TYPES = ['reactor', 'o2', 'meeting'];
+const SABOTAGES = ['reactor', 'o2'];
 
 // ---- config ----------------------------------------------------------------------------------------
 const isObj = v => v && typeof v === 'object' && !Array.isArray(v);
@@ -263,11 +277,11 @@ export function createAlarmVoice({ root, send, log = () => {}, logError = consol
             await loadConfig();
             if (!TYPES.includes(type)) return null;
             const t = config[type] || {};
-            return { alarm: t.alarm, audio: merge(config.audio, t.audio), voice: !!config.enabled };
+            return { alarm: t.alarm, loop: t.loop !== false, audio: merge(config.audio, t.audio), voice: !!config.enabled };
         },
         // The alarm went off: pick this alarm's details and say the opening line.
         async start(type, timeLeft) {
-            if (!TYPES.includes(type) || incidents.has(type)) return;
+            if (!SABOTAGES.includes(type) || incidents.has(type)) return;
             await loadConfig();
             const t = config[type];
             const inc = { section: fillId(pick(t.sections || config.sections)), busyUntil: 0, status: { count: 0, need: 2 }, spoken: null, statusTimer: null };
@@ -323,6 +337,33 @@ export function createAlarmVoice({ root, send, log = () => {}, logError = consol
             while (t.pending.size && Date.now() < end) await Promise.race([Promise.allSettled([...t.pending]), wait(end - Date.now())]);
             if (t.until > Date.now()) await wait(t.until - Date.now());
         },
-        reset() { for (const inc of incidents.values()) clearTimeout(inc.statusTimer); incidents.clear(); }
+        // A meeting was called. kind: 'button' or 'report'; counts: { present, total }.
+        async meetingStart(kind, counts) {
+            this.meetingEnd();
+            await loadConfig();
+            const m = config.meeting;
+            const inc = { busyUntil: 0, counts, statusTimer: null, nextAt: 0 };
+            incidents.set('meeting', inc);
+            if (!config.enabled) return;
+            const every = Math.max(5, Number(m.every) || 20) * 1000;
+            inc.nextAt = Date.now() + every;
+            // the attendance, every `every` seconds once the voice is free
+            inc.statusTimer = setInterval(() => {
+                if (incidents.get('meeting') !== inc || Date.now() < inc.nextAt || Date.now() < inc.busyUntil) return;
+                inc.nextAt = Date.now() + every;
+                const { present, total } = inc.counts, waiting = Math.max(0, total - present);
+                if (waiting > 0) speak('meeting', pick(m.attendance), { present, total, waiting, s: waiting === 1 ? '' : 's' });
+            }, 500);
+            await speak('meeting', pick(kind === 'report' ? m.report : m.button), {});
+        },
+        meetingCounts(counts) { const inc = incidents.get('meeting'); if (inc) inc.counts = counts; },
+        // Everyone's there (or the meeting was called off): no more attendance lines.
+        meetingEnd() {
+            const inc = incidents.get('meeting');
+            if (!inc) return;
+            clearInterval(inc.statusTimer);
+            incidents.delete('meeting');
+        },
+        reset() { for (const inc of incidents.values()) { clearTimeout(inc.statusTimer); clearInterval(inc.statusTimer); } incidents.clear(); }
     };
 }
