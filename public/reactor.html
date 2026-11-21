@@ -173,7 +173,7 @@
 
     <script>
         const $ = id => document.getElementById(id);
-        let socket = null, audio = null, alarm = null;   // alarm: the looping alarm and its voice (alarmaudio.js)
+        let socket = null, audio = null;   // the alarm itself plays from serverdevice.js / alarmaudio.js
         let state = 'stable';   // stable | crisis | restored | game-over
         let endTime = 0, total = 0, need = 2, holding = 0, since = 0, holdMs = 3000, qrId = null;
         let restoredTimer = null;
@@ -271,9 +271,7 @@
                 $('lampText').textContent = 'ALARM';
                 renderSlots();
                 if (socket) socket.emit('unstable', { activated: true });
-                if (alarm) alarm.start();
             } else {
-                if (alarm) alarm.stop();
                 $('qrImg').removeAttribute('src');
                 $('qrUrl').textContent = ''; $('qrUrl').href = '#';
                 qrId = null; qrShown = false; holding = 0; since = 0;
@@ -340,10 +338,9 @@
             $('connect').hidden = true;
             try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audio = null; }
             socket = io();
-            if (audio) alarm = AlarmAudio.create(audio, socket);
             setupSocketListeners();
             // game over / restart happen on this page, so sound stays allowed to play
-            ServerDevice.attach(socket, { role: 'reactor', onGameOver: stopForGameOver, onReset: resetToStable });
+            ServerDevice.attach(socket, { role: 'reactor', audio, onGameOver: stopForGameOver, onReset: resetToStable });
             setInterval(tick, 200);
         });
     </script>

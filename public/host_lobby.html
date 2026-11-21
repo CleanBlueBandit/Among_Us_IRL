@@ -373,6 +373,157 @@
             min-height: 16px;
         }
 
+        /* ---- Station sounds popup ---- */
+        dialog.sounds{
+            width: min(560px, calc(100vw - 32px));
+            max-height: calc(100vh - 32px);
+            padding: 0;
+            border: 1px solid rgba(0,0,0,0.6);
+            border-radius: 14px;
+            color: var(--text-bright);
+            background:
+                repeating-linear-gradient(135deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 5px),
+                linear-gradient(160deg, var(--metal-1) 0%, var(--metal-2) 45%, var(--metal-3) 100%);
+            box-shadow: inset 0 1px 0 var(--metal-highlight), 0 30px 80px -20px rgba(0,0,0,0.9);
+        }
+        dialog.sounds::backdrop{
+            background: rgba(2, 3, 8, 0.72);
+            backdrop-filter: blur(2px);
+        }
+        .sounds-inner{
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            padding: 24px 22px 20px;
+        }
+        .sounds-head{
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .sounds-head h2{
+            margin: 0 0 4px;
+            font-size: 17px;
+            font-weight: 600;
+        }
+        .sounds-head p{
+            margin: 0;
+            font-size: 12.5px;
+            color: var(--text-dim);
+            line-height: 1.4;
+        }
+        .sounds-close{
+            flex: none;
+            width: 34px;
+            height: 34px;
+            padding: 0;
+            font-size: 18px;
+            line-height: 1;
+        }
+        .station{
+            padding: 14px 16px;
+            background: var(--bg-field);
+            border: 1px solid rgba(0,0,0,0.6);
+            border-radius: 10px;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+        .station-top{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .station-name{
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .station-state{
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11.5px;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--text-faint);
+        }
+        .station-state::before{
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #555a61;
+        }
+        .station-state.on{ color: var(--stable); }
+        .station-state.on::before{ background: var(--stable); box-shadow: 0 0 6px var(--stable); }
+        .station-state.off{ color: #e0b25a; }
+        .station-state.off::before{ background: #e0b25a; }
+        .sound-chips{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .sound-chip{
+            position: relative;
+            flex: 1 1 calc(50% - 4px);
+            min-width: 0;
+        }
+        .sound-chip input{
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .sound-chip span{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(0,0,0,0.6);
+            background: linear-gradient(180deg, #4a4e55 0%, #2e3136 100%);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 3px rgba(0,0,0,0.4);
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-dim);
+            cursor: pointer;
+            user-select: none;
+            transition: color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .sound-chip span::before{
+            content: '';
+            flex: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 4px;
+            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(0,0,0,0.35);
+        }
+        .sound-chip input:checked + span{
+            color: #fff;
+            border-color: rgba(255, 59, 59, 0.6);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 0 10px rgba(255, 59, 59, 0.3);
+        }
+        .sound-chip input:checked + span::before{
+            border-color: transparent;
+            background: var(--signal) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/12px no-repeat;
+        }
+        .sound-chip input:focus-visible + span{
+            outline: 2px solid #fff;
+            outline-offset: 2px;
+        }
+        .sounds-foot{
+            margin: 0;
+            min-height: 16px;
+            font-size: 12px;
+            color: var(--text-faint);
+        }
+        .sounds-foot.err{ color: var(--unstable); }
+
+        @media (max-width: 420px){
+            .sound-chip{ flex-basis: 100%; }
+        }
+
         @media (prefers-reduced-motion: reduce){
             .panel, .beacon-ring, .beacon-core{
                 animation: none !important;
@@ -494,6 +645,7 @@
             <div class="section">
                 <div class="actions">
                     <button class="primary" onclick="post_start()">Start game</button>
+                    <button type="button" onclick="openSounds()">Station sounds</button>
                     <a href="/floorplan"><button>Floor plan</button></a>
                     <a href="/minigames"><button>Test minigames</button></a>
                     <a href="/logout"><button>Leave</button></a>
@@ -503,6 +655,20 @@
             </div>
         </div>
     </div>
+
+    <dialog class="sounds" id="sounds" aria-labelledby="soundsTitle">
+        <div class="sounds-inner">
+            <div class="sounds-head">
+                <div>
+                    <h2 id="soundsTitle">Station sounds</h2>
+                    <p>Pick what each station plays. More than one station can play the same sound.</p>
+                </div>
+                <button type="button" class="sounds-close" onclick="closeSounds()" aria-label="Close">&times;</button>
+            </div>
+            <div id="stationList"></div>
+            <p class="sounds-foot" id="soundsFoot" role="status"></p>
+        </div>
+    </dialog>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="common.js"></script>
@@ -560,6 +726,86 @@
             })
             .catch(console.error);
             }
+
+        // ---- Station sounds ----
+        const STATION_NAMES = { o2: 'O2', reactor: 'Reactor', emergency: 'Emergency', comms: 'Communications' };
+        let soundsView = null;
+        function soundsFoot(text, err) {
+            const f = get('soundsFoot');
+            f.textContent = text || '';
+            f.classList.toggle('err', !!err);
+        }
+        function renderSounds() {
+            const list = get('stationList');
+            list.innerHTML = '';
+            list.style.display = 'flex';
+            list.style.flexDirection = 'column';
+            list.style.gap = '10px';
+            for (const st of soundsView.stations) {
+                const box = document.createElement('div');
+                box.className = 'station';
+                const top = document.createElement('div');
+                top.className = 'station-top';
+                const name = document.createElement('span');
+                name.className = 'station-name';
+                name.textContent = STATION_NAMES[st.role] || st.role;
+                const state = document.createElement('span');
+                state.className = 'station-state' + (st.connected ? ' on' : st.held ? ' off' : '');
+                state.textContent = st.connected ? 'Connected' : st.held ? 'Offline' : 'No device';
+                top.append(name, state);
+                const chips = document.createElement('div');
+                chips.className = 'sound-chips';
+                for (const snd of soundsView.sounds) {
+                    const label = document.createElement('label');
+                    label.className = 'sound-chip';
+                    const input = document.createElement('input');
+                    input.type = 'checkbox';
+                    input.checked = (soundsView.routes[st.role] || []).includes(snd.id);
+                    input.addEventListener('change', () => saveSound(st.role, snd.id, input.checked));
+                    const text = document.createElement('span');
+                    text.textContent = snd.label;
+                    label.append(input, text);
+                    chips.append(label);
+                }
+                box.append(top, chips);
+                list.append(box);
+            }
+        }
+        async function loadSounds() {
+            const res = await fetch('/sounds/routes', { cache: 'no-store' });
+            if (!res.ok) throw new Error(res.status);
+            soundsView = await res.json();
+            renderSounds();
+        }
+        async function openSounds() {
+            soundsFoot('');
+            get('sounds').showModal();
+            try { await loadSounds(); }
+            catch (e) { soundsFoot('Could not load the station sounds.', true); }
+        }
+        function closeSounds() { get('sounds').close(); }
+        get('sounds').addEventListener('click', e => { if (e.target === e.currentTarget) closeSounds(); });
+        async function saveSound(role, id, on) {
+            const list = new Set(soundsView.routes[role] || []);
+            if (on) list.add(id); else list.delete(id);
+            try {
+                const res = await fetch('/sounds/routes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ routes: { [role]: [...list] } })
+                });
+                if (!res.ok) throw new Error(res.status);
+                soundsView = await res.json();
+                renderSounds();
+                const nobody = soundsView.sounds.filter(s => !soundsView.stations.some(st => (soundsView.routes[st.role] || []).includes(s.id)));
+                soundsFoot(nobody.length ? 'Saved. Nothing plays: ' + nobody.map(s => s.label).join(', ') + '.' : 'Saved.');
+            } catch (e) {
+                soundsFoot('Could not save. Try again.', true);
+                renderSounds();
+            }
+        }
+        // a station connecting or leaving updates the list while it's open
+        socket.on('servers_data_request', () => { if (get('sounds').open) loadSounds().catch(() => {}); });
 
         function createDummyPlayers() {
             let amnt = parseInt(get("dummy_vv").innerText, 10);

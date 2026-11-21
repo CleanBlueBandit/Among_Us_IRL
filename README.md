@@ -262,7 +262,15 @@ When the O2 or reactor alarm goes off, its station plays the alarm sound (`publi
 - The voice is made on the server, offline, with [Piper](https://github.com/rhasspy/piper) (the Lessac voice) through `sherpa-onnx-node`. A line takes a fraction of a second on a desktop processor.
 - The voice (about 80 MB) is downloaded once from GitHub, the first time the server starts, into `voice/models/`. Without internet at that moment, or on a system it can't run on (Alpine Linux in Docker, for example), the alarms play without the voice and the reason is in `error.log`.
 - The station mixes the alarm and the voice in its browser, with reverb over both. Press **Connect** on the station so the browser allows sound.
-- When the game ends, the reactor station plays the crewmate or impostor win sound (`public/sounds/win_crewmates.mp3`, `public/sounds/win_impostors.mp3`), or the O2 station if no reactor station is connected. If the station is still speaking (*"Containment lost."*), the sound starts once the line is over.
+- When the game ends, the crewmate or impostor win sound plays (`public/sounds/win_crewmates.mp3`, `public/sounds/win_impostors.mp3`). If the station is still speaking (*"Containment lost."*), the sound starts once the line is over.
+
+### Station sounds
+
+In the host lobby, **Station sounds** lists the four stations (O2, reactor, emergency, communications) and whether a device is connected to each. Tick what each one plays: the O2 alarm, the reactor alarm, the crewmate win and the impostor win. More than one station can play the same sound, and one station can play several, so the alarm can sound in more than one room. An alarm's spoken lines play wherever that alarm plays.
+
+- Out of the box, the O2 station plays the O2 alarm and the reactor station plays the reactor alarm and both win sounds.
+- The choice is saved in `sounds.json` next to `server.js`, by station, so it stays through a reset, a server restart and a device swap. Changes apply straight away, even during an alarm.
+- The emergency station has no Connect button, so if its browser holds the sound back it shows **Tap to enable sound** until someone taps the screen (only while it has sounds to play).
 
 Everything is set in `voice.json` next to `server.js`. It is read each time an alarm starts, so changes apply to the next alarm without a restart. Leave a key out (or delete the file) and the default is used.
 

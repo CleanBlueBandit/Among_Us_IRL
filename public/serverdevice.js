@@ -1,11 +1,14 @@
-// Shared by the server device pages (o2, reactor, emergency).
+// Shared by the server device pages (o2, reactor, emergency, comms).
 // The device never leaves its page during a session, so the sound it was allowed to play
 // once (that first tap) keeps working game after game:
 //   - game over  -> the win screen is shown over the page (in a frame), with "Switch server" in the corner
 //   - restart    -> the win screen goes away and the page resets itself, still on the same page
 //   - this device loses its role (another device took it over, or a full reset) -> back to the lobby
 //   - comms sabotaged -> every device but comms shows "no signal" until comms are back
-// Usage: ServerDevice.attach(socket, { role: 'o2', onReset: fn })
+//   - sounds -> whatever the host set this station to play (alarmaudio.js). Pass the page's AudioContext
+//     as `audio` if it made one on a tap; otherwise one is made here, and if the browser holds it back
+//     a "tap to enable sound" button shows while this station has sounds to play.
+// Usage: ServerDevice.attach(socket, { role: 'o2', audio: ctx, onReset: fn })
 (function () {
     var css = '' +
         '.sd-over{position:fixed;inset:0;z-index:2147483000;background:#000;opacity:0;transition:opacity .6s ease;}' +
@@ -30,7 +33,14 @@
         '@keyframes sd-flick{0%,100%{opacity:1}47%{opacity:1}48%{opacity:.35}50%{opacity:1}83%{opacity:.6}84%{opacity:1}}' +
         '.sd-nosig b{font-size:clamp(1.2rem,4.5vw,2.4rem);letter-spacing:.14em;color:#f87171;}' +
         '.sd-nosig span{font-size:.8rem;letter-spacing:.2em;color:#8b95a1;font-weight:500;}' +
-        '@media (prefers-reduced-motion: reduce){.sd-nosig::before,.sd-nosig svg{animation:none;}}';
+        '@media (prefers-reduced-motion: reduce){.sd-nosig::before,.sd-nosig svg{animation:none;}}' +
+        '.sd-sound{position:fixed;left:50%;bottom:max(16px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:2147481000;' +
+        'display:flex;align-items:center;gap:8px;padding:.65rem 1.1rem;border-radius:999px;border:1px solid rgba(255,255,255,.45);' +
+        'background:rgba(0,0,0,.75);color:#fff;font:600 .85rem/1 "Segoe UI",system-ui,-apple-system,sans-serif;letter-spacing:.06em;' +
+        'text-transform:uppercase;cursor:pointer;box-shadow:0 0 14px rgba(255,255,255,.12);}' +
+        '.sd-sound[hidden]{display:none;}' +
+        '.sd-sound svg{width:18px;height:18px;flex:none;}' +
+        '.sd-sound:focus-visible{outline:2px solid #fff;outline-offset:2px;}';
     var NO_SIGNAL_SVG = '<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
         '<path d="M32 34v22M24 56h16"/><circle cx="32" cy="30" r="4"/>' +
         '<path d="M21 19a15 15 0 0 0 0 22M43 19a15 15 0 0 1 0 22" opacity=".55"/><path d="M13 11a26 26 0 0 0 0 38M51 11a26 26 0 0 1 0 38" opacity=".3"/>' +
@@ -78,6 +88,27 @@
                 nosig.hidden = !down;
                 if (opts.onComms) { try { opts.onComms(down); } catch (e) { console.error(e); } }
             });
+        }
+
+        // This station's sounds (the host picks them).
+        var ctx = opts.audio || null;
+        if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ctx = null; } }
+        if (ctx && window.AlarmAudio) {
+            var sound = window.AlarmAudio.create(ctx, socket), hasSounds = false;
+            var chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'sd-sound';
+            chip.hidden = true;
+            chip.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                '<path d="M11 5 6 9H2v6h4l5 4z"/><path d="m23 9-6 6M17 9l6 6"/></svg>Tap to enable sound';
+            document.body.appendChild(chip);
+            var update = function () { chip.hidden = !hasSounds || ctx.state === 'running'; };
+            var unlock = function () { if (ctx.state !== 'running') ctx.resume().then(update, update); };
+            chip.addEventListener('click', unlock);
+            ['pointerdown', 'keydown', 'touchstart'].forEach(function (ev) { document.addEventListener(ev, unlock, true); });
+            ctx.addEventListener('statechange', update);
+            sound.onSounds(function (list) { hasSounds = list.length > 0; update(); });
+            unlock();
         }
 
         var shown = false;
