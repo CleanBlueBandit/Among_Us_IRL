@@ -2086,8 +2086,10 @@ io.on("connection", async (socket) => {
         socket.join(TABLETS);
         const emitToTablet = socket.emit.bind(socket);
         socket.emit = (ev, ...args) => (commsDown && !COMMS_THROUGH.has(ev)) ? true : emitToTablet(ev, ...args);
-        // Enough for the dark tablet: whether comms are down, and whether this player can still report.
-        socket.emit('comms_state', { down: commsDown, alive: data.players[cookies.session].alive !== false });
+        // Enough for the dark tablet: whether comms are down, whether this player can still report, and
+        // whether "I'm dead" is really the impostor's way to the sabotage remote (only ever sent to themselves).
+        const me = data.players[cookies.session];
+        socket.emit('comms_state', { down: commsDown, alive: me.alive !== false, impostor: !!me.impostor });
     } else {
         socket.emit('comms_state', { down: commsDown });
     }
@@ -2382,6 +2384,12 @@ io.on("connection", async (socket) => {
                     socket.emit("imdead_ack", { ok: true });
                     return;
                 }
+                // impostors can't be killed: they only leave the game by being voted out
+                if (player.impostor) {
+                    logDebug(`Death request refused: ${player.username} is an impostor.`);
+                    socket.emit("imdead_ack", { ok: false, reason: 'impostor' });
+                    return;
+                }
                 // no killing once a meeting is called
                 if (d.gameState.emergencyMeeting) {
                     socket.emit("imdead_ack", { ok: false, reason: 'No one can die during a meeting' });
@@ -2404,7 +2412,7 @@ io.on("connection", async (socket) => {
                 logDebug(`${cookies.session} death confirmed`);
 
                 socket.emit("imdead_ack", { ok: true });
-                if (commsDown) socket.emit('comms_state', { down: true, alive: false });
+                if (commsDown) socket.emit('comms_state', { down: true, alive: false, impostor: false });
                 socket.emit("player_data_request", selfView(cookies.session, player));
                 syncOverride(d);
                 io.emit("game_data_request", d.gameState);
