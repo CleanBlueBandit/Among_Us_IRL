@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Players</title>
+    <style>
+        :root{
+            --bg-void: #04050a;
+            --metal-1: #4b5058;
+            --metal-2: #383c43;
+            --metal-3: #24272c;
+            --metal-highlight: rgba(255, 255, 255, 0.16);
+            --metal-shadow: rgba(0, 0, 0, 0.55);
+            --bg-field: linear-gradient(160deg, rgba(0,0,0,0.35), rgba(0,0,0,0.15));
+            --border-dim: rgba(255, 255, 255, 0.08);
+            --border-mid: rgba(255, 59, 59, 0.4);
+            --text-bright: #f1f3f6;
+            --text-dim: #9aa0a8;
+            --text-faint: #6b7078;
+            --signal: #ff3b3b;
+            --stable: #7be08a;
+        }
+        *{ box-sizing: border-box; }
+        html, body{ min-height: 100%; margin: 0; }
+        body{
+            background: var(--bg-void);
+            color: var(--text-bright);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .void-gradient{
+            position: fixed; inset: 0; pointer-events: none;
+            background:
+                radial-gradient(ellipse 60% 45% at 50% 0%, rgba(80, 100, 180, 0.10), transparent 60%),
+                radial-gradient(ellipse 70% 50% at 90% 100%, rgba(120, 70, 160, 0.08), transparent 65%);
+        }
+        .stage{
+            position: relative; min-height: 100vh;
+            display: flex; align-items: flex-start; justify-content: center;
+            padding: 40px 16px 56px;
+        }
+        .panel{
+            position: relative; width: min(480px, 100%);
+            padding: 32px 26px 26px; border-radius: 14px;
+            background:
+                repeating-linear-gradient(135deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 5px),
+                linear-gradient(160deg, var(--metal-1) 0%, var(--metal-2) 45%, var(--metal-3) 100%);
+            border: 1px solid rgba(0,0,0,0.6);
+            box-shadow: inset 0 1px 0 var(--metal-highlight), inset 0 -2px 6px var(--metal-shadow), 0 30px 80px -30px rgba(0,0,0,0.8);
+        }
+        .head{ display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+        h1{ margin: 0; font-size: 19px; font-weight: 600; }
+        .count{ font-size: 12.5px; color: var(--text-dim); letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
+        .lead{ margin: 0 0 18px; font-size: 13px; line-height: 1.45; color: var(--text-dim); }
+        .list{ list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+        .row{
+            display: flex; align-items: center; gap: 10px; min-height: 52px;
+            padding: 10px 12px 10px 14px; border-radius: 10px;
+            background: var(--bg-field); border: 1px solid rgba(0,0,0,0.6);
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+        .dot{ flex: none; width: 9px; height: 9px; border-radius: 50%; background: #5b6068; box-shadow: inset 0 1px 1px rgba(0,0,0,0.5); }
+        .dot.on{ background: var(--stable); box-shadow: 0 0 8px rgba(123, 224, 138, 0.6); }
+        .dot.none{ background: transparent; border: 1px dashed #5b6068; }
+        .who{ flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .name{ font-size: 14.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .state{ font-size: 12px; color: var(--text-faint); }
+        .state.on{ color: var(--stable); }
+        .tag{ display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 4px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); border: 1px solid rgba(255,255,255,0.14); vertical-align: 1px; }
+        button{
+            font-family: inherit; font-size: 13px; font-weight: 600; letter-spacing: 0.03em;
+            color: var(--text-dim); background: linear-gradient(180deg, #565b63 0%, #33363b 100%);
+            border: 1px solid rgba(0,0,0,0.6); border-radius: 8px; padding: 9px 14px; min-height: 40px; cursor: pointer;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -2px 3px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.4);
+        }
+        button:hover{ color: var(--text-bright); border-color: var(--border-mid); }
+        button:focus-visible, a:focus-visible{ outline: 2px solid var(--text-bright); outline-offset: 2px; }
+        button:disabled{ opacity: 0.6; cursor: default; }
+        button.danger{ color: #fff; background: linear-gradient(180deg, #ff5b5b 0%, #b81e1e 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -2px 3px rgba(0,0,0,0.35); }
+        .acts{ flex: none; display: flex; gap: 6px; }
+        .row.asking{ flex-wrap: wrap; }
+        .row.asking .acts{ width: 100%; padding-left: 19px; align-items: center; }
+        .ask{ flex: 1; font-size: 13px; color: var(--text-bright); }
+        .msg{ margin: 14px 0 0; font-size: 12.5px; text-align: center; color: var(--text-dim); }
+        .msg.bad{ color: var(--signal); }
+        .msg:empty{ display: none; }
+        .empty{ margin: 0; padding: 16px; text-align: center; font-size: 13px; color: var(--text-faint); }
+        .back{ display: block; margin-top: 20px; text-decoration: none; }
+        .back button{ width: 100%; }
+    </style>
+</head>
+<body>
+    <div class="void-gradient"></div>
+    <div class="stage">
+        <main class="panel">
+            <div class="head"><h1>Players</h1><span class="count" id="count"></span></div>
+            <p class="lead" id="lead">Remove someone who left or shouldn't be here. They go back to the start page, and their tasks and vote stop counting.</p>
+            <ul class="list" id="list" aria-live="polite"></ul>
+            <p class="msg" id="msg" role="status"></p>
+            <a class="back" id="back" href="/waiting"><button type="button" tabindex="-1">Back</button></a>
+        </main>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const $ = id => document.getElementById(id);
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        let players = [], started = false, asking = null, busy = false;
+
+        function render() {
+            const n = players.filter(p => !p.dummy).length, d = players.length - n;
+            $('count').textContent = `${n} player${n === 1 ? '' : 's'}${d ? ` + ${d} dummy` : ''}`;
+            $('back').href = started ? '/dashboard' : '/waiting';
+            $('back').firstElementChild.textContent = started ? 'Back to the game' : 'Back to the lobby';
+            if (!players.length) { $('list').innerHTML = '<li class="empty">No players yet.</li>'; return; }
+            $('list').innerHTML = players.map(p => {
+                const state = p.host ? 'You' : p.dummy ? 'Test player' : p.online ? 'Connected' : 'Not connected';
+                const dot = p.dummy ? 'none' : (p.online || p.host) ? 'on' : '';
+                let acts = '';
+                if (!p.host) acts = asking === p.id
+                    ? `<span class="ask">Remove ${esc(p.name)}?</span><button type="button" class="danger" data-yes="${esc(p.id)}" ${busy ? 'disabled' : ''}>Remove</button><button type="button" data-no>Cancel</button>`
+                    : `<button type="button" data-kick="${esc(p.id)}">Remove</button>`;
+                return `<li class="row${asking === p.id ? ' asking' : ''}"><span class="dot ${dot}" aria-hidden="true"></span>
+                    <span class="who"><span class="name">${esc(p.name)}${p.host ? '<span class="tag">host</span>' : ''}${p.dummy ? '<span class="tag">dummy</span>' : ''}</span>
+                    <span class="state ${dot === 'on' && !p.host ? 'on' : ''}">${state}</span></span>
+                    <span class="acts">${acts}</span></li>`;
+            }).join('');
+        }
+        async function load() {
+            try {
+                const res = await fetch('/players/list', { cache: 'no-store' });
+                if (res.status === 401) { window.location.href = '/host'; return; }
+                const j = await res.json();
+                players = j.players || []; started = !!j.started;
+                if (asking && !players.some(p => p.id === asking)) asking = null;
+                render();
+            } catch (e) { /* keep what is shown; the next refresh tries again */ }
+        }
+        async function kick(id) {
+            const p = players.find(x => x.id === id);
+            busy = true; render();
+            try {
+                const res = await fetch('/players/kick', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+                const j = await res.json().catch(() => ({}));
+                if (!res.ok) { $('msg').className = 'msg bad'; $('msg').textContent = j.error || 'Could not remove that player.'; }
+                else { $('msg').className = 'msg'; $('msg').textContent = `${j.name || (p && p.name) || 'The player'} was removed.`; players = j.players || players.filter(x => x.id !== id); }
+            } catch (e) { $('msg').className = 'msg bad'; $('msg').textContent = 'Could not reach the server.'; }
+            busy = false; asking = null; render();
+        }
+        $('list').addEventListener('click', e => {
+            const b = e.target.closest('button'); if (!b || b.disabled) return;
+            if (b.dataset.kick) { asking = b.dataset.kick; $('msg').textContent = ''; render(); const y = $('list').querySelector('[data-yes]'); if (y) y.focus(); }
+            else if (b.dataset.yes) kick(b.dataset.yes);
+            else if ('no' in b.dataset) { asking = null; render(); }
+        });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape' && asking) { asking = null; render(); } });
+
+        // Joins and leaves come in as game updates; who is connected is refreshed every few seconds.
+        const socket = io();
+        socket.on('game_data_request', load);
+        socket.on('presence_check', ack => { if (typeof ack === 'function') ack(true); });
+        load();
+        setInterval(load, 4000);
+    </script>
+</body>
+</html>

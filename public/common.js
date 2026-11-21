@@ -1,4 +1,7 @@
 const socket = io();
+// The server pings open pages before a restart (no answer = left), and sends removed players away.
+socket.on('presence_check', function (ack) { if (typeof ack === 'function') ack(true); });
+socket.on('kicked', function (d) { window.location.href = '/?removed=' + encodeURIComponent((d && d.reason) || 'kicked'); });
 
 function get(id) {
     return document.getElementById(id);

@@ -105,6 +105,26 @@ function soundSessions(data, soundId) {
 }
 const isOnline = s => (io.sockets.adapter.rooms.get(s) || new Set()).size > 0;
 
+// ---- Presence ----
+// When each session's socket last connected or disconnected. A player moving between two pages has
+// no socket for a moment; a restart shouldn't count that as having left.
+const lastSeen = new Map();
+const PRESENCE_GRACE_MS = 15000;
+// Ask every open page of a session to answer (pages reply to 'presence_check'). True if one does in time.
+function answersPing(session, ms = 2500) {
+    return new Promise(resolve => {
+        if (!isOnline(session)) return resolve(false);
+        io.to(session).timeout(ms).emit('presence_check', (err, responses) => resolve(Array.isArray(responses) && responses.length > 0));
+    });
+}
+// Sessions taken out of the game by the host ('kicked') or by the restart clean-up ('offline'), so their
+// pages can say why when they come back. Only kept while the server runs.
+const removedSessions = new Map();
+function markRemoved(session, reason) {
+    removedSessions.set(session, reason);
+    if (removedSessions.size > 500) removedSessions.delete(removedSessions.keys().next().value);
+}
+
 // Spoken O2 / reactor alarms (scripts/alarmVoice.js, tuned in voice.json). Lines go to the devices that
 // play that alarm.
 const alarmVoice = createAlarmVoice({
@@ -793,6 +813,17 @@ app.post("/end", async (req, res) => {
 })
 
 app.post("/restart", async (req, res) => {
+    // Before restarting, ping every player's open pages. Whoever doesn't answer (and hasn't had a page
+    // open in the last few seconds) has most likely left, and is taken out of the lobby.
+    const first = await loadGame();
+    if (!isHostSession(first, req.cookies.session)) {
+        logDebug(`Unauthorised POST game restart attempt by session: ${req.cookies.session}`);
+        return res.status(401).json({ message: "You are not the host.", failed: true });
+    }
+    const candidates = Object.keys(first.players).filter(id => id !== first.hostSession && first.players[id].role !== 'dummy');
+    const answered = new Set();
+    await Promise.all(candidates.map(async id => { if (await answersPing(id)) answered.add(id); }));
+
     await withGameLock(async () => {
         const session = req.cookies.session;
         const data = await loadGame();
@@ -805,6 +836,12 @@ app.post("/restart", async (req, res) => {
         logDebug("Host restarted the game via POST.");
         clearAllSabotageTimers();
         clearEmergencyMeetingTimer();
+
+        const now = Date.now();
+        const gone = candidates.filter(id => data.players[id] && !answered.has(id) && now - (lastSeen.get(id) || 0) > PRESENCE_GRACE_MS);
+        const goneNames = gone.map(id => data.players[id].username);
+        for (const id of gone) { delete data.players[id]; markRemoved(id, 'offline'); }
+        if (gone.length) logDebug(`Restart: removed ${gone.length} player(s) who didn't answer: ${goneNames.join(', ')}`);
 
         for (const id of Object.keys(data.players)) {
             const p = data.players[id];
@@ -835,7 +872,7 @@ app.post("/restart", async (req, res) => {
         io.emit('restart_game', {});
         io.emit('game_data_request', data.gameState);
 
-        return res.status(200).json({ message: "Game restarted.", failed: false });
+        return res.status(200).json({ message: "Game restarted.", failed: false, removed: goneNames });
     });
 });
 
@@ -843,7 +880,7 @@ app.get('/dashboard', async (req, res) => {
     const data = await loadGame();
     const session = req.cookies.session;
     if (!data.players[session]) {
-        return res.status(401).json({ error: "401 unauthorised." });
+        return res.redirect(removedSessions.has(session) ? `/?removed=${removedSessions.get(session)}` : '/');
     }
 
     if (!data.gameState.started) {
@@ -888,57 +925,87 @@ app.get('/emergency-client', async (req, res) => {
     return res.sendFile(path.join(__dirname, 'public', 'EM.html'));
 })
 
+// Take a player out of the game: they logged out, or the host removed them. Keeps the task and
+// alive counters, the meeting (votes, who is present) and the win checks right. The caller saves,
+// then calls afterPlayerRemoved().
+function removePlayer(data, session) {
+    const leavingPlayer = data.players[session];
+    if (!leavingPlayer) return false;
+    // Only decrement alive-related counters if this player was actually still alive.
+    const wasAlive = leavingPlayer.alive !== false;
+    if (data.gameState.started && !leavingPlayer.impostor) {
+        data.gameState.totalTasks = Math.max(0, data.gameState.totalTasks - (leavingPlayer.totalTasks || 0));
+        data.gameState.completedTasks = Math.max(0, data.gameState.completedTasks - (leavingPlayer.tasksCompleted || 0));
+    }
+    delete data.players[session];
+    data.gameState.playerCount = Math.max(0, data.gameState.playerCount - 1);
+
+    // The meeting: their vote goes, votes for them count as skips, and they're no longer waited for.
+    delete emergencyVotes[session];
+    for (const voter of Object.keys(emergencyVotes)) if (emergencyVotes[voter] === session) emergencyVotes[voter] = 'skip';
+    const g = data.gameState.meetingGather;
+    if (g && Array.isArray(g.present)) g.present = g.present.filter(pid => pid !== pidOf(session));
+
+    if (wasAlive) {
+        data.gameState.alivePlayers = Math.max(0, data.gameState.alivePlayers - 1);
+        if (leavingPlayer.impostor) {
+            data.gameState.aliveImpostors = Math.max(0, data.gameState.aliveImpostors - 1);
+        }
+        evaluateWinConditions(data, {      // only acts while a game is running
+            crewWin: "THE CREW ELIMINATED EVERY IMPOSTOR",
+            impostorWin: "THE IMPOSTORS OVERWHELMED THE CREW"
+        });
+    }
+    evaluateTaskWin(data);
+    return true;
+}
+// Tell everyone after a removal has been saved: new counts, the meeting moving on, or the game ending.
+async function afterPlayerRemoved(data) {
+    const gs = data.gameState;
+    io.emit('game_data_request', gs);
+    if (gs.started && gs.emergencyMeeting) {
+        if (gs.meetingGather) {                 // one fewer to wait for
+            announceGather(data);
+            await checkGathered(data);
+        } else {
+            io.emit('emergency_vote_update', { players: buildEmergencyRoster(data) });
+            const required = emergencyVoterIds(data);
+            if (required.length > 0 && required.every(id => Object.hasOwn(emergencyVotes, id))) {
+                logDebug("Everyone left has voted. Resolving emergency meeting early.");
+                await resolveEmergencyMeeting({ votes: tallyEmergencyVotes() });
+            }
+        }
+    }
+    if (!gs.started && (gs.crewmatesWon || gs.impostorsWon)) {
+        io.emit('game_over', {
+            winner: gs.crewmatesWon ? 'crewmates' : 'impostors',
+            reason: 'disconnect'
+        });
+    }
+}
+// Send a removed player's open pages to the start page, then close their connections.
+function sendAway(session, reason) {
+    markRemoved(session, reason);
+    io.to(session).emit('kicked', { reason });
+    setTimeout(() => io.in(session).disconnectSockets(true), 1500);
+}
+
 app.get('/logout', async (req, res) => {
     const session = req.cookies.session;
 
     await withGameLock(async () => {
         const data = await loadGame();
         if (data.players[session]) {
-            const leavingPlayer = data.players[session];
-            logDebug(`Player logged out: ${leavingPlayer.username} (${session})`);
+            logDebug(`Player logged out: ${data.players[session].username} (${session})`);
             if (session === data.hostSession) {
                 logDebug(`Host logged out! Stopping game.`);
                 data.gameState.host = "";
                 delete data.hostSession;
                 data.gameState.started = false;
             }
-
-            // Only decrement alive-related counters if this player was actually still alive -
-            // previously this ran unconditionally, silently under-counting whenever a dead
-            // player (or an impostor) logged out.
-            const wasAlive = leavingPlayer.alive !== false;
-            if (data.gameState.started && !leavingPlayer.impostor) {
-                data.gameState.totalTasks = Math.max(0, data.gameState.totalTasks - (leavingPlayer.totalTasks || 0));
-                data.gameState.completedTasks = Math.max(0, data.gameState.completedTasks - (leavingPlayer.tasksCompleted || 0));
-            }
-            delete data.players[session];
-            data.gameState.playerCount = Math.max(0, data.gameState.playerCount - 1);
-
-            if (wasAlive) {
-                data.gameState.alivePlayers = Math.max(0, data.gameState.alivePlayers - 1);
-                if (leavingPlayer.impostor) {
-                    data.gameState.aliveImpostors = Math.max(0, data.gameState.aliveImpostors - 1);
-                }
-                evaluateWinConditions(data, {
-                    crewWin: "THE CREW ELIMINATED EVERY IMPOSTOR",
-                    impostorWin: "THE IMPOSTORS OVERWHELMED THE CREW"
-                });
-            }
-            evaluateTaskWin(data);
-
+            removePlayer(data, session);
             await saveGame(data);
-            io.emit('game_data_request', data.gameState);
-            if (data.gameState.meetingGather && data.gameState.started) {   // one fewer to wait for
-                announceGather(data);
-                await checkGathered(data);
-            }
-
-            if (!data.gameState.started && (data.gameState.crewmatesWon || data.gameState.impostorsWon)) {
-                io.emit('game_over', {
-                    winner: data.gameState.crewmatesWon ? 'crewmates' : 'impostors',
-                    reason: 'disconnect'
-                });
-            }
+            await afterPlayerRemoved(data);
         }
 
         if (validateServer(data.servers, session)) {
@@ -1917,7 +1984,7 @@ io.on("connection", async (socket) => {
     const data = await loadGame();
     
     logDebug(`Client connected via socket (session: ${cookies.session || 'unknown'})`);
-    if (cookies.session) socket.join(cookies.session);
+    if (cookies.session) { socket.join(cookies.session); lastSeen.set(cookies.session, Date.now()); }
     socket.emit('comms_state', { down: commsDown });
 
     try {
@@ -1972,6 +2039,10 @@ io.on("connection", async (socket) => {
             socket.emit('reactor_override_status', reactorStatus(data));
             socket.emit('station_sounds', stationSoundsFor(data.servers[cookies.session]));
             if (data.gameState.emergencyMeeting && data.gameState.meetingGather) socket.emit('meeting_gather', gatherView(data));
+        }
+        else if (cookies.session && removedSessions.has(cookies.session)) {
+            // Taken out of the game while this page was away: send it to the start page.
+            socket.emit('kicked', { reason: removedSessions.get(cookies.session) });
         }
         else {
             logDebug(`Socket connection rejected: username not found for session ${cookies.session}`);
@@ -2359,6 +2430,7 @@ io.on("connection", async (socket) => {
         
         socket.on('disconnect', () => {
             logDebug(`Client disconnected (session: ${cookies.session || 'unknown'}).`);
+            if (cookies.session) lastSeen.set(cookies.session, Date.now());
             if (reactorFix && reactorFix.holders.delete(socket.id)) evaluateReactorHold();
         });
     }
@@ -2430,12 +2502,50 @@ app.get("/waiting", async (req, res) => {
             logDebug(`Server tried to log in, denied access for session ${session}`);
         }
 
-        return res.sendFile(path.join(__dirname, 'public', 'waiting_lobby.html'));
+        if (data.players[session]) return res.sendFile(path.join(__dirname, 'public', 'waiting_lobby.html'));
     }
 
-    logDebug("Unauthorised access attempt to /waiting.");
-    res.status(401).json({ error: "401 unauthorised" })
+    // Not in the game (any more): back to the start page, saying why when we know.
+    logDebug("Access to /waiting without a player session.");
+    return res.redirect(removedSessions.has(session) ? `/?removed=${removedSessions.get(session)}` : '/');
 })
+
+// ---- Players (host only): who is in the game, who is connected, and removing someone ----
+function playersAdminView(data) {
+    return Object.keys(data.players).map(id => {
+        const p = data.players[id], dummy = p.role === 'dummy';
+        return { id: pidOf(id), name: p.username, host: id === data.hostSession, dummy, online: dummy ? null : isOnline(id) };
+    });
+}
+app.get('/players', async (req, res) => {
+    const data = await loadGame();
+    if (!isHostSession(data, req.cookies.session)) return res.redirect('/host');
+    return res.sendFile(path.join(__dirname, 'public', 'players.html'));
+});
+app.get('/players/list', async (req, res) => {
+    const data = await loadGame();
+    if (!isHostSession(data, req.cookies.session)) return res.status(401).json({ error: 'Only the host can see this.' });
+    res.set('Cache-Control', 'no-store');
+    return res.json({ players: playersAdminView(data), started: !!data.gameState.started });
+});
+app.post('/players/kick', async (req, res) => {
+    let result;
+    await withGameLock(async () => {
+        const data = await loadGame();
+        if (!isHostSession(data, req.cookies.session)) { result = [401, { error: 'Only the host can remove players.' }]; return; }
+        const target = sessionOfPid(data, req.body && req.body.id);
+        if (!target) { result = [404, { error: 'That player is not in the game any more.' }]; return; }
+        if (target === data.hostSession) { result = [400, { error: "You can't remove yourself. Use Leave instead." }]; return; }
+        const name = data.players[target].username;
+        removePlayer(data, target);
+        await saveGame(data);
+        logDebug(`Host removed ${name} from the game.`);
+        sendAway(target, 'kicked');
+        await afterPlayerRemoved(data);
+        result = [200, { ok: true, name, players: playersAdminView(data) }];
+    });
+    return res.status(result[0]).json(result[1]);
+});
 
 function parseSettingsArray(rawSettings, playerCount) {
     if (!Array.isArray(rawSettings)) return null;

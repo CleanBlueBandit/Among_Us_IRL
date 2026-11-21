@@ -405,6 +405,7 @@
             background: transparent; border: 1px dashed #475569; border-radius: 10px; cursor: pointer;
         }
         .btn-host[hidden] { display: none; }
+        .host-link { display: block; text-align: center; text-decoration: none; }
         .btn-host:focus-visible { outline: 2px solid #cbd5e1; outline-offset: 2px; }
         /* "are you sure?" inside the screen */
         .gather-ask {
@@ -735,6 +736,8 @@
                         <span class="emergency-label">Emergency Meeting</span>
                         <span id="emergencyMeetingStatus" class="meeting-badge meeting-idle">Ready</span>
                     </div>
+
+                    <a class="btn-host host-link" id="hostPlayers" href="/players" hidden>Host: players</a>
 
                     <div class="screen-hint" id="screenHint" aria-hidden="true">
                         <span>psst, crewmate! tap the folded corner to see your tasks</span>
@@ -1127,6 +1130,7 @@
 
                 isImpostor = !!data.impostor;
                 myPid = data.id; myName = data.username;
+                showHostLink();
                 sabRender();
                 renderGather();
             });
@@ -1139,6 +1143,7 @@
                 document.getElementById('taskProgressBar').style.width = pct + '%';
 
                 hostName = data.host || null;
+                showHostLink();
                 // a meeting called: everyone gathers first (on this screen), then votes on the meeting page
                 if (data.emergencyMeeting && !data.meetingGather) {
                    window.location.href = "/emergency-client"
@@ -1154,6 +1159,8 @@
             var presentBtn = document.getElementById('presentBtn');
             var forceBtn = document.getElementById('forceBtn');
             var presentAsk = document.getElementById('presentAsk'), forceAsk = document.getElementById('forceAsk');
+            // The host gets a link to the players list (to remove someone). The server checks it's really the host.
+            function showHostLink() { document.getElementById('hostPlayers').hidden = !(myName && hostName && myName === hostName); }
             function esc(t) { return String(t).replace(/[&<>"']/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
             function renderGather() {
                 var open = !!gather;
