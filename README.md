@@ -257,7 +257,7 @@ Where each QR code is gets fixed when the game starts, so editing the plan mid-g
 
 ## Meetings
 
-When the emergency button is pressed, or someone reports a body, every player's tablet (crewmates and impostors alike) turns into a full-screen alert telling everyone to go to the emergency room, with an **I'm present** button underneath. The meeting itself, and its voting countdown, only starts once every living player has tapped it.
+When the emergency button is pressed, or someone reports a body, every player's tablet screen turns into an alert telling everyone to go to the emergency room, with the list of who's there and an **I'm present** button. An impostor on the sabotage remote is sent back to the tablet for it. Once everyone is there, the tablets move on to the vote. The meeting itself, and its voting countdown, only starts once every living player has tapped it.
 
 - The alert shows who has checked in so far, and the emergency station shows the same count and who it's still waiting for.
 - Tapping **I'm present** in the first 10 seconds after the call asks first: it explains that the button means you are standing in the emergency room, and asks whether you really are.
