@@ -494,7 +494,7 @@ function renderInspector() {
               <div class="field"><label for="rOp">Opacity</label><input type="range" id="rOp" min="0.05" max="1" step="0.05" value="${ref.opacity}"></div>
               <div class="field"><label for="rW">Width (m)</label><input type="number" id="rW" min="1" step="0.5" value="${(ref.w / 100).toFixed(2)}"></div>
               <div class="row"><button class="btn" id="rVis">${ref.visible ? 'Hide' : 'Show'}</button><button class="btn" id="rAdj">${refAdjust ? 'Done moving' : 'Move &amp; scale'}</button><button class="btn" id="rImp">Replace</button><button class="btn danger" id="rDel">Remove</button></div>
-              <p class="muted">Set the width to the real width of the building, then trace over it.</p>`
+              <p class="muted">Set the width to the real width of the building, then trace over it.${refAdjust ? ' While it is selected for moving, Delete removes it.' : ''}</p>`
             : `<p class="muted" style="margin-top:0">Optional: a photo or drawing of the plan to trace over. It is only shown here, never to players.</p><button class="btn" id="rImp">Import image…</button>`}
           </div>`;
         return;
@@ -521,7 +521,8 @@ function renderInspector() {
     html += `</div><div class="sec"><h3>Arrange</h3><div class="row">
         <button class="btn" id="aRot" title="Shift+R">Rotate 90°</button><button class="btn" id="aFlipH" title="Shift+H">Flip ↔</button><button class="btn" id="aFlipV" title="Shift+V">Flip ↕</button>
         <button class="btn" id="aGroup" ${n < 2 ? 'disabled' : ''} title="Ctrl+G">Group</button><button class="btn" id="aUngroup" ${grouped ? '' : 'disabled'} title="Ctrl+Shift+G">Ungroup</button>
-        <button class="btn" id="aDup" title="Ctrl+D">Duplicate</button><button class="btn danger" id="aDel" title="Delete">Delete</button></div></div>`;
+        <button class="btn" id="aDup" title="Ctrl+D">Duplicate</button><button class="btn danger" id="aDel" title="Delete">Delete</button></div>
+        <div class="field" style="margin-top:10px"><label for="aScale">Scale (%)${selectionSize() ? ` · now ${selectionSize()}` : ''}</label><div class="row"><button class="btn" id="aShrink" title=",">− 10%</button><input type="number" id="aScale" min="1" step="1" value="100" style="flex:1;min-width:0" title="Type a percentage and press Enter, e.g. 50 halves the size"><button class="btn" id="aGrow" title=".">+ 10%</button></div></div></div>`;
     pane.innerHTML = html;
 }
 function renderTop() {
@@ -532,7 +533,7 @@ function renderTop() {
     stage.classList.toggle('draw', tool === 'wall' || tool === 'door' || tool === 'room' || tool === 'void' || tool === 'erase');
     stage.classList.toggle('pan', tool === 'pan' || spaceDown);
     $('gridBtn').classList.toggle('on', snapGrid);
-    $('stSel').textContent = sel.size ? `${sel.size} selected` : '';
+    $('stSel').textContent = sel.size ? `${sel.size} selected` : refAdjust && floor().reference ? 'Reference image selected' : '';
     const hints = {
         select: 'Click to select · drag to move · drag a line end to move a corner · drag a box: left→right picks what is inside, right→left what it touches',
         wall: drawing ? 'Click for each corner · click an existing line to connect and stop · Enter or double-click to stop · Shift = 45°' : 'Click to start a wall',
@@ -610,6 +611,33 @@ function transformSelection(fn) {
 const rotate = () => transformSelection((p, c) => [c[0] - (p[1] - c[1]), c[1] + (p[0] - c[0])]);
 const flipH = () => transformSelection((p, c) => [2 * c[0] - p[0], p[1]]);
 const flipV = () => transformSelection((p, c) => [p[0], 2 * c[1] - p[1]]);
+// Scale the selection around its centre. Ends of other lines that meet the selection go along, so
+// connected walls stretch instead of coming apart.
+function scaleSelection(factor) {
+    if (!sel.size || !(factor > 0) || factor === 1) return;
+    const s = selected(), set = moveSet();
+    const pts = [...s.lines.flatMap(l => [l.a, l.b]), ...s.rooms.map(r => r.at), ...s.pins.map(p => p.at)];
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    const c = [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2];
+    const t = p => [c[0] + (p[0] - c[0]) * factor, c[1] + (p[1] - c[1]) * factor].map(v => Math.round(v * 100) / 100);
+    if (s.lines.some(l => dist(l.a, l.b) * factor < 5)) { toast('That would make a line shorter than 5 cm.', 'bad'); return; }
+    change(() => {
+        for (const e of set.ends) e.l[e.key] = t(e.o);
+        for (const p of set.points) p.x.at = t(p.o);
+    });
+}
+function selectionSize() {
+    const s = selected(), pts = [...s.lines.flatMap(l => [l.a, l.b]), ...s.rooms.map(r => r.at), ...s.pins.map(p => p.at)];
+    if (!pts.length) return '';
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    return `${fmt(Math.max(...xs) - Math.min(...xs))} × ${fmt(Math.max(...ys) - Math.min(...ys))}`;
+}
+function deleteReference() {
+    if (!floor().reference) return;
+    refAdjust = false;
+    change(() => { floor().reference = null; });
+    toast('Reference image removed. Ctrl+Z brings it back.');
+}
 function setType(type) {
     const s = selected();
     if (!s.lines.length) return;
@@ -1124,8 +1152,8 @@ $('pane-inspect').addEventListener('click', e => {
     }
     else if (id === 'rImp') { $('refFile').click(); }
     else if (id === 'rVis') { change(() => { f.reference.visible = !f.reference.visible; }); }
-    else if (id === 'rAdj') { refAdjust = !refAdjust; if (refAdjust) setTool('select'); renderInspector(); render(); }
-    else if (id === 'rDel') { refAdjust = false; change(() => { f.reference = null; }); }
+    else if (id === 'rAdj') { refAdjust = !refAdjust; if (refAdjust) setTool('select'); renderInspector(); renderTop(); render(); }
+    else if (id === 'rDel') deleteReference();
     else if (id === 'lRotL') rotateBy(15);
     else if (id === 'lRotR') rotateBy(-15);
     else if (id === 'tWall') setType('wall');
@@ -1137,6 +1165,8 @@ $('pane-inspect').addEventListener('click', e => {
     else if (id === 'aUngroup') ungroup();
     else if (id === 'aDup') duplicate();
     else if (id === 'aDel') deleteSelection();
+    else if (id === 'aShrink') scaleSelection(1 / 1.1);
+    else if (id === 'aGrow') scaleSelection(1.1);
 });
 $('pane-inspect').addEventListener('change', e => {
     const f = floor(), id = e.target.id, v = e.target.value;
@@ -1144,6 +1174,7 @@ $('pane-inspect').addEventListener('change', e => {
     else if (id === 'roomName') { const r = selected().rooms[0]; if (r && !r.void) change(() => { r.name = v.trim(); }); }
     else if (id === 'lAng') { const r = selectedRotatable(); if (r && Number.isFinite(+v)) change(() => setAngle(r, +v)); }
     else if (id === 'rOp') change(() => { f.reference.opacity = +v; });
+    else if (id === 'aScale') { if (+v > 0) scaleSelection(+v / 100); else renderInspector(); }
     else if (id === 'rW') { const w = Math.max(100, +v * 100); if (w) change(() => { const s = w / f.reference.w; f.reference.w = w; f.reference.h *= s; }); }
     e.target.blur();
 });
@@ -1164,7 +1195,7 @@ $('refFile').addEventListener('change', async e => {
             const r = svg.getBoundingClientRect(), c = toWorld(r.left + r.width / 2, r.top + r.height / 2);
             const w = Math.min(4000, Math.max(800, img.naturalWidth)), h = w * (img.naturalHeight / img.naturalWidth || 0.7);
             change(() => { floor().reference = { file: out.file, x: Math.round(c[0] - w / 2), y: Math.round(c[1] - h / 2), w, h, opacity: 0.5, visible: true }; });
-            refAdjust = true; renderInspector(); render();
+            refAdjust = true; renderInspector(); renderTop(); render();
             toast('Drag the image to place it, drag its corner to size it, and set its real width.');
         };
         img.src = url;
@@ -1293,7 +1324,7 @@ document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
         if ($('help').classList.contains('on')) { $('help').classList.remove('on'); return; }
         if (drawing) { finishDrawing(); return; }
-        if (refAdjust) { refAdjust = false; renderInspector(); render(); return; }
+        if (refAdjust) { refAdjust = false; renderInspector(); renderTop(); render(); return; }
         if (sel.size) { sel.clear(); refresh(); }
         return;
     }
@@ -1310,7 +1341,7 @@ document.addEventListener('keydown', e => {
     }
     if (e.key === ' ') { e.preventDefault(); if (!spaceDown) { spaceDown = true; renderTop(); } return; }
     if (e.key === 'Enter' && drawing) { finishDrawing(); return; }
-    if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelection(); return; }
+    if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); if (!sel.size && refAdjust) deleteReference(); else deleteSelection(); return; }
     if (e.key.startsWith('Arrow')) {
         e.preventDefault();
         const step = (snapGrid ? GRID : 1) * (e.shiftKey ? 10 : 1);
@@ -1321,6 +1352,8 @@ document.addEventListener('keydown', e => {
     if (e.shiftKey && key === 'h') { flipH(); return; }
     if (e.shiftKey && key === 'v') { flipV(); return; }
     if (e.key === '?') { $('help').classList.add('on'); return; }
+    if (e.key === ',' || e.key === '<') { scaleSelection(1 / 1.1); return; }
+    if (e.key === '.' || e.key === '>') { scaleSelection(1.1); return; }
     if (e.key === '[') { rotateBy(15); return; }
     if (e.key === ']') { rotateBy(-15); return; }
     const tools = { v: 'select', w: 'wall', d: 'door', r: 'room', x: 'void', e: 'erase', h: 'pan' };
