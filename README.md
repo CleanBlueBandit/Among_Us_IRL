@@ -255,6 +255,16 @@ Once a floor plan is saved, every player's tablet gets a **Map** button (the imp
 
 Where each QR code is gets fixed when the game starts, so editing the plan mid-game doesn't move anyone's pins.
 
+## Meetings
+
+When the emergency button is pressed, or someone reports a body, every player's tablet (crewmates and impostors alike) turns into a full-screen alert telling everyone to go to the emergency room, with an **I'm present** button underneath. The meeting itself, and its voting countdown, only starts once every living player has tapped it.
+
+- The alert shows who has checked in so far, and the emergency station shows the same count and who it's still waiting for.
+- Tapping **I'm present** in the first 10 seconds after the call asks first: it explains that the button means you are standing in the emergency room, and asks whether you really are.
+- Ghosts (dead players) don't check in and aren't counted. If a player logs out while everyone is gathering, the meeting stops waiting for them.
+- No tasks or sabotage while players are gathering, and sabotage countdowns stay paused, as during the meeting.
+- The stations set to play them (the emergency station, out of the box) play an alarm with a voice over it: *"Emergency meeting. All personnel: remain calm. Gather in the emergency room."* (`public/sounds/emergency_meeting.mp3`), or for a body, *"Dead body was found. Emergency meeting. ..."* (`public/sounds/body_reported.mp3`). It fades out once everyone is present.
+
 ## Alarm voice
 
 When the O2 or reactor alarm goes off, its station plays the alarm sound (`public/sounds/o2.mp3`, `public/sounds/reactor.mp3`) and a voice names a random section of the ship, for example *"Warning! Reactor section 4B is unstable. Meltdown in 1 minute 30 seconds."* It counts down while the alarm runs and reads out how the repair is going (*"1 override lever pushed... 2 needed for an override."*, *"0 codes provided... 2 are needed for an override."*), both in the countdown lines and whenever a code goes in or a lever is pushed or let go. Once the crew fixes it, it names the same section again: *"Reactor section 4B stable."*
@@ -266,9 +276,9 @@ When the O2 or reactor alarm goes off, its station plays the alarm sound (`publi
 
 ### Station sounds
 
-In the host lobby, **Station sounds** lists the four stations (O2, reactor, emergency, communications) and whether a device is connected to each. Tick what each one plays: the O2 alarm, the reactor alarm, the crewmate win, the impostor win and the communications error (*"Attention, critical error in communications..."*, played once when communications go down; once they're back, the same stations say *"Attention! Communications restored."*, `public/sounds/communications_restored.mp3`). More than one station can play the same sound, and one station can play several, so the alarm can sound in more than one room. An alarm's spoken lines play wherever that alarm plays.
+In the host lobby, **Station sounds** lists the four stations (O2, reactor, emergency, communications) and whether a device is connected to each. Tick what each one plays: the O2 alarm, the reactor alarm, the crewmate win, the impostor win, the two meeting calls (see [Meetings](#meetings)) and the communications error (*"Attention, critical error in communications..."*, played once when communications go down; once they're back, the same stations say *"Attention! Communications restored."*, `public/sounds/communications_restored.mp3`). More than one station can play the same sound, and one station can play several, so the alarm can sound in more than one room. An alarm's spoken lines play wherever that alarm plays.
 
-- Out of the box, the O2 station plays the O2 alarm, the reactor station plays the reactor alarm and both win sounds, and the communications station plays the communications error.
+- Out of the box, the O2 station plays the O2 alarm, the reactor station plays the reactor alarm and both win sounds, and the communications station plays the communications error. The emergency station plays the meeting calls.
 - The choice is saved in `sounds.json` next to `server.js`, by station, so it stays through a reset, a server restart and a device swap. Changes apply straight away, even during an alarm.
 - The emergency station has no Connect button, so if its browser holds the sound back it shows **Tap to enable sound** until someone taps the screen (only while it has sounds to play).
 

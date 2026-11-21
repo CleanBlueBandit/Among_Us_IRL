@@ -1,4 +1,5 @@
-// What a server device plays: the O2 / reactor alarms with their spoken lines, and the win sounds.
+// What a server device plays: the O2 / reactor alarms with their spoken lines, the win sounds and the
+// one-off announcements (communications error, meeting calls).
 // The host picks which station plays which sound (host lobby, "Station sounds"); the server tells
 // each device what it plays and when an alarm is on, so the page itself doesn't decide.
 //
@@ -120,29 +121,52 @@
     function create(ctx, socket) {
         const chains = {};
         const chain = type => chains[type] || (chains[type] = createChain(ctx, type));
-        let winSrc = null, alarmsOn = [];
+        let alarmsOn = [];
+        const once = new Map();   // id -> { src, gain } of each one-shot sound playing
+        const onceTurn = new Map();   // id -> the latest request for it, so a sound stopped while loading never starts
         const listeners = [];
 
         function wake() { if (ctx.state === 'suspended') ctx.resume().catch(() => {}); }
 
-        // A sound played once, dry: the end-of-game sound (which first stops the alarms and anything still
-        // queued) or an announcement such as the communications error. `volume` is its key in voice.json's audio.
-        async function playOnce(url, volume, stopAlarms) {
-            if (stopAlarms) { for (const c of Object.values(chains)) { c.stop(0.05); c.hush(); } Object.keys(loops).forEach(stopLoop); }
+        // A sound played once, dry: the end-of-game sound (which first stops everything else) or an
+        // announcement such as the communications error or a meeting call. `volume` is its key in voice.json's
+        // audio; `id` names it, so stopOnce can end it early, and a new sound with the same id replaces it.
+        function stopOnce(id, fade) {
+            onceTurn.delete(id);
+            const e = once.get(id);
+            if (!e) return;
+            once.delete(id);
+            const t = ctx.currentTime;
+            e.gain.gain.cancelScheduledValues(t);
+            e.gain.gain.setTargetAtTime(0, t, fade || 0.05);
+            try { e.src.stop(t + (fade || 0.05) * 6); } catch (err) {}
+        }
+        async function playOnce(url, volume, stopAlarms, id) {
+            id = id || url;
+            const turn = {};
+            if (stopAlarms) {
+                for (const c of Object.values(chains)) { c.stop(0.05); c.hush(); }
+                Object.keys(loops).forEach(stopLoop);
+                new Set([...once.keys(), ...onceTurn.keys()]).forEach(k => stopOnce(k));
+            }
+            onceTurn.set(id, turn);
             try {
                 if (ctx.state === 'suspended') await ctx.resume();
                 const buf = await ctx.decodeAudioData(await (await fetch(url)).arrayBuffer());
-                try { if (winSrc) winSrc.stop(); } catch (e) {}
-                const src = ctx.createBufferSource(), g = ctx.createGain();
                 let vol = Object.values(chains).map(c => c.audio()[volume]).find(v => v != null);
                 if (vol == null) {   // no alarm on this device: read the volume from voice.json anyway
                     try { vol = ((await (await fetch('/alarm/settings?type=reactor', { cache: 'no-store' })).json()).audio || {})[volume]; } catch (e) {}
                 }
+                if (onceTurn.get(id) !== turn) return;   // stopped, or replaced, meanwhile
+                stopOnce(id);
+                onceTurn.set(id, turn);
+                const src = ctx.createBufferSource(), g = ctx.createGain();
                 src.buffer = buf;
                 g.gain.value = vol ?? 1;
                 src.connect(g); g.connect(ctx.destination);
-                winSrc = src;
-                src.onended = () => { if (winSrc === src) winSrc = null; };
+                const entry = { src, gain: g };
+                once.set(id, entry);
+                src.onended = () => { if (once.get(id) === entry) once.delete(id); };
                 src.start();
             } catch (e) {
                 console.warn('Could not play ' + url + ':', e);
@@ -185,7 +209,7 @@
 
         // Phones and tablets pause web audio when the screen dims or another app takes the sound. Wake it
         // straight back up while something should be playing, instead of waiting for the next voice line.
-        const playing = () => !!winSrc || Object.keys(loops).length > 0 || Object.values(chains).some(c => c.busy);
+        const playing = () => once.size > 0 || Object.keys(loops).length > 0 || Object.values(chains).some(c => c.busy);
         function keepAlive() { if (playing() && ctx.state !== 'running' && ctx.state !== 'closed') ctx.resume().catch(() => {}); }
         ctx.addEventListener('statechange', () => setTimeout(keepAlive, 200));
         document.addEventListener('visibilitychange', keepAlive);
@@ -213,8 +237,9 @@
                 wake();
                 chain(d.type).say(d.url);
             });
-            socket.on('win_sound', d => { if (d && d.url) playOnce(d.url, 'winVolume', true); });
-            socket.on('play_sound', d => { if (d && d.url) { wake(); playOnce(d.url, 'announceVolume', false); } });
+            socket.on('win_sound', d => { if (d && d.url) playOnce(d.url, 'winVolume', true, 'win'); });
+            socket.on('play_sound', d => { if (d && d.url) { wake(); playOnce(d.url, 'announceVolume', false, d.id); } });
+            socket.on('stop_sound', d => { if (d && d.id) stopOnce(d.id, 0.4); });
             // the server's station_sounds says so too; this is a second word that the alarm is over
             socket.on('sabotage_fixed', d => { if (d && chains[d.type]) chains[d.type].stop(); });
         }
