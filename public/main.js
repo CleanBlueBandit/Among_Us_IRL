@@ -6,7 +6,7 @@ function animateCountdown(targetEndTime) {
     if (clientAnimationId) cancelAnimationFrame(clientAnimationId);
 
     function updateFrame() {
-        const now = Date.now();
+        const now = serverNow();
         const genericTimeRemaining = targetEndTime - now;
 
         const secondsLeft = Math.max(0, (genericTimeRemaining / 1000)).toFixed(1);

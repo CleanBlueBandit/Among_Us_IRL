@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>O2 Life Support</title>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/servertime.js"></script>
     <script src="/serverdevice.js"></script>
     <script src="/alarmaudio.js"></script>
     <style>
@@ -225,7 +226,7 @@
             if (holdMs) msgTimer = setTimeout(() => { entry = ''; renderDigits(); idleMsg(); }, holdMs);
         }
         function idleMsg() {
-            if (Date.now() < lockUntil) return;
+            if (serverNow() < lockUntil) return;
             screenMsg(entry.length ? 'ENTER ' + (CODE_LEN - entry.length) + ' MORE' : 'AWAITING INPUT');
         }
         function renderCodes() {
@@ -239,7 +240,7 @@
         }
         function fmt(sec) { sec = Math.max(0, Math.ceil(sec)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
         function tick() {
-            const now = Date.now();
+            const now = serverNow();
             if (state === 'crisis') {
                 const left = Math.max(0, (endTime - now) / 1000);
                 $('clock').textContent = fmt(left);
@@ -284,7 +285,7 @@
 
         // ---- keypad input ----
         function press(k) {
-            if (state !== 'crisis' || busy || Date.now() < lockUntil) return;
+            if (state !== 'crisis' || busy || serverNow() < lockUntil) return;
             if ($('screen').classList.contains('ok') || $('screen').classList.contains('bad')) { entry = ''; screenMsg(''); }
             if (k === 'clr') { sfx.key(); entry = ''; renderDigits(); idleMsg(); return; }
             if (k === 'del') { if (entry) { sfx.key(); entry = entry.slice(0, -1); renderDigits(); idleMsg(); } return; }
@@ -336,13 +337,16 @@
         }
 
         // ---- server ----
+        // The first deadline can arrive before the clock sync answers; size the bar again once it has.
+        window.addEventListener('serverclock', () => { if (state === 'crisis' && endTime) total = Math.max(1, Math.round((endTime - serverNow()) / 1000)); });
+
         function setupSocketListeners() {
             socket.on('sabotage_data_request', ({ sData, endTime: end }) => {
                 const o2 = sData && sData.o2;
                 if (!o2 || state === 'game-over') return;
                 if (o2.sabotaged && o2.depleted) {
                     endTime = end || endTime;
-                    if (!total) total = Math.max(1, Math.round((endTime - Date.now()) / 1000));
+                    if (!total) total = Math.max(1, Math.round((endTime - serverNow()) / 1000));
                     setState('crisis');
                 } else if (state === 'crisis') {
                     restored();

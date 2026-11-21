@@ -811,6 +811,7 @@
     <div id="toast" class="toast-msg"></div>
 
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/servertime.js"></script>
     <script src="common.js"></script>
     <script type="module" src="/tabletmap.js"></script>
     <script>
@@ -1254,7 +1255,7 @@
             }
             function sabTick() {
                 if (sabCard.hidden || !sab.endTime) { document.getElementById('sabTime').textContent = ''; return; }
-                var left = Math.max(0, Math.ceil((sab.endTime - Date.now()) / 1000));
+                var left = Math.max(0, Math.ceil((sab.endTime - serverNow()) / 1000));
                 document.getElementById('sabTime').textContent = Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0');
             }
             setInterval(sabTick, 500);
