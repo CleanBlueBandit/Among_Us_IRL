@@ -1136,7 +1136,10 @@ function clearOverride(type) {
     pushStationSounds();
 }
 // The fix itself, then the sabotage cooldown.
-async function completeFix(type) {
+function completeFix(type) {
+    return withGameLock(() => completeFixNow(type));
+}
+async function completeFixNow(type) {
     const fixed = await fixSabotage(type);
     if (!fixed) return false;
     const freshData = await loadGame();
@@ -1297,84 +1300,99 @@ async function startSabotageCountdown(type, seconds) {
         endTime: Date.now() + (seconds * 1000)
     });
 
+    // The countdown runs against the clock (a deadline), not one step per tick: a slow save (a busy disk,
+    // antivirus) must not stretch it. Ticks never overlap, and take turns with fixes (withGameLock), so a
+    // tick that is still saving can't undo a fix or repeat a second.
+    let deadline = Date.now() + seconds * 1000, lastTick = Date.now(), busy = false;
     const timer = setInterval(async () => {
+        if (busy) return;
+        busy = true;
         try {
-            const d = await loadGame();
-            const sab = d.activeSabotages[type];
+            await withGameLock(async () => {
+                if (sabotageTimers.get(type) !== timer) return;   // fixed or reset meanwhile
+                const d = await loadGame();
+                const sab = d.activeSabotages[type];
+                const now = Date.now();
 
-            if (!sab || !sab.sabotaged) {
-                logDebug(`Sabotage timer cancelled naturally for: ${type}`);
-                clearInterval(timer);
-                sabotageTimers.delete(type);
-                return;
-            }
-
-            // Sabotage countdowns pause while a meeting is running and carry on afterwards.
-            if (d.gameState.emergencyMeeting) return;
-
-            sab.timeLeft = Math.max(0, sab.timeLeft - 1);
-            await saveGame(d);
-            io.emit('sabotage_tick', { type, timeLeft: sab.timeLeft });
-            if (sab.depleted || sab.meltdown) alarmVoice.tick(type, sab.timeLeft);
-
-            if (sab.timeLeft <= 0) {
-                const isCrisisPhase = (type === 'o2' && sab.depleted) ||
-                                      (type === 'reactor' && sab.meltdown);
-
-                if (!isCrisisPhase) {
-                    logDebug(`Sabotage ${type} reached crisis phase!`);
-                    if (type === 'o2') sab.depleted = true;
-                    else sab.meltdown = true;
-
-                    sab.timeLeft = meltdownCountdownSeconds;
-                    await saveGame(d);
-                    startOverride(d, type);
-
-                    const targetEndTime = Date.now() + (meltdownCountdownSeconds * 1000);
-                    io.emit('sabotage_data_request', {
-                        sData: d.activeSabotages,
-                        endTime: targetEndTime
-                    });
-
-                } else {
-                    logDebug(`Sabotage ${type} failed to be fixed. Impostors win!`);
-                    alarmVoice.failed(type);
-                    d.gameState.impostorsWon = true;
-                    d.gameState.crewmatesWon = false;
-                    d.gameState.started = false;
-                    
-                    if(sab.depleted){
-                        d.gameState.winCondition = "OXYGEN DEPRIVATION KILLED THE CREW"
-                    }
-                    else{
-                        d.gameState.winCondition = "REACTOR EXPLOSION DESTROYED THE SHIP"
-                    }
-                    
-                    await saveGame(d);
-
-                    io.emit('sabotage_data_request', {
-                        sData: d.activeSabotages,
-                        endTime: 0
-                    });
-
-                    io.emit('game_data_request', d.gameState);
-
-                    if (type === 'o2') {
-                        io.emit('game_over', { winner: 'impostors', reason: 'o2' });
-                    } else {
-                        io.emit('reactor_meltdown', {});
-                        io.emit('game_over', { winner: 'impostors', reason: 'reactor' });
-                    }
-
+                if (!sab || !sab.sabotaged) {
+                    logDebug(`Sabotage timer cancelled naturally for: ${type}`);
                     clearInterval(timer);
                     sabotageTimers.delete(type);
-                    clearOverride(type);
+                    return;
                 }
-            }
+
+                // Sabotage countdowns pause while a meeting is running and carry on afterwards.
+                if (d.gameState.emergencyMeeting) { deadline += now - lastTick; lastTick = now; return; }
+                lastTick = now;
+
+                const left = Math.max(0, Math.ceil((deadline - now) / 1000));
+                if (left === sab.timeLeft && left > 0) return;   // same second: nothing to save
+                sab.timeLeft = left;
+                if (left > 0) await saveGame(d);   // at 0 the step below saves
+                io.emit('sabotage_tick', { type, timeLeft: sab.timeLeft });
+                if (sab.depleted || sab.meltdown) alarmVoice.tick(type, sab.timeLeft);
+
+                if (sab.timeLeft <= 0) {
+                    const isCrisisPhase = (type === 'o2' && sab.depleted) ||
+                                          (type === 'reactor' && sab.meltdown);
+
+                    if (!isCrisisPhase) {
+                        logDebug(`Sabotage ${type} reached crisis phase!`);
+                        if (type === 'o2') sab.depleted = true;
+                        else sab.meltdown = true;
+
+                        sab.timeLeft = meltdownCountdownSeconds;
+                        deadline = Date.now() + meltdownCountdownSeconds * 1000;
+                        await saveGame(d);
+                        startOverride(d, type);
+
+                        io.emit('sabotage_data_request', {
+                            sData: d.activeSabotages,
+                            endTime: deadline
+                        });
+
+                    } else {
+                        logDebug(`Sabotage ${type} failed to be fixed. Impostors win!`);
+                        alarmVoice.failed(type);
+                        d.gameState.impostorsWon = true;
+                        d.gameState.crewmatesWon = false;
+                        d.gameState.started = false;
+                    
+                        if(sab.depleted){
+                            d.gameState.winCondition = "OXYGEN DEPRIVATION KILLED THE CREW"
+                        }
+                        else{
+                            d.gameState.winCondition = "REACTOR EXPLOSION DESTROYED THE SHIP"
+                        }
+                    
+                        await saveGame(d);
+
+                        io.emit('sabotage_data_request', {
+                            sData: d.activeSabotages,
+                            endTime: 0
+                        });
+
+                        io.emit('game_data_request', d.gameState);
+
+                        if (type === 'o2') {
+                            io.emit('game_over', { winner: 'impostors', reason: 'o2' });
+                        } else {
+                            io.emit('reactor_meltdown', {});
+                            io.emit('game_over', { winner: 'impostors', reason: 'reactor' });
+                        }
+
+                        clearInterval(timer);
+                        sabotageTimers.delete(type);
+                        clearOverride(type);
+                    }
+                }
+            });
         } catch (e) {
             logError(`Error in sabotage timer for ${type}:`, e);
+        } finally {
+            busy = false;
         }
-    }, 1000);
+    }, 250);
 
     sabotageTimers.set(type, timer);
 }
@@ -1429,22 +1447,35 @@ async function startCommsCountdown(seconds) {
     data.activeSabotages.comms = { sabotaged: true, down: false, timeLeft: seconds };
     logDebug(`Sabotage started: comms with initial delay of ${seconds} seconds.`);
     await saveGame(data);
+    // against the clock, like the O2 / reactor countdown
+    let deadline = Date.now() + seconds * 1000, lastTick = Date.now(), busy = false;
     const timer = setInterval(async () => {
+        if (busy) return;
+        busy = true;
         try {
-            const d = await loadGame();
-            const c = d.activeSabotages.comms;
-            if (!d.gameState.started || !c || !c.sabotaged || c.down) {
-                clearInterval(timer); sabotageTimers.delete('comms'); return;
-            }
-            if (d.gameState.emergencyMeeting) return;
-            c.timeLeft = Math.max(0, c.timeLeft - 1);
-            if (c.timeLeft > 0) { await saveGame(d); io.emit('sabotage_tick', { type: 'comms', timeLeft: c.timeLeft }); return; }
-            clearInterval(timer); sabotageTimers.delete('comms');
-            await startCommsSabotage(d);
+            await withGameLock(async () => {
+                if (sabotageTimers.get('comms') !== timer) return;
+                const d = await loadGame();
+                const c = d.activeSabotages.comms;
+                const now = Date.now();
+                if (!d.gameState.started || !c || !c.sabotaged || c.down) {
+                    clearInterval(timer); sabotageTimers.delete('comms'); return;
+                }
+                if (d.gameState.emergencyMeeting) { deadline += now - lastTick; lastTick = now; return; }
+                lastTick = now;
+                const left = Math.max(0, Math.ceil((deadline - now) / 1000));
+                if (left === c.timeLeft && left > 0) return;
+                c.timeLeft = left;
+                if (c.timeLeft > 0) { await saveGame(d); io.emit('sabotage_tick', { type: 'comms', timeLeft: c.timeLeft }); return; }
+                clearInterval(timer); sabotageTimers.delete('comms');
+                await startCommsSabotage(d);
+            });
         } catch (e) {
             logError('Error in comms sabotage timer:', e);
+        } finally {
+            busy = false;
         }
-    }, 1000);
+    }, 250);
     sabotageTimers.set('comms', timer);
 }
 async function startCommsSabotage(data) {
