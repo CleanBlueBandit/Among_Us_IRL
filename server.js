@@ -65,12 +65,42 @@ function logError(message, error = "") {
     fs.appendFile(ERROR_LOG, logMsg + '\n', 'utf-8').catch(e => console.error("Logger error:", e));
 }
 
-// Spoken O2 / reactor alarms (scripts/alarmVoice.js, tuned in voice.json). Lines go to that station's devices.
+// ---- Station sounds: which server device plays which sound ----
+// The host picks them in the lobby ("Station sounds"); kept in sounds.json, by role, so they survive a
+// reset and a device swap. More than one station can play the same sound.
+const SOUNDS = [
+    { id: 'o2_alarm', label: 'O2 alarm', alarm: 'o2' },
+    { id: 'reactor_alarm', label: 'Reactor alarm', alarm: 'reactor' },
+    { id: 'crew_win', label: 'Crewmate win', win: 'crewmates' },
+    { id: 'imp_win', label: 'Impostor win', win: 'impostors' }
+];
+const SOUND_IDS = new Set(SOUNDS.map(s => s.id));
+const SOUND_ROLES = ['o2', 'reactor', 'emergency', 'comms'];
+const DEFAULT_SOUND_ROUTES = { o2: ['o2_alarm'], reactor: ['reactor_alarm', 'crew_win', 'imp_win'], emergency: [], comms: [] };
+const SOUNDS_FILE = path.join(ROOT, 'sounds.json');
+function cleanRoutes(r) {
+    const out = {};
+    for (const role of SOUND_ROLES) {
+        const list = r && Array.isArray(r[role]) ? r[role] : (r && r[role] !== undefined ? [] : DEFAULT_SOUND_ROUTES[role]);
+        out[role] = SOUNDS.map(s => s.id).filter(id => list.includes(id));
+    }
+    return out;
+}
+let soundRoutes = cleanRoutes(null);
+try { soundRoutes = cleanRoutes(JSON.parse(await fs.readFile(SOUNDS_FILE, "utf-8"))); } catch (e) { /* no file yet: the defaults */ }
+// The sessions of the server devices that play this sound.
+function soundSessions(data, soundId) {
+    return Object.entries(data.servers || {}).filter(([, role]) => (soundRoutes[role] || []).includes(soundId)).map(([s]) => s);
+}
+const isOnline = s => (io.sockets.adapter.rooms.get(s) || new Set()).size > 0;
+
+// Spoken O2 / reactor alarms (scripts/alarmVoice.js, tuned in voice.json). Lines go to the devices that
+// play that alarm.
 const alarmVoice = createAlarmVoice({
     root: ROOT,
     send: async (type, event, payload) => {
         const data = await loadGame();
-        for (const [s, role] of Object.entries(data.servers || {})) if (role === type) io.to(s).emit(event, payload);
+        for (const s of soundSessions(data, type + '_alarm')) io.to(s).emit(event, payload);
     },
     log: logDebug,
     logError
@@ -135,8 +165,8 @@ io.emit = (ev, ...args) => {
 };
 
 // ---- End of game: the win sound ----
-// Played by the reactor station, or the O2 station if no reactor is connected. If that station is
-// still announcing (e.g. "containment lost"), the sound waits until the line is over.
+// Played by every station set to play it. If a station is still announcing one of its alarms
+// (e.g. "containment lost"), its sound waits until the line is over.
 const WIN_SOUNDS = { crewmates: '/sounds/win_crewmates.mp3', impostors: '/sounds/win_impostors.mp3' };
 let winSoundAt = 0;
 async function playWinSound(info) {
@@ -145,15 +175,30 @@ async function playWinSound(info) {
     winSoundAt = Date.now();
     try {
         const data = await loadGame();
-        const online = s => (io.sockets.adapter.rooms.get(s) || new Set()).size > 0;
-        const stations = type => Object.entries(data.servers || {}).filter(([s, role]) => role === type && online(s)).map(([s]) => s);
-        const type = stations('reactor').length ? 'reactor' : 'o2';
-        const to = stations(type);
-        if (!to.length) return;
-        await alarmVoice.whenQuiet(type);
-        for (const s of to) io.to(s).emit('win_sound', { winner: info.winner, url });
+        const sound = SOUNDS.find(s => s.win === info.winner);
+        await Promise.all(soundSessions(data, sound.id).filter(isOnline).map(async s => {
+            const alarms = SOUNDS.filter(a => a.alarm && soundRoutes[data.servers[s]].includes(a.id)).map(a => a.alarm);
+            await Promise.all(alarms.map(t => alarmVoice.whenQuiet(t)));
+            io.to(s).emit('win_sound', { winner: info.winner, url });
+        }));
     } catch (e) {
         logError('Win sound:', e);
+    }
+}
+
+// What each server device should be playing right now: its sounds, and which of its alarms are on
+// (an alarm is on while its manual override runs). Sent on connect and whenever either changes.
+function stationSoundsFor(role) {
+    const sounds = soundRoutes[role] || [];
+    const on = { o2: !!o2Fix, reactor: !!reactorFix };
+    return { sounds, alarms: SOUNDS.filter(s => s.alarm && on[s.alarm] && sounds.includes(s.id)).map(s => s.alarm) };
+}
+async function pushStationSounds(data) {
+    try {
+        data = data || await loadGame();
+        for (const [s, role] of Object.entries(data.servers || {})) io.to(s).emit('station_sounds', stationSoundsFor(role));
+    } catch (e) {
+        logError('Station sounds:', e);
     }
 }
 
@@ -876,6 +921,7 @@ app.post("/deviceFunc", async (req, res) => {
         data.servers[session] = sf;
         logDebug(`Server ${session} is now: ${sf}`);
         await saveGame(data);
+        pushStationSounds(data);
 
         io.emit('servers_data_request', serversView(data.servers));
         io.emit('server_lobby_update', {});
@@ -1021,6 +1067,7 @@ function startOverride(data, type) {
     logDebug(`Override started for ${type}.`);
     const sab = data.activeSabotages && data.activeSabotages[type];
     if (data.gameState.started) alarmVoice.start(type, sab && sab.timeLeft > 0 ? sab.timeLeft : meltdownCountdownSeconds).catch(e => logError('Alarm voice:', e));
+    pushStationSounds(data);
 }
 function clearOverride(type) {
     if (type === 'o2') {
@@ -1034,6 +1081,7 @@ function clearOverride(type) {
         reactorFix = null;
         io.emit('reactor_override_status', { active: false });
     }
+    pushStationSounds();
 }
 // The fix itself, then the sabotage cooldown.
 async function completeFix(type) {
@@ -1121,10 +1169,47 @@ app.get("/override/:token", (req, res) => {
 // The O2 / reactor station's alarm sound and mix, and the spoken lines it is sent.
 app.get("/alarm/settings", async (req, res) => {
     const data = await loadGame();
-    const role = data.servers[req.cookies.session];
-    if (role !== 'o2' && role !== 'reactor') return res.status(401).json({ err: "401 unauthorised" });
+    if (!validateServer(data.servers, req.cookies.session)) return res.status(401).json({ err: "401 unauthorised" });
+    const type = req.query.type || data.servers[req.cookies.session];
+    if (type !== 'o2' && type !== 'reactor') return res.status(400).json({ err: "unknown alarm" });
     res.set('Cache-Control', 'no-store');
-    return res.json(await alarmVoice.settings(role));
+    return res.json(await alarmVoice.settings(type));
+});
+
+// The host's "Station sounds" menu: every station, whether a device holds it, and what it plays.
+function isHostSession(data, session) {
+    return !!session && data.players[session]?.username === data.gameState.host;
+}
+function stationSoundsView(data) {
+    const stations = SOUND_ROLES.map(role => {
+        const holders = Object.keys(data.servers || {}).filter(s => data.servers[s] === role);
+        return { role, connected: holders.some(isOnline), held: holders.length > 0 };
+    });
+    return { sounds: SOUNDS.map(({ id, label }) => ({ id, label })), stations, routes: soundRoutes };
+}
+app.get("/sounds/routes", async (req, res) => {
+    const data = await loadGame();
+    if (!isHostSession(data, req.cookies.session)) return res.status(401).json({ err: "401 unauthorised" });
+    res.set('Cache-Control', 'no-store');
+    return res.json(stationSoundsView(data));
+});
+app.post("/sounds/routes", async (req, res) => {
+    const data = await loadGame();
+    if (!isHostSession(data, req.cookies.session)) return res.status(401).json({ err: "401 unauthorised" });
+    const r = req.body && req.body.routes;
+    if (!r || typeof r !== 'object' || SOUND_ROLES.some(role => r[role] !== undefined &&
+        (!Array.isArray(r[role]) || r[role].some(id => !SOUND_IDS.has(id))))) {
+        return res.status(400).json({ err: "bad routes" });
+    }
+    soundRoutes = cleanRoutes({ ...soundRoutes, ...r });
+    try {
+        await fs.writeFile(SOUNDS_FILE, JSON.stringify(soundRoutes, null, 4) + '\n', 'utf-8');
+    } catch (e) {
+        logError('Could not save sounds.json:', e);
+    }
+    logDebug(`Station sounds: ${SOUND_ROLES.map(role => `${role}=[${soundRoutes[role].join(', ')}]`).join(' ')}`);
+    pushStationSounds(data);
+    return res.json(stationSoundsView(data));
 });
 app.get("/alarm/voice/:id.wav", (req, res) => {
     const clip = /^[0-9a-f]{16}$/.test(req.params.id) ? alarmVoice.clip(req.params.id) : null;
@@ -1921,6 +2006,7 @@ io.on("connection", async (socket) => {
             }
             socket.emit('o2_override_status', o2Status(data));
             socket.emit('reactor_override_status', reactorStatus(data));
+            socket.emit('station_sounds', stationSoundsFor(data.servers[cookies.session]));
         }
         else {
             logDebug(`Socket connection rejected: username not found for session ${cookies.session}`);

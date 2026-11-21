@@ -1,9 +1,11 @@
-// The O2 and reactor stations' sound: the looping alarm and the server's spoken lines, mixed together
-// through one reverb. The mix (volumes, ducking, reverb) comes from the server's voice.json.
+// What a server device plays: the O2 / reactor alarms with their spoken lines, and the win sounds.
+// The host picks which station plays which sound (host lobby, "Station sounds"); the server tells
+// each device what it plays and when an alarm is on, so the page itself doesn't decide.
 //
-//   const alarm = AlarmAudio.create(audioContext, socket);   // after a tap, so the browser allows sound
-//   alarm.start();  alarm.stop();                             // the looping alarm
-// Spoken lines ('alarm_voice') and the end-of-game sound ('win_sound') arrive by themselves over the socket.
+//   const sound = AlarmAudio.create(audioContext, socket);   // serverdevice.js does this
+//
+// Each alarm has its own chain: the looping alarm and its voice go through one reverb, mixed as set in
+// voice.json (volumes, ducking, reverb). The win sound plays dry.
 (function () {
     'use strict';
 
@@ -17,9 +19,10 @@
         return buf;
     }
 
-    function create(ctx, socket) {
+    // One alarm (o2 or reactor): its loop and its spoken lines.
+    function createChain(ctx, type) {
         let settings = null, alarmBuf = null, alarmSrc = null, wantAlarm = false;
-        let speaking = 0, voiceSrc = null, winSrc = null;
+        let speaking = 0, voiceSrc = null;
         const queue = [];
 
         const bus = ctx.createGain();
@@ -39,7 +42,7 @@
 
         const ready = (async function load() {
             try {
-                const res = await fetch('/alarm/settings', { cache: 'no-store' });
+                const res = await fetch('/alarm/settings?type=' + type, { cache: 'no-store' });
                 if (!res.ok) throw new Error('settings ' + res.status);
                 settings = await res.json();
                 const r = A().reverb || {};
@@ -53,7 +56,7 @@
                     alarmBuf = await ctx.decodeAudioData(data);
                 }
             } catch (e) {
-                console.warn('Alarm sound unavailable:', e);
+                console.warn('Alarm sound unavailable (' + type + '):', e);
             }
             if (wantAlarm) startSource();
         })();
@@ -97,20 +100,45 @@
             }
         }
 
-        // Phones and tablets pause web audio when the screen dims or another app takes the sound. Wake it
-        // straight back up while the alarm should be playing, instead of waiting for the next voice line.
-        // The end-of-game fanfare: stops the alarm and anything still queued, plays dry (no reverb).
+        return {
+            get busy() { return wantAlarm || speaking > 0 || queue.length > 0; },
+            winVolume: () => A().winVolume,
+            start() { if (wantAlarm) return; wantAlarm = true; ready.then(startSource); },
+            stop(fade) { wantAlarm = false; stopSource(fade); },
+            say(url) {
+                queue.push(url);
+                while (queue.length > 2) queue.shift();   // never fall behind the countdown
+                ready.then(playNext);
+            },
+            hush() {
+                queue.length = 0;
+                try { if (voiceSrc) voiceSrc.stop(); } catch (e) {}
+            }
+        };
+    }
+
+    function create(ctx, socket) {
+        const chains = {};
+        const chain = type => chains[type] || (chains[type] = createChain(ctx, type));
+        let winSrc = null, alarmsOn = [];
+        const listeners = [];
+
+        function wake() { if (ctx.state === 'suspended') ctx.resume().catch(() => {}); }
+
+        // The end-of-game sound: stops the alarms and anything still queued.
         async function playWin(url) {
-            wantAlarm = false; stopSource(0.05);
-            queue.length = 0;
-            try { if (voiceSrc) voiceSrc.stop(); } catch (e) {}
+            for (const c of Object.values(chains)) { c.stop(0.05); c.hush(); }
             try {
                 if (ctx.state === 'suspended') await ctx.resume();
                 const buf = await ctx.decodeAudioData(await (await fetch(url)).arrayBuffer());
                 try { if (winSrc) winSrc.stop(); } catch (e) {}
                 const src = ctx.createBufferSource(), g = ctx.createGain();
+                let vol = Object.values(chains).map(c => c.winVolume()).find(v => v != null);
+                if (vol == null) {   // no alarm on this device: read the volume from voice.json anyway
+                    try { vol = ((await (await fetch('/alarm/settings?type=reactor', { cache: 'no-store' })).json()).audio || {}).winVolume; } catch (e) {}
+                }
                 src.buffer = buf;
-                g.gain.value = A().winVolume ?? 1;
+                g.gain.value = vol ?? 1;
                 src.connect(g); g.connect(ctx.destination);
                 winSrc = src;
                 src.onended = () => { if (winSrc === src) winSrc = null; };
@@ -120,31 +148,39 @@
             }
         }
 
-        function keepAlive() { if ((wantAlarm || speaking || queue.length || winSrc) && ctx.state !== 'running' && ctx.state !== 'closed') ctx.resume().catch(() => {}); }
+        // Phones and tablets pause web audio when the screen dims or another app takes the sound. Wake it
+        // straight back up while something should be playing, instead of waiting for the next voice line.
+        const playing = () => !!winSrc || Object.values(chains).some(c => c.busy);
+        function keepAlive() { if (playing() && ctx.state !== 'running' && ctx.state !== 'closed') ctx.resume().catch(() => {}); }
         ctx.addEventListener('statechange', () => setTimeout(keepAlive, 200));
         document.addEventListener('visibilitychange', keepAlive);
         window.addEventListener('focus', keepAlive);
         ['pointerdown', 'keydown', 'touchstart'].forEach(ev => document.addEventListener(ev, keepAlive, true));
         setInterval(keepAlive, 1000);
 
+        let sounds = [];
         if (socket) {
-            socket.on('alarm_voice', d => {
-                if (!d || !d.url) return;
-                if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-                queue.push(d.url);
-                while (queue.length > 2) queue.shift();   // never fall behind the countdown
-                ready.then(playNext);
+            socket.on('station_sounds', d => {
+                if (!d) return;
+                sounds = d.sounds || [];
+                alarmsOn = d.alarms || [];
+                ['o2', 'reactor'].forEach(type => {
+                    if (alarmsOn.includes(type)) { wake(); chain(type).start(); }
+                    else if (chains[type]) chains[type].stop();
+                });
+                listeners.forEach(fn => { try { fn(sounds); } catch (e) { console.error(e); } });
             });
-            socket.on('win_sound', d => { if (d && d.url) ready.then(() => playWin(d.url)); });
+            socket.on('alarm_voice', d => {
+                if (!d || !d.url || !d.type) return;
+                wake();
+                chain(d.type).say(d.url);
+            });
+            socket.on('win_sound', d => { if (d && d.url) playWin(d.url); });
         }
 
         return {
-            start() {
-                wantAlarm = true;
-                if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-                ready.then(startSource);
-            },
-            stop() { wantAlarm = false; stopSource(); }
+            // Called with this device's sound list whenever the server sends it.
+            onSounds(fn) { listeners.push(fn); fn(sounds); }
         };
     }
 

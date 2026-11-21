@@ -187,7 +187,7 @@
     <script>
         const $ = id => document.getElementById(id);
         const CODE_LEN = 5;
-        let socket = null, audio = null, alarm = null;   // alarm: the looping alarm and its voice (alarmaudio.js)
+        let socket = null, audio = null;   // the alarm itself plays from serverdevice.js / alarmaudio.js
         let state = 'stable';          // stable | crisis | restored | game-over
         let endTime = 0, total = 0, need = 2, accepted = 0, lockUntil = 0;
         let entry = '', busy = false, msgTimer = null, tickTimer = null, restoredTimer = null;
@@ -267,9 +267,7 @@
                 $('lampText').textContent = 'ALARM';
                 entry = ''; renderDigits(); idleMsg(); renderCodes();
                 if (socket) socket.emit('unstable', { activated: true });
-                if (alarm) alarm.start();
             } else {
-                if (alarm) alarm.stop();
                 $('pct').textContent = '100%'; $('fill').style.width = '100%';
                 if (next === 'restored') { $('state').textContent = 'O2 RESTORED'; $('lampText').textContent = 'RESTORED'; }
                 else if (next === 'stable') { $('state').textContent = 'O2 RESERVES OPTIMAL'; $('lampText').textContent = 'NOMINAL'; }
@@ -380,10 +378,9 @@
             $('connect').hidden = true;
             try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audio = null; }
             socket = io();
-            if (audio) alarm = AlarmAudio.create(audio, socket);
             setupSocketListeners();
             // game over / restart happen on this page, so sound stays allowed to play
-            ServerDevice.attach(socket, { role: 'o2', onGameOver: stopForGameOver, onReset: resetToOptimal });
+            ServerDevice.attach(socket, { role: 'o2', audio, onGameOver: stopForGameOver, onReset: resetToOptimal });
             tickTimer = setInterval(tick, 250);
         });
         renderDigits();

@@ -6,6 +6,7 @@
     <title>Communications Relay</title>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/serverdevice.js"></script>
+    <script src="/alarmaudio.js"></script>
     <style>
         :root {
             --bg: #07070b; --panel: #101018; --edge: #262636; --text: #e4e4f0; --dim: #7c7c96;
@@ -520,7 +521,7 @@
             socket = io();
             setupSocketListeners();
             // game over / restart happen on this page, so sound stays allowed to play
-            ServerDevice.attach(socket, { role: 'comms', onGameOver: stopForGameOver, onReset: resetToIdle });
+            ServerDevice.attach(socket, { role: 'comms', audio, onGameOver: stopForGameOver, onReset: resetToIdle });
         });
     </script>
 </body>
