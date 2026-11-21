@@ -264,7 +264,7 @@ When the emergency button is pressed, or someone reports a body, every player's 
 - Ghosts (dead players) don't check in and aren't counted. If a player logs out while everyone is gathering, the meeting stops waiting for them.
 - No one can die once a meeting is called: "I'm dead" is refused until the meeting is over. No tasks or sabotage either, and sabotage countdowns stay paused.
 - The host's alert also has **Host: start the meeting now**, which starts the meeting without waiting for the rest (it asks first).
-- The station set to play the meeting call (the emergency station, out of the box) plays the alarm (`public/sounds/meeting.mp3`, once) and the voice says *"Emergency meeting. All personnel: remain calm. Gather in the emergency room."*, or for a body, *"Dead body was found. Emergency meeting. ..."*. Every 20 seconds until everyone is there it says how many are present and how many it's still waiting for. The lines are made on the fly by the same voice as the O2 and reactor alarms, and are set in `voice.json` under `meeting` (see below). The alarm fades out once everyone is present.
+- The station set to play the meeting call (the emergency station, out of the box) plays the alarm (`public/sounds/meeting.mp3`, repeating) and the voice says *"Emergency meeting. All personnel: remain calm. Gather in the emergency room."*, or for a body, *"Dead body was found. Emergency meeting. ..."*. Every 20 seconds until everyone is there it says how many are present and how many it's still waiting for. The lines are made on the fly by the same voice as the O2 and reactor alarms, and are set in `voice.json` under `meeting` (see below). The alarm and the voice stop the moment the meeting begins.
 
 ## Alarm voice
 
@@ -296,7 +296,7 @@ Everything is set in `voice.json` next to `server.js`. It is read each time an a
 | `audio.alarmVolume`, `audio.voiceVolume` | 0 to 1. |
 | `meeting.button`, `meeting.report` | What the meeting call says when the button is pressed, or a body is reported. |
 | `meeting.attendance`, `meeting.every` | The line saying who's in the emergency room ({present}, {waiting} still to come, {total} expected), and how many seconds apart. |
-| `meeting.loop` | `false` plays the meeting alarm once; `true` repeats it until everyone is there. |
+| `meeting.loop` | `true` (the default) repeats the meeting alarm until the meeting begins; `false` plays it once. |
 | `audio.duckTo` | How loud the alarm stays while the voice speaks (0.35 = 35%). The meeting call only drops to 0.7. |
 | `audio.winVolume` | How loud the end-of-game sound is, 0 to 1. |
 | `audio.announceVolume` | How loud the communications announcements are, 0 to 1. |

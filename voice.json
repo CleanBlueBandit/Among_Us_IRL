@@ -92,7 +92,7 @@
     },
     "meeting": {
         "alarm": "/sounds/meeting.mp3",
-        "loop": false,
+        "loop": true,
         "every": 20,
         "audio": {
             "duckTo": 0.7,

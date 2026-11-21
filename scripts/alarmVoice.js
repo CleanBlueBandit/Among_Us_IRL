@@ -85,12 +85,12 @@ export const DEFAULTS = {
         failed: ['Oxygen depleted. Life support failure.']
     },
     // A meeting was called (the emergency button, or a body report): everyone has to come to the emergency room.
-    // The alarm plays once (loop: false), with the "button" or "report" line over it; then, every `every`
+    // The alarm repeats until everyone is there (loop: false plays it once), with the "button" or "report" line over it; then, every `every`
     // seconds until everyone is there, the "attendance" line. {present} players are in the room, {waiting}
     // are still on their way, {total} are expected; {s} is "s" unless {waiting} is 1.
     meeting: {
         alarm: '/sounds/meeting.mp3',
-        loop: false,
+        loop: true,
         every: 20,
         audio: { duckTo: 0.7, reverb: { mix: 0.2 } },
         button: ['Emergency meeting... All personnel: remain calm... Gather in the emergency room.'],
