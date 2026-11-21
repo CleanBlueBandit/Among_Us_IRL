@@ -331,6 +331,18 @@
     }
   });
 
+  // A meeting was called: everyone is on their way here. The meeting starts once they've all checked in.
+  socket.on('meeting_gather', (g) => {
+    if (!g) return;
+    meetingActive = true;
+    if (countdownTick) { clearInterval(countdownTick); countdownTick = null; }
+    const list = g.players || [], here = list.filter(p => p.present).length;
+    const waiting = list.filter(p => !p.present).map(p => p.name);
+    updateButton(true, g.report ? "BODY<br>REPORTED" : "GATHER<br>HERE");
+    const who = g.report ? `${g.report.reporter} found ${g.report.body}'s body - ` : '';
+    setStatus(`${who}${here} of ${list.length} present` + (waiting.length ? ` - waiting for ${waiting.join(', ')}` : ''), true);
+  });
+
   socket.on('emergency_ack', (payload) => {
     meetingActive = true;
     updateButton(true, "MEETING<br>IN PROGRESS");

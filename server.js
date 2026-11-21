@@ -76,11 +76,14 @@ const SOUNDS = [
     // plays once when communications go down (the recording glitches out by itself); `restored` plays
     // once on the same stations when they're back
     { id: 'comms_alarm', label: 'Communications error', url: '/sounds/critical_error_communications.mp3',
-        restored: '/sounds/communications_restored.mp3' }
+        restored: '/sounds/communications_restored.mp3' },
+    // a meeting is called: everyone has to come to the emergency room. Fades out once they're all there.
+    { id: 'meeting_button', label: 'Emergency meeting called', url: '/sounds/emergency_meeting.mp3' },
+    { id: 'meeting_report', label: 'Dead body reported', url: '/sounds/body_reported.mp3' }
 ];
 const SOUND_IDS = new Set(SOUNDS.map(s => s.id));
 const SOUND_ROLES = ['o2', 'reactor', 'emergency', 'comms'];
-const DEFAULT_SOUND_ROUTES = { o2: ['o2_alarm'], reactor: ['reactor_alarm', 'crew_win', 'imp_win'], emergency: [], comms: ['comms_alarm'] };
+const DEFAULT_SOUND_ROUTES = { o2: ['o2_alarm'], reactor: ['reactor_alarm', 'crew_win', 'imp_win'], emergency: ['meeting_button', 'meeting_report'], comms: ['comms_alarm'] };
 const SOUNDS_FILE = path.join(ROOT, 'sounds.json');
 // `known` lists the sounds the saved file already has a choice for; a sound added later starts on its
 // default stations instead of on none.
@@ -210,6 +213,14 @@ function commsErrorSound(data) {
 function commsRestoredSound(data) {
     for (const s of soundSessions(data, COMMS_SOUND.id)) io.to(s).emit('play_sound', { id: 'comms_restored', url: COMMS_SOUND.restored });
 }
+// A meeting was called: the stations set to announce it play the call. stopMeetingSound fades it out.
+function meetingSound(data, reported) {
+    const sound = SOUNDS.find(s => s.id === (reported ? 'meeting_report' : 'meeting_button'));
+    for (const s of soundSessions(data, sound.id)) io.to(s).emit('play_sound', { id: 'meeting_call', url: sound.url });
+}
+function stopMeetingSound(data) {
+    for (const s of Object.keys(data.servers || {})) io.to(s).emit('stop_sound', { id: 'meeting_call' });
+}
 async function pushStationSounds(data) {
     try {
         data = data || await loadGame();
@@ -286,7 +297,8 @@ const DEFAULT_GAME_STATE = {
     playerCount: 0,
     alivePlayers: 0,
     lastEjection: null,
-    meetingReport: null   // { reporterId, reporter, bodyId, body } while a reported-body meeting runs
+    meetingReport: null,  // { reporterId, reporter, bodyId, body } while a reported-body meeting runs
+    meetingGather: null   // { calledAt, present: [player ids] } while everyone is coming to the emergency room
 };
 
 
@@ -891,6 +903,10 @@ app.get('/logout', async (req, res) => {
 
             await saveGame(data);
             io.emit('game_data_request', data.gameState);
+            if (data.gameState.meetingGather && data.gameState.started) {   // one fewer to wait for
+                io.emit('meeting_gather', gatherView(data));
+                await checkGathered(data);
+            }
 
             if (!data.gameState.started && (data.gameState.crewmatesWon || data.gameState.impostorsWon)) {
                 io.emit('game_over', {
@@ -1583,15 +1599,15 @@ async function startEmergencyMeeting(report) {
     // every meeting clears the bodies: the dead are public from here on, and can't be reported again
     for (const p of Object.values(data.players)) if (p.body) p.body = false;
 
-    logDebug("Emergency meeting started.");
+    // First everyone comes to the emergency room: the meeting (and its countdown) starts once every
+    // living player has tapped "I'm present" on their tablet. Tasks, kills and sabotage are off meanwhile.
+    logDebug("Emergency meeting called: gathering.");
     clearEmergencyMeetingTimer();
     emergencyVotes = {};
 
-    const countdown = emergencyCountdownSeconds;
-    const endTime = Date.now() + (countdown * 1000);
-
     data.gameState.emergencyMeeting = true;
-    data.gameState.emergencyMeetingEndTime = endTime;
+    data.gameState.emergencyMeetingEndTime = 0;
+    data.gameState.meetingGather = { calledAt: Date.now(), present: [] };
     const commsFixed = clearCommsFor(data);
     await saveGame(data);
     if (commsFixed) {
@@ -1600,6 +1616,40 @@ async function startEmergencyMeeting(report) {
         io.emit('sabotage_fixed', { type: 'comms' });
         io.emit('sabotage_cooldown', { endTime: sabCooldownTime });
     }
+    meetingSound(data, !!report);
+    io.emit('meeting_gather', gatherView(data));
+    io.emit('game_data_request', data.gameState);
+    await checkGathered(data);
+    return '';
+}
+
+// The living players who have to check in (ghosts don't), and who already has.
+function gatherView(data) {
+    const g = data.gameState.meetingGather;
+    if (!g) return null;
+    return {
+        calledAt: g.calledAt,
+        elapsed: Date.now() - g.calledAt,   // the tablets' clocks needn't match the server's
+        report: data.gameState.meetingReport,
+        players: emergencyVoterIds(data).map(id => ({ id: pidOf(id), name: data.players[id].username, present: g.present.includes(pidOf(id)) }))
+    };
+}
+// Everyone's here: the meeting starts. Called after every check-in, and whenever a player leaves or dies.
+async function checkGathered(data) {
+    const g = data.gameState.meetingGather;
+    if (!data.gameState.emergencyMeeting || !g || !data.gameState.started) return false;
+    if (!emergencyVoterIds(data).every(id => g.present.includes(pidOf(id)))) return false;
+    await beginMeeting(data);
+    return true;
+}
+async function beginMeeting(data) {
+    logDebug("Everyone is present: emergency meeting started.");
+    const countdown = emergencyCountdownSeconds;
+    const endTime = Date.now() + (countdown * 1000);
+    data.gameState.meetingGather = null;
+    data.gameState.emergencyMeetingEndTime = endTime;
+    await saveGame(data);
+    stopMeetingSound(data);
 
     io.emit('emergency_ack', { countdown, endTime, players: buildEmergencyRoster(data), report: data.gameState.meetingReport });
     io.emit('game_data_request', data.gameState);
@@ -1609,7 +1659,6 @@ async function startEmergencyMeeting(report) {
         emergencyMeetingTimer = null;
         await resolveEmergencyMeeting({ votes: tallyEmergencyVotes() });
     }, countdown * 1000);
-    return '';
 }
 
 async function resolveEmergencyMeeting(resultData) {
@@ -1624,6 +1673,7 @@ async function resolveEmergencyMeeting(resultData) {
     data.gameState.emergencyMeeting = false;
     data.gameState.emergencyMeetingEndTime = 0;
     data.gameState.meetingReport = null;
+    data.gameState.meetingGather = null;
     emergencyVotes = {};
 
     const votes = (resultData && typeof resultData.votes === 'object' && resultData.votes) ? resultData.votes : {};
@@ -2022,6 +2072,9 @@ io.on("connection", async (socket) => {
             socket.emit('o2_override_status', o2Status(data));
             socket.emit('reactor_override_status', reactorStatus(data));
 
+            if (data.gameState.emergencyMeeting && data.gameState.meetingGather) {
+                socket.emit('meeting_gather', gatherView(data));
+            }
             if (data.gameState.emergencyMeeting && data.gameState.emergencyMeetingEndTime) {
                 socket.emit("emergency_ack", {
                     countdown: Math.max(0, Math.round((data.gameState.emergencyMeetingEndTime - Date.now()) / 1000)),
@@ -2052,6 +2105,7 @@ io.on("connection", async (socket) => {
             socket.emit('o2_override_status', o2Status(data));
             socket.emit('reactor_override_status', reactorStatus(data));
             socket.emit('station_sounds', stationSoundsFor(data.servers[cookies.session]));
+            if (data.gameState.emergencyMeeting && data.gameState.meetingGather) socket.emit('meeting_gather', gatherView(data));
         }
         else {
             logDebug(`Socket connection rejected: username not found for session ${cookies.session}`);
@@ -2172,7 +2226,7 @@ io.on("connection", async (socket) => {
                 const voterId = cookies.session;
                 const d = await loadGame();
 
-                if (!d.gameState.emergencyMeeting) {
+                if (!d.gameState.emergencyMeeting || d.gameState.meetingGather) {
                     socket.emit('Err', { error: 'no emergency meeting in progress' });
                     socket.emit('vote_ack', { ok: false });
                     return;
@@ -2226,6 +2280,32 @@ io.on("connection", async (socket) => {
             }
         });
         
+        // "I'm present": this player is in the emergency room. The meeting starts once all the living are.
+        socket.on("im_present", async () => {
+            try {
+                const reason = await withGameLock(async () => {
+                    const d = await loadGame();
+                    const me = d.players[cookies.session], g = d.gameState.meetingGather;
+                    if (!me) return 'not part of this game';
+                    if (!d.gameState.emergencyMeeting || !g) return 'No meeting is being called';
+                    if (me.alive === false) return "Ghosts don't need to check in";
+                    const pid = pidOf(cookies.session);
+                    if (!g.present.includes(pid)) {
+                        g.present.push(pid);
+                        logDebug(`${me.username} is present for the meeting.`);
+                        await saveGame(d);
+                        io.emit('meeting_gather', gatherView(d));
+                        await checkGathered(d);
+                    }
+                    return '';
+                });
+                socket.emit('present_ack', reason ? { ok: false, reason } : { ok: true });
+            } catch (e) {
+                logError("Present error:", e);
+                socket.emit('present_ack', { ok: false, reason: e.message });
+            }
+        });
+
         socket.on("im-dead", async () => {
             logDebug(`${cookies.session} requested death`);
             try {
@@ -2267,6 +2347,10 @@ io.on("connection", async (socket) => {
                 socket.emit("player_data_request", selfView(cookies.session, player));
                 syncOverride(d);
                 io.emit("game_data_request", d.gameState);
+                if (d.gameState.meetingGather && d.gameState.started) {   // one fewer to wait for
+                    io.emit('meeting_gather', gatherView(d));
+                    await checkGathered(d);
+                }
 
                 if (!d.gameState.started && (d.gameState.crewmatesWon || d.gameState.impostorsWon)) {
                     io.emit('game_over', {
@@ -2649,6 +2733,8 @@ app.post("/start", async (req, res) => {
         data.gameState.completedTasks = 0;
         data.gameState.emergencyMeeting = false;
         data.gameState.emergencyMeetingEndTime = 0;
+        data.gameState.meetingReport = null;
+        data.gameState.meetingGather = null;
         data.gameState.lastEjection = null;
 
         data.activeSabotages = {

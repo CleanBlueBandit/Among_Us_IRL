@@ -296,6 +296,76 @@
     .report-splash svg { width: clamp(54px, 12vw, 88px); height: auto; color: #ffd166; }
     @media (prefers-reduced-motion: reduce) { .report-splash, .report-splash .big { transition: none; transform: none; } }
 
+    /* ── GATHERING: the whole screen is the alert until everyone is in the emergency room ── */
+    .gather {
+      position: fixed; inset: 0; z-index: 40; display: none; flex-direction: column; align-items: center;
+      overflow-y: auto; padding: max(20px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
+      background: radial-gradient(ellipse at 50% 30%, #8f1111 0%, #3d0505 70%, #1c0202 100%);
+      color: #fff; text-align: center;
+    }
+    .gather.show { display: flex; }
+    .gather-inner { margin: auto 0; width: min(560px, 100%); display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    .siren {
+      width: clamp(64px, 16vw, 96px); height: clamp(64px, 16vw, 96px); border-radius: 50%; display: grid; place-items: center;
+      background: radial-gradient(circle at 40% 35%, #ff6b6b, #c40d0d 60%, #6d0404); color: #fff;
+      box-shadow: 0 0 0 0 rgba(255, 70, 70, 0.6); animation: siren 1.2s ease-out infinite;
+    }
+    .siren svg { width: 52%; height: 52%; }
+    @keyframes siren { 0% { box-shadow: 0 0 0 0 rgba(255, 80, 80, 0.65); } 100% { box-shadow: 0 0 0 28px rgba(255, 80, 80, 0); } }
+    .gather-title {
+      font-family: 'Fredoka One', cursive; font-size: clamp(32px, 8.5vw, 64px); line-height: 1.02; letter-spacing: 1px;
+      text-shadow: 0 4px 0 #4a0505;
+    }
+    .gather-who { font-weight: 800; font-size: clamp(16px, 4.2vw, 22px); color: #ffd9d9; }
+    .gather-who b { color: #fff; }
+    .gather-who:empty { display: none; }
+    .gather-go {
+      font-weight: 900; font-size: clamp(17px, 4.6vw, 24px); color: #ffe08a; letter-spacing: 0.02em;
+    }
+    .gather-count { font-family: 'Fredoka One', cursive; font-size: clamp(18px, 4.8vw, 24px); color: #fff; }
+    .gather-list { list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; }
+    .gather-list li {
+      display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px;
+      font-weight: 800; font-size: 15px; background: rgba(0,0,0,0.28); border: 2px solid rgba(255,255,255,0.18); color: #f5c9c9;
+    }
+    .gather-list li.here { background: #1f7a3a; border-color: #5fd07f; color: #fff; }
+    .gather-list li svg { width: 14px; height: 14px; flex: none; }
+    .gather-list li .you { font-size: 11px; font-weight: 900; color: #ffe08a; }
+    .present-btn {
+      margin-top: 6px; width: min(360px, 100%); min-height: 64px; padding: 12px 20px; border-radius: 16px; cursor: pointer;
+      font-family: 'Fredoka One', cursive; font-size: clamp(22px, 6vw, 30px); letter-spacing: 0.5px;
+      color: #1d2b12; background: linear-gradient(#b8f08a, #6cc24a); border: 3px solid #e9ffd9;
+      box-shadow: 0 6px 0 #2f6b1c, 0 10px 24px rgba(0,0,0,0.4); transition: transform 0.08s, box-shadow 0.08s;
+    }
+    .present-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #2f6b1c, 0 6px 16px rgba(0,0,0,0.4); }
+    .present-btn:focus-visible { outline: 3px solid #ffe08a; outline-offset: 3px; }
+    .present-btn:disabled { cursor: default; transform: none; color: #d9f5d0; background: #2a5a22; border-color: #5fa64a; box-shadow: none; }
+    .present-btn[hidden] { display: none; }
+    .gather-note { font-weight: 700; font-size: 15px; color: #f3c4c4; max-width: 420px; }
+    .gather-note:empty { display: none; }
+    .gather-err { font-weight: 800; font-size: 15px; color: #ffd166; }
+    .gather-err:empty { display: none; }
+
+    /* "Are you sure?" when "I'm present" is tapped right after the call */
+    .confirm {
+      border: none; padding: 0; background: transparent; margin: auto; width: min(420px, calc(100% - 32px)); max-width: none;
+    }
+    .confirm::backdrop { background: rgba(10, 0, 0, 0.7); }
+    .confirm-card {
+      background: #fff8f0; color: #2a3548; border-radius: 18px; padding: 20px 18px 16px; border: 3px solid #e0a419;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 10px; text-align: left;
+    }
+    .confirm-card h2 { font-family: 'Fredoka One', cursive; font-size: 24px; color: #8f1111; font-weight: normal; }
+    .confirm-card p { font-weight: 700; font-size: 16px; line-height: 1.4; }
+    .confirm-btns { display: flex; gap: 10px; margin-top: 6px; }
+    .confirm-btns button {
+      flex: 1; min-height: 52px; border-radius: 12px; cursor: pointer; font-family: 'Fredoka One', cursive; font-size: 19px;
+    }
+    .confirm-btns .no { background: #e6e9ee; color: #2a3548; border: 2px solid #9aa6b5; }
+    .confirm-btns .yes { background: #6cc24a; color: #1d2b12; border: 2px solid #2f6b1c; }
+    .confirm-btns button:focus-visible { outline: 3px solid #e0a419; outline-offset: 2px; }
+    @media (prefers-reduced-motion: reduce) { .siren { animation: none; } .present-btn { transition: none; } }
+
     /* ── RESULT OVERLAY ── */
     .result-banner {
       display: none;
@@ -395,6 +465,33 @@
 
 </div>
 
+<!-- GATHERING: until every living player is in the emergency room -->
+<div class="gather" id="gather" role="alertdialog" aria-modal="true" aria-labelledby="gatherTitle" aria-describedby="gatherGo">
+  <div class="gather-inner">
+    <div class="siren" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4"/><path d="M12 17.2v.1"/></svg></div>
+    <h1 class="gather-title" id="gatherTitle">EMERGENCY<br>MEETING</h1>
+    <div class="gather-who" id="gatherWho"></div>
+    <div class="gather-go" id="gatherGo">Go to the emergency room.</div>
+    <div class="gather-count" id="gatherCount" aria-live="polite"></div>
+    <ul class="gather-list" id="gatherList"></ul>
+    <button class="present-btn" id="presentBtn" type="button">I'm present</button>
+    <div class="gather-err" id="gatherErr" role="alert"></div>
+    <div class="gather-note" id="gatherNote"></div>
+  </div>
+</div>
+
+<dialog class="confirm" id="presentConfirm" aria-labelledby="confirmTitle">
+  <div class="confirm-card">
+    <h2 id="confirmTitle">Are you in the emergency room?</h2>
+    <p>"I'm present" tells everyone you are standing in the emergency room. The meeting starts once every living player has tapped it.</p>
+    <p>Only tap it when you are really there, or the meeting could start without you.</p>
+    <div class="confirm-btns">
+      <button class="no" id="confirmNo" type="button">Not yet</button>
+      <button class="yes" id="confirmYes" type="button">Yes, I'm here</button>
+    </div>
+  </div>
+</dialog>
+
 <div class="report-splash" id="reportSplash" aria-hidden="true">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10v4a1 1 0 0 0 1 1h3l6 4V5L7 9H4a1 1 0 0 0-1 1z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>
   <div class="big">DEAD BODY<br>REPORTED</div>
@@ -421,7 +518,7 @@
     report = r || null;
     const line = document.getElementById('reportLine');
     line.hidden = !report;
-    if (!report) return;
+    if (!report || gatherSeen) return;   // the alert already said who found whom
     document.getElementById('rlReporter').textContent = report.reporter;
     document.getElementById('rlBody').textContent = report.body;
     // the splash plays once per meeting, not on every reconnect
@@ -437,6 +534,76 @@
     splash.addEventListener('click', hide, { once: true });
     setTimeout(hide, 2600);
   }
+
+  // ── GATHERING ────────────────────────────────────────────────
+  // The meeting is called; it starts once every living player taps "I'm present" in the emergency room.
+  const TOO_SOON_MS = 10000;   // tapping sooner than this after the call asks "are you sure?"
+  const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
+  let gather = null;          // the server's last word on who has checked in
+  let gatherSeen = false;     // this page showed the alert (so the vote screen skips its report splash)
+  let calledAtLocal = 0;      // when the meeting was called, on this tablet's clock
+  let amAlive = null;         // from player_data_request
+  let presentBusy = false;
+  const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  function renderGather() {
+    const el = document.getElementById('gather');
+    if (!gather) { el.classList.remove('show'); return; }
+    el.classList.add('show');
+    const r = gather.report;
+    document.getElementById('gatherTitle').innerHTML = r ? 'DEAD BODY<br>REPORTED' : 'EMERGENCY<br>MEETING';
+    document.getElementById('gatherWho').innerHTML = r ? `<b>${esc(r.reporter)}</b> found <b>${esc(r.body)}</b>'s body` : '';
+    const list = gather.players || [];
+    const here = list.filter(p => p.present).length;
+    document.getElementById('gatherCount').textContent = `${here} of ${list.length} present`;
+    document.getElementById('gatherList').innerHTML = list.map(p =>
+      `<li class="${p.present ? 'here' : ''}">${p.present ? CHECK : ''}${esc(p.name)}${p.id === localPlayerId ? ' <span class="you">YOU</span>' : ''}</li>`).join('');
+
+    const me = list.find(p => p.id === localPlayerId);
+    const btn = document.getElementById('presentBtn'), note = document.getElementById('gatherNote');
+    if (amAlive === false || (localPlayerId && !me && amAlive !== null)) {
+      btn.hidden = true;
+      note.textContent = "You're a ghost, so you don't need to check in. The meeting starts when everyone alive is here.";
+    } else if (me && me.present) {
+      btn.hidden = false; btn.disabled = true; btn.textContent = "You're checked in";
+      const waiting = list.filter(p => !p.present).map(p => p.name);
+      note.textContent = waiting.length ? `Waiting for ${waiting.join(', ')}.` : 'Everyone is here. Starting the meeting…';
+    } else {
+      btn.hidden = false; btn.disabled = presentBusy; btn.textContent = "I'm present";
+      note.textContent = 'Tap it once you are in the emergency room. The meeting starts when every living player is here.';
+    }
+  }
+
+  function sendPresent() {
+    presentBusy = true;
+    document.getElementById('gatherErr').textContent = '';
+    renderGather();
+    socket.emit('im_present');
+  }
+  const confirmDlg = document.getElementById('presentConfirm');
+  document.getElementById('presentBtn').addEventListener('click', () => {
+    if (presentBusy) return;
+    if (Date.now() - calledAtLocal < TOO_SOON_MS) {
+      if (typeof confirmDlg.showModal === 'function') { confirmDlg.showModal(); document.getElementById('confirmNo').focus(); return; }
+      if (!window.confirm('Are you in the emergency room? Only tap "I\'m present" when you are really there.')) return;
+    }
+    sendPresent();
+  });
+  document.getElementById('confirmNo').addEventListener('click', () => confirmDlg.close());
+  document.getElementById('confirmYes').addEventListener('click', () => { confirmDlg.close(); sendPresent(); });
+
+  socket.on('meeting_gather', (g) => {
+    if (!g) return;
+    if (!gather || gather.calledAt !== g.calledAt) calledAtLocal = Date.now() - (g.elapsed || 0);
+    gather = g;
+    gatherSeen = true;
+    renderGather();
+  });
+  socket.on('present_ack', (r) => {
+    presentBusy = false;
+    document.getElementById('gatherErr').textContent = r && !r.ok ? (r.reason || 'Could not check in. Try again.') : '';
+    renderGather();
+  });
 
   // ── I VOTED BADGE ─────────────────────────────────────────────
   const BADGE = `<div class="voted-badge"><span class="vi">I</span><span class="vt">VOTED</span></div>`;
@@ -552,15 +719,18 @@
   // ── SOCKET WIRING ────────────────────────────────────────────
   socket.on('player_data_request', (me) => {
     localPlayerId = me.id;
-    console.log(me)
+    amAlive = me.alive !== false;
     votingOpen = me.alive;
     render();
+    renderGather();
   });
 
   socket.on('game_data_request', (gameState) => {
     // If we land on this page with no meeting in progress, there's nothing to vote on.
     if (!gameState.emergencyMeeting) {
       votingOpen = false;
+      gather = null;
+      renderGather();
       render();
     }
     if (gameState.impostorsWon || gameState.crewmatesWon) {
@@ -569,6 +739,9 @@
   });
 
   socket.on('emergency_ack', (payload) => {
+    gather = null;   // everyone's here: the vote starts
+    if (confirmDlg.open) confirmDlg.close();
+    renderGather();
     hasVoted = false;
     selectedId = null;
     document.getElementById('resultBanner').classList.remove('show');
