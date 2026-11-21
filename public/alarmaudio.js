@@ -62,7 +62,7 @@
         })();
 
         function startSource() {
-            if (!alarmBuf || alarmSrc) return;
+            if (!wantAlarm || !alarmBuf || alarmSrc) return;
             alarmSrc = ctx.createBufferSource();
             alarmSrc.buffer = alarmBuf;
             alarmSrc.loop = true;
@@ -176,6 +176,8 @@
                 chain(d.type).say(d.url);
             });
             socket.on('win_sound', d => { if (d && d.url) playWin(d.url); });
+            // the server's station_sounds says so too; this is a second word that the alarm is over
+            socket.on('sabotage_fixed', d => { if (d && chains[d.type]) chains[d.type].stop(); });
         }
 
         return {

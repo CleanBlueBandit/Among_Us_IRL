@@ -531,9 +531,28 @@ async function loadGame() {
     }
 }
 
+// game.json is written to a temporary file first and then swapped in, so a loadGame() running at the
+// same moment never reads a half-written file (that read used to fail and come back as an empty game:
+// no players, no stations).
+let saveSeq = 0;
+async function writeGameFile(json) {
+    const tmp = `./game.json.${process.pid}.${++saveSeq}.tmp`;
+    await fs.writeFile(tmp, json, 'utf-8');
+    for (let i = 0; ; i++) {
+        try { await fs.rename(tmp, './game.json'); return; }
+        catch (e) {
+            // Windows refuses the swap while another read has the file open: try again a moment later
+            if (i < 8 && (e.code === 'EPERM' || e.code === 'EACCES' || e.code === 'EBUSY')) { await new Promise(r => setTimeout(r, 15)); continue; }
+            await fs.rm(tmp, { force: true }).catch(() => {});
+            await fs.writeFile('./game.json', json, 'utf-8');
+            return;
+        }
+    }
+}
+
 async function saveGame(data) {
     commsDown = commsSabotaged(data);
-    await fs.writeFile('./game.json', JSON.stringify(data, null, 2), 'utf-8');
+    await writeGameFile(JSON.stringify(data, null, 2));
     io.emit('game_data_request', data.gameState);
     io.emit('servers_data_request', serversView(data.servers));
 
