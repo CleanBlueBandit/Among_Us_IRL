@@ -229,8 +229,9 @@
                 ['o2', 'reactor', 'meeting'].forEach(type => {
                     if (alarmsOn.includes(type)) { wake(); chain(type).start(); }
                     else if (chains[type]) {
-                        chains[type].stop(type === 'meeting' ? 0.4 : undefined);
-                        if (type === 'meeting') chains[type].hush();   // everyone's here: nothing more to say
+                        // the meeting begins: the call stops at once, voice and all
+                        chains[type].stop(type === 'meeting' ? 0.01 : undefined);
+                        if (type === 'meeting') chains[type].hush();
                     }
                 });
                 const want = d.loops || [];
@@ -240,6 +241,7 @@
             });
             socket.on('alarm_voice', d => {
                 if (!d || !d.url || !d.type) return;
+                if (d.type === 'meeting' && !alarmsOn.includes('meeting')) return;   // a line that arrives after the meeting began
                 wake();
                 chain(d.type).say(d.url);
             });
