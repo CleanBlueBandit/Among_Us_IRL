@@ -443,7 +443,11 @@
   const BADGE = `<div class="voted-badge"><span class="vi">I</span><span class="vt">VOTED</span></div>`;
 
   // ── BUILD CARD ───────────────────────────────────────────────
+  // Names are typed by players: always escaped. Ids go into onclick handlers, so only plain id characters pass.
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const safeId = id => (/^[A-Za-z0-9_-]+$/.test(String(id)) ? String(id) : '');
   function buildCard(p) {
+    const pid = safeId(p.id);
     const isLocal = p.id === localPlayerId;
     const isSel = selectedId === p.id && !hasVoted;
 
@@ -451,7 +455,7 @@
     if (isSel) {
       rightSlot = `
         <div class="vote-btns">
-          <div class="vote-btn confirm" onclick="confirmVote(event,'${p.id}')">
+          <div class="vote-btn confirm" onclick="confirmVote(event,'${pid}')">
             <svg viewBox="0 0 24 24" fill="none" stroke="#3a8828"
                  stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="20 6 9 17 4 12"/>
@@ -467,9 +471,9 @@
         </div>`;
     }
 
-    const canClick = votingOpen && !hasVoted && !p.dead && !isLocal;
+    const canClick = votingOpen && !hasVoted && !p.dead && !isLocal && !!pid;
     const noHover = !canClick;
-    const clickAttr = canClick ? `onclick="selectPlayer('${p.id}')"` : '';
+    const clickAttr = canClick ? `onclick="selectPlayer('${pid}')"` : '';
     const isBody = report && report.bodyId === p.id, isReporter = report && report.reporterId === p.id;
     const cls = ['card', isSel ? 'selected' : '', noHover ? 'no-hover' : '', isBody ? 'is-body' : ''].filter(Boolean).join(' ');
     const tags = (isBody ? '<span class="tag body">BODY</span>' : '') + (isReporter ? '<span class="tag reporter">REPORTER</span>' : '');
@@ -479,7 +483,7 @@
         <div class="crewmate-wrap">
           ${p.voted ? BADGE : ''}
         </div>
-        <span class="player-name${p.dead ? " dead" : ""}">${p.name}${isLocal ? '<span class="you-tag">(you)</span>' : ''}${tags}</span>
+        <span class="player-name${p.dead ? " dead" : ""}">${esc(p.name)}${isLocal ? '<span class="you-tag">(you)</span>' : ''}${tags}</span>
         ${rightSlot}
       </div>`;
   }

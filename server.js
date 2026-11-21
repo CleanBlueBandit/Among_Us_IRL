@@ -318,8 +318,34 @@ function serversView(servers) {
 }
 
 function validateServer(servers, session) {
-    if (!servers || !session) return false;
-    return servers.hasOwnProperty(session);
+    if (!servers || typeof session !== 'string' || !session) return false;
+    return Object.hasOwn(servers, session);
+}
+
+// Players and servers are keyed by session cookie. Kept in objects with no prototype, so a cookie
+// like "__proto__" or "constructor" can never look up a built-in and pass as a player.
+function bareMap(obj) {
+    return Object.assign(Object.create(null), obj && typeof obj === 'object' ? obj : {});
+}
+
+// The host is the session that logged in with the host password (data.hostSession). It is never
+// sent to clients; gameState.host is only the host's name, for display. Names are not identity:
+// anyone can pick any name.
+function isHostSession(data, session) {
+    return typeof session === 'string' && !!session && session === data.hostSession && !!data.players[session];
+}
+
+// A player name: a string, trimmed, 1-24 characters, no control characters, no < or >.
+// Returns the clean name, or { error } when it can't be used.
+const NAME_MAX = 24;
+function cleanName(raw, fallback, data, exceptSession) {
+    if (raw !== undefined && raw !== null && typeof raw !== 'string') return { error: 'That name is not valid.' };
+    const name = (raw || '').replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim() || fallback;
+    if ([...name].length > NAME_MAX) return { error: `Names can be at most ${NAME_MAX} characters.` };
+    const key = name.toLocaleLowerCase();
+    const taken = Object.keys(data.players).some(id => id !== exceptSession && String(data.players[id].username || '').toLocaleLowerCase() === key);
+    if (taken) return { error: 'Someone in the game already has that name. Pick another one.' };
+    return { name };
 }
 
 function isGameOperational(servers) {
@@ -526,7 +552,13 @@ async function loadGame() {
         }
         if (!data.activeSabotages.comms) data.activeSabotages.comms = { ...DEFAULT_SABOTAGES.comms };
         commsDown = commsSabotaged(data);
-        if (!data.servers) data.servers = {};
+        data.players = bareMap(data.players);
+        data.servers = bareMap(data.servers);
+        // Older game.json files knew the host only by name: adopt that player's session once.
+        if (!data.hostSession && data.gameState.host) {
+            const ids = Object.keys(data.players).filter(id => data.players[id].username === data.gameState.host);
+            if (ids.length === 1) data.hostSession = ids[0];
+        }
         // Merge over the defaults so older game.json files (missing newer keys) still work.
         data.settings = { ...DEFAULT_SETTINGS, ...(data.settings || {}) };
         
@@ -535,13 +567,13 @@ async function loadGame() {
     } catch (error) {
         logError("Failed to load game.json, returning defaults.", error);
         return {
-            players: {},
+            players: bareMap(),
             gameState: { ...DEFAULT_GAME_STATE },
             activeSabotages: {
                 o2: { ...DEFAULT_SABOTAGES.o2 },
                 reactor: { ...DEFAULT_SABOTAGES.reactor }
             },
-            servers: {},
+            servers: bareMap(),
             settings: { ...DEFAULT_SETTINGS }
         };
     }
@@ -615,12 +647,14 @@ app.post('/enter', async (req, res) => {
             const session = req.cookies.session;
             const data = await loadGame();
 
-            const username = req.body.username ? String(req.body.username) : "Anonymous Crewmate";
-
             if (session && typeof session === 'string' && data.players[session]) {
-                logDebug(`Player re-entered with existing session: ${username}`);
+                logDebug(`Player re-entered with existing session: ${data.players[session].username}`);
                 return res.status(200).json({ message: "username accepted!" })
             }
+
+            const checked = cleanName(req.body.username, "Anonymous Crewmate", data);
+            if (checked.error) return res.status(400).json({ error: checked.error });
+            const username = checked.name;
 
             // New players only join in the lobby; a running game is closed to them.
             if (data.gameState.started) {
@@ -670,16 +704,15 @@ app.post('/enter-host', async (req, res) => {
         await withGameLock(async () => {
             const session = req.cookies.session;
             const data = await loadGame();
-            const username = req.body.username ? String(req.body.username) : "Host";
-            const password = req.body.password ? String(req.body.password) : "";
+            const password = typeof req.body.password === 'string' ? req.body.password : "";
 
              if (!password || !host_pass) {
-                logDebug(`Host login failed: missing credentials for ${username}`);
+                logDebug(`Host login failed: missing credentials`);
                 return res.status(401).json({ error: "invalid credentials" });
             }
 
             if (!(await bcrypt.compare(password, host_pass))) {
-                logDebug(`Host login failed: invalid password for ${username}`);
+                logDebug(`Host login failed: invalid password`);
                 return res.status(401).json({ error: "invalid credentials" })
             }
 
@@ -701,10 +734,13 @@ app.post('/enter-host', async (req, res) => {
                 return res.sendFile(path.join(__dirname, 'public', 'server.html'));
             }
 
-            if (data.gameState.host != "") {
+            if (data.hostSession && data.players[data.hostSession]) {
                 logDebug(`Host login denied: Host is already in the game.`);
                 return res.status(400).json({ error: "Host is already in the game!" })
             }
+            const checked = cleanName(req.body.username, "Host", data);
+            if (checked.error) return res.status(400).json({ error: checked.error });
+            const username = checked.name;
 
             const UUID = crypto.randomUUID();
             res.cookie('session', UUID, {
@@ -725,6 +761,7 @@ app.post('/enter-host', async (req, res) => {
 
             data.players[UUID] = playerData;
             data.gameState.host = username;
+            data.hostSession = UUID;
             data.gameState.playerCount = Object.keys(data.players).length;
             data.gameState.alivePlayers = Object.keys(data.players).length;
 
@@ -743,7 +780,7 @@ app.post('/enter-host', async (req, res) => {
 app.post("/end", async (req, res) => {
     const data = await loadGame();
     const session = req.cookies.session;
-    if (!data.players[session] || data.players[session].username != data.gameState.host) {
+    if (!isHostSession(data, session)) {
         logDebug(`Unauthorised game end attempt by session: ${session}`);
         return res.sendStatus(401);
     }
@@ -760,7 +797,7 @@ app.post("/restart", async (req, res) => {
         const session = req.cookies.session;
         const data = await loadGame();
 
-        if (!data.players[session] || data.players[session].username != data.gameState.host) {
+        if (!isHostSession(data, session)) {
             logDebug(`Unauthorised POST game restart attempt by session: ${session}`);
             return res.status(401).json({ message: "You are not the host.", failed: true });
         }
@@ -859,9 +896,10 @@ app.get('/logout', async (req, res) => {
         if (data.players[session]) {
             const leavingPlayer = data.players[session];
             logDebug(`Player logged out: ${leavingPlayer.username} (${session})`);
-            if (data.gameState.host == leavingPlayer.username) {
+            if (session === data.hostSession) {
                 logDebug(`Host logged out! Stopping game.`);
                 data.gameState.host = "";
+                delete data.hostSession;
                 data.gameState.started = false;
             }
 
@@ -903,7 +941,7 @@ app.get('/logout', async (req, res) => {
             }
         }
 
-        if (data.servers && data.servers.hasOwnProperty(session)) {
+        if (validateServer(data.servers, session)) {
             logDebug(`Server device logged out: ${session}`);
             delete data.servers[session];
             await saveGame(data);
@@ -1226,9 +1264,6 @@ app.get("/alarm/settings", async (req, res) => {
 });
 
 // The host's "Station sounds" menu: every station, whether a device holds it, and what it plays.
-function isHostSession(data, session) {
-    return !!session && data.players[session]?.username === data.gameState.host;
-}
 function stationSoundsView(data) {
     const stations = SOUND_ROLES.map(role => {
         const holders = Object.keys(data.servers || {}).filter(s => data.servers[s] === role);
@@ -1535,7 +1570,7 @@ function evaluateWinConditions(data, messages = {}) {
 }
 
 let emergencyMeetingTimer = null;
-let emergencyVotes = {};
+let emergencyVotes = Object.create(null);
 
 function clearEmergencyMeetingTimer() {
     if (emergencyMeetingTimer) {
@@ -1550,7 +1585,7 @@ function buildEmergencyRoster(data) {
         id: pidOf(id),
         name: p.username,
         dead: p.alive === false,
-        voted: Object.prototype.hasOwnProperty.call(emergencyVotes, id)
+        voted: Object.hasOwn(emergencyVotes, id)
     }));
 }
 
@@ -1622,7 +1657,7 @@ async function startEmergencyMeeting(report) {
     // living player has tapped "I'm present" on their tablet. Tasks, kills and sabotage are off meanwhile.
     logDebug("Emergency meeting called: gathering.");
     clearEmergencyMeetingTimer();
-    emergencyVotes = {};
+    emergencyVotes = Object.create(null);
 
     data.gameState.emergencyMeeting = true;
     data.gameState.emergencyMeetingEndTime = 0;
@@ -1706,7 +1741,7 @@ async function resolveEmergencyMeeting(resultData) {
     data.gameState.emergencyMeetingEndTime = 0;
     data.gameState.meetingReport = null;
     data.gameState.meetingGather = null;
-    emergencyVotes = {};
+    emergencyVotes = Object.create(null);
 
     const votes = (resultData && typeof resultData.votes === 'object' && resultData.votes) ? resultData.votes : {};
     const entries = Object.entries(votes).filter(([, count]) => typeof count === 'number' && count > 0);
@@ -1788,193 +1823,6 @@ app.post(`/env`, (req, res) => {
     return res.json({ip:IP, port:PORT});
 })
 
-function ejectHtml(textToType = "") {
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Text Reveal</title>
-<style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    background: #000000;
-    overflow: hidden;
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  }
-  
-  .stage {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #000000;
-  }
-
-  /* -------------------- Starfield -------------------- */
-  .particles { 
-    position: absolute; 
-    inset: 0; 
-    overflow: hidden; 
-    pointer-events: none; 
-    z-index: 1; 
-  }
-  
-  .particle {
-    position: absolute;
-    width: 2px; 
-    height: 2px;
-    background: rgba(255, 255, 255, 0.6);
-    border-radius: 50%;
-    animation: drift linear infinite;
-    opacity: 0;
-  }
-  
-  @keyframes drift {
-    0% { opacity: 0; transform: translateY(0); }
-    10% { opacity: 0.7; }
-    90% { opacity: 0.35; }
-    100% { opacity: 0; transform: translateY(-40px); }
-  }
-
-  .vignette {
-    position: absolute; 
-    inset: 0;
-    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.85) 100%);
-    pointer-events: none;
-    z-index: 3;
-  }
-
-  /* -------------------- Text & Cursor -------------------- */
-  .scene {
-    position: relative;
-    z-index: 2;
-    text-align: center;
-    width: 90vw;
-    font-size: clamp(1.6rem, 5vw, 3rem);
-    color: rgba(255, 255, 255, 0.85);
-    font-weight: 300;
-    letter-spacing: 0.05em;
-    white-space: pre-wrap;
-  }
-
-  .cursor {
-    display: inline-block;
-    width: 3px;
-    height: 1em;
-    margin-left: 4px;
-    vertical-align: text-bottom;
-    background: rgba(255, 255, 255, 0.85);
-    animation: blink 0.9s steps(1) infinite;
-  }
-  
-  @keyframes blink {
-    0%, 49% { opacity: 1; }
-    50%, 100% { opacity: 0; }
-  }
-</style>
-</head>
-<body>
-  <div class="stage">
-    <div class="particles" id="particles"></div>
-    
-    <div class="scene">
-      <span id="text-container"></span>
-    </div>
-    
-    <div class="vignette"></div>
-  </div>
-<script>
-  // Passed from server/generator
-  const TEXT_TO_TYPE = \`${textToType.replace(/`/g, '\\`')}\`;
-
-  // ---------------- Starfield ----------------
-  const particleContainer = document.getElementById('particles');
-  const starCount = 90;
-  
-  for (let i = 0; i < starCount; i++) {
-    const p = document.createElement('div');
-    p.className = 'particle';
-    const size = Math.random() * 2 + 1;
-    p.style.width = size + 'px';
-    p.style.height = size + 'px';
-    p.style.left = Math.random() * 100 + 'vw';
-    p.style.top = Math.random() * 100 + 'vh';
-    p.style.animationDuration = (6 + Math.random() * 10) + 's';
-    p.style.animationDelay = (Math.random() * 8) + 's';
-    particleContainer.appendChild(p);
-  }
-
-  // ---------------- Text Writing Logic ----------------
-  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-  function typeText(el, text, speed) {
-    return new Promise((resolve) => {
-      el.textContent = '';
-      const cursor = document.createElement('span');
-      cursor.className = 'cursor';
-      let i = 0;
-
-      function step() {
-        if (i < text.length) {
-          el.textContent = text.slice(0, i + 1);
-          el.appendChild(cursor);
-          i++;
-          // Slight randomness to typing speed makes it feel more organic
-          const variableSpeed = speed + (Math.random() * 30 - 15);
-          setTimeout(step, variableSpeed);
-        } else {
-          // Leave the cursor blinking after typing finishes
-          setTimeout(resolve, 400);
-        }
-      }
-      step();
-    });
-  }
-
-  // ---------------- Initialization ----------------
-  async function runSequence() {
-    const textContainer = document.getElementById('text-container');
-    
-    // Wait a brief moment for the stars to settle in before typing begins
-    await sleep(2000);
-    
-    // Type the text at 65ms per character (adjust as needed)
-    await typeText(textContainer, TEXT_TO_TYPE, 65);
-
-    await sleep(2000);
-    window.location.href = "/emergency"
-  }
-
-  runSequence();
-</script>
-</body>
-</html>`;
-}
-
-app.get("/revealResults", async (req, res) => {
-    const data = await loadGame();
-    const last = data.gameState.lastEjection;
-
-    let text;
-    if (!last || last.result === 'tie') {
-        text = "NO ONE WAS EJECTED\n(TIE VOTE)";
-    } else if (last.result === 'skip') {
-        text = "NO ONE WAS EJECTED";
-    } else if (last.result === 'ejection' && last.playerName) {
-        text = `${last.playerName.toUpperCase()} WAS EJECTED\n${last.wasImpostor ? "THEY WERE THE IMPOSTOR" : "THEY WERE NOT THE IMPOSTOR"}`;
-    } else {
-        text = "NO ONE WAS EJECTED";
-    }
-
-    return res.send(ejectHtml(text));
-})
-
 app.post("/addDummyPlayers", async (req, res) => {
     const data = await loadGame();
 
@@ -1985,7 +1833,7 @@ app.post("/addDummyPlayers", async (req, res) => {
         return res.status(400).json({ message: "Invalid amount provided." });
     }
 
-    if (data.players[req.cookies.session]?.username !== data.gameState.host) {
+    if (!isHostSession(data, req.cookies.session)) {
         logDebug(`Unauthorised dummy player request by ${req.cookies.session}`);
         return res.status(401).json({ message: "401 Unauthorized" });
     }
@@ -2002,7 +1850,7 @@ app.post("/addDummyPlayers", async (req, res) => {
 
     for (let i = 1; i <= toAdd; i++) {
         const id = crypto.randomUUID();
-        let dmnKey = `dummy_${Date.now()}_${i}`;
+        const dmnKey = crypto.randomUUID();   // a session nobody can guess
 
         data.players[dmnKey] = {
             id: id,
@@ -2030,24 +1878,16 @@ app.post("/addDummyServers", async (req, res) => {
     const data = await loadGame();
 
 
-    if (data.players[req.cookies.session]?.username !== data.gameState.host) {
+    if (!isHostSession(data, req.cookies.session)) {
         logDebug(`Unauthorised dummy server request by ${req.cookies.session}`);
         return res.status(401).json({ message: "401 Unauthorized." });
     }
 
-    const dummy_servers = {
-        "o2_dummy": "o2",
-        "reactor_dummy": "reactor",
-        "emergency_dummy": "emergency"
-    };
-
+    // Each stand-in station gets a random session, so nobody can take it over by setting a known cookie.
     const existingValues = Object.values(data.servers);
-    for (let [key, value] of Object.entries(dummy_servers)) {
-        if (existingValues.includes(value)) {
-            delete dummy_servers[key];
-        }
+    for (const role of ['o2', 'reactor', 'emergency']) {
+        if (!existingValues.includes(role)) data.servers[crypto.randomUUID()] = role;
     }
-    data.servers = { ...data.servers, ...dummy_servers };
     await saveGame(data);
 
     io.emit('game_data_request', data.gameState);
@@ -2269,7 +2109,7 @@ io.on("connection", async (socket) => {
                     socket.emit('vote_ack', { ok: false });
                     return;
                 }
-                if (Object.prototype.hasOwnProperty.call(emergencyVotes, voterId)) {
+                if (Object.hasOwn(emergencyVotes, voterId)) {
                     socket.emit('Err', { error: 'you already voted' });
                     socket.emit('vote_ack', { ok: false });
                     return;
@@ -2293,7 +2133,7 @@ io.on("connection", async (socket) => {
 
                 const requiredVoters = emergencyVoterIds(d);
                 const allVoted = requiredVoters.length > 0 &&
-                    requiredVoters.every(id => Object.prototype.hasOwnProperty.call(emergencyVotes, id));
+                    requiredVoters.every(id => Object.hasOwn(emergencyVotes, id));
 
                 if (allVoted) {
                     logDebug("All votes have been cast. Resolving emergency meeting early.");
@@ -2531,7 +2371,12 @@ io.on("connection", async (socket) => {
 app.get("/win", async (req, res) => {
     const data = await loadGame();
     const session = req.cookies.session;
-    const isHost = !!(session && data.players[session] && data.players[session].username === data.gameState.host);
+    const isHost = isHostSession(data, session);
+    const gs = data.gameState;
+    // Only after a game has ended with a winner (the page lists the impostors), and only for
+    // players and station devices.
+    if (gs.started || !(gs.crewmatesWon || gs.impostorsWon)) return res.redirect(data.players[session] ? '/waiting' : '/');
+    if (!data.players[session] && !validateServer(data.servers, session)) return res.redirect('/');
 
     // ?embed=1: shown inside a server device's page, which handles restarts itself
     const embedded = req.query.embed === '1';
@@ -2573,7 +2418,7 @@ app.get("/waiting", async (req, res) => {
     const data = await loadGame();
     if (session) {
         if (data.players[session]) {
-            if (data.players[session].username == data.gameState.host) {
+            if (isHostSession(data, session)) {
                 return res.sendFile(path.join(__dirname, 'public', 'host_lobby.html'));
             }
         }
@@ -2620,18 +2465,25 @@ function parseSettingsArray(rawSettings, playerCount) {
     return { impostors, meltdownCountdown, tasks, emergencyCountdown, sabotageCooldown, emergencyCooldown };
 }
 
+// Help topics are the .md files in src/. Only those names are accepted, so the topic can't point
+// at other files or carry HTML into the page.
+async function helpTopics() {
+    const entries = await fs.readdir(path.join(__dirname, "src"), { withFileTypes: true });
+    return entries.filter(e => e.isFile() && e.name.endsWith('.md')).map(e => e.name.slice(0, -3)).filter(n => /^[A-Za-z0-9_-]+$/.test(n));
+}
 app.get("/help", async (req, res) => {
     const value = req.query.topic;
+    if (value !== undefined && (typeof value !== 'string' || (value !== '' && !(await helpTopics()).includes(value)))) {
+        return res.status(400).send({ err: "400 - bad request" });
+    }
 
     if (value === undefined || value === "" || value == "help") {
         let data = await fs.readFile(path.join(__dirname, "src", `help.md`), "utf-8");
-        let entries = await fs.readdir(path.join(__dirname, "src"), { withFileTypes: true });
         let htmlContent = marked.parse(data);
-        htmlContent += "<hr>\n<h3>3 - Follow these links</h3>\n<ul>"
-        entries = entries.filter(entry => entry.isFile()).map(entry => path.parse(entry.name).name);
-        entries.forEach(el => {
+        htmlContent += "<hr>\n<h3>3 - Follow these links</h3>\n<ul>";
+        for (const el of await helpTopics()) {
             htmlContent += `<li><a href="/help?topic=${el}">${el}</a></li>\n`;
-        });
+        }
         htmlContent += "</ul>\n<hr>"
         
         return res.send(`
@@ -2657,7 +2509,7 @@ app.get("/help", async (req, res) => {
         `);
     }
     try {
-        const filePath = path.join(__dirname, "src", `${req.query.topic}.md`);
+        const filePath = path.join(__dirname, "src", `${value}.md`);
         const data = await fs.readFile(filePath, "utf-8");
 
         const htmlContent = marked.parse(data);
@@ -2667,7 +2519,7 @@ app.get("/help", async (req, res) => {
             <html>
             <head>
                 <meta charset="utf-8"/>
-                <title>${req.query.topic}</title>
+                <title>${value}</title>
             </head>
             <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/simpledotcss@2/simple.min.css">
             <body>
@@ -2695,7 +2547,7 @@ app.post("/start", async (req, res) => {
         const session = req.cookies.session;
         const data = await loadGame();
 
-        if (!data.players[session] || data.players[session].username != data.gameState.host) {
+        if (!isHostSession(data, session)) {
             logDebug(`Unauthorised game start attempt by ${session}`);
             return res.status(401).json({ message: "Get outa here you dont have credentials clown.", failed: true });
         }
@@ -2873,8 +2725,7 @@ const REF_NAME = /^[a-f0-9]{24}\.(png|jpg|webp|gif|svg)$/;
 const REF_TYPES = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'image/svg+xml': 'svg' };
 
 function isHostRequest(req, data) {
-    const p = req.cookies.session ? data.players[req.cookies.session] : null;
-    return !!(p && data.gameState.host && p.username === data.gameState.host);
+    return isHostSession(data, req.cookies.session);
 }
 
 async function readPlan() {
@@ -3137,7 +2988,7 @@ async function reset(req, res){
         res.set('Content-Type', 'text/html');
         return res.status(401).send(dynamicHtml);
     }
-    if (data.players[req.cookies.session].username != data.gameState.host) {
+    if (!isHostSession(data, req.cookies.session)) {
         logDebug(`Unauthorised reset attempt by non-host: ${req.cookies.session}`);
         let dynamicHtml = `
             <!DOCTYPE html>
@@ -3164,8 +3015,8 @@ async function reset(req, res){
 
     data = {
         gameState: { ...DEFAULT_GAME_STATE },
-        servers: {},
-        players: {},
+        servers: bareMap(),
+        players: bareMap(),
         activeSabotages: {
             o2: { ...DEFAULT_SABOTAGES.o2 },
             reactor: { ...DEFAULT_SABOTAGES.reactor }
