@@ -263,6 +263,14 @@
             color: var(--signal);
         }
 
+        .fail-msg{
+            margin: 12px 0 0;
+            min-height: 16px;
+            font-size: 12.5px;
+            line-height: 1.4;
+            color: var(--signal);
+        }
+
         @media (prefers-reduced-motion: reduce){
             .panel, .beacon-ring, .beacon-core{
                 animation: none !important;
@@ -298,6 +306,7 @@
             </div>
 
             <button id="button-id">Enter</button>
+            <p class="fail-msg" id="fail" role="alert"></p>
 
             <br>
             <a class="host-link" href="/host">are you host?</a>
@@ -316,9 +325,14 @@
                 username: usr
             })
         })
-        .then(f => {window.location.href = '/waiting'})
+        .then(async res => {
+            if (res.ok) { window.location.href = '/waiting'; return; }
+            const body = await res.json().catch(() => ({}));
+            document.getElementById("fail").textContent = body.error || "Could not enter the game.";
+        })
         .catch(error => {
             console.error(error);
+            document.getElementById("fail").textContent = "Could not reach the server.";
         });
         })
 

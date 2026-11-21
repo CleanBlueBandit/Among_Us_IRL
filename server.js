@@ -623,6 +623,12 @@ app.post('/enter', async (req, res) => {
                 return res.status(200).json({ message: "username accepted!" })
             }
 
+            // New players only join in the lobby; a running game is closed to them.
+            if (data.gameState.started) {
+                logDebug(`Entry refused, the game has already started: ${username}`);
+                return res.status(403).json({ error: "The game has already started. Wait for the next round." });
+            }
+
             const UUID = crypto.randomUUID();
             res.cookie('session', UUID, {
                 httpOnly: true,
