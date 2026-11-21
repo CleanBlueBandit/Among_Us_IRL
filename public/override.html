@@ -109,6 +109,7 @@
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/servertime.js"></script>
     <script>
         const $ = id => document.getElementById(id);
         const token = decodeURIComponent(location.pathname.split('/').pop() || '');
@@ -160,7 +161,7 @@
         }
         function stabTick() {
             const s = status;
-            const p = s && s.since > 0 ? Math.min(1, (Date.now() - s.since) / (s.holdMs || 3000)) : 0;
+            const p = s && s.since > 0 ? Math.min(1, (serverNow() - s.since) / (s.holdMs || 3000)) : 0;
             $('stab').style.width = (p * 100) + '%';
             requestAnimationFrame(stabTick);
         }

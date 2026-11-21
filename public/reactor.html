@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Reactor Core Control</title>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/servertime.js"></script>
     <script src="/serverdevice.js"></script>
     <script src="/alarmaudio.js"></script>
     <style>
@@ -202,7 +203,7 @@
         }
 
         function tick() {
-            const now = Date.now();
+            const now = serverNow();
             if (state === 'crisis') {
                 const left = Math.max(0, (endTime - now) / 1000);
                 $('clock').textContent = fmt(left);
@@ -290,13 +291,16 @@
             restoredTimer = setTimeout(() => { if (state === 'restored') setState('stable'); }, 4000);
         }
 
+        // The first deadline can arrive before the clock sync answers; size the bar again once it has.
+        window.addEventListener('serverclock', () => { if (state === 'crisis' && endTime) total = Math.max(1, Math.round((endTime - serverNow()) / 1000)); });
+
         function setupSocketListeners() {
             socket.on('sabotage_data_request', ({ sData, endTime: end }) => {
                 const r = sData && sData.reactor;
                 if (!r || state === 'game-over') return;
                 if (r.sabotaged && r.meltdown) {
                     endTime = end || endTime;
-                    if (!total) total = Math.max(1, Math.round((endTime - Date.now()) / 1000));
+                    if (!total) total = Math.max(1, Math.round((endTime - serverNow()) / 1000));
                     setState('crisis');
                     if (!qrShown) loadQr();
                 } else if (state === 'crisis') {

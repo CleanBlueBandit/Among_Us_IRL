@@ -218,6 +218,7 @@
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="/servertime.js"></script>
 <script src="/serverdevice.js"></script>
 <script src="/alarmaudio.js"></script>
 <script>
@@ -314,7 +315,7 @@
   btn.addEventListener('click', () => {
     if (meetingActive) return;
     // FIXED: Check if current time is past the cooldown end-time
-    if (Date.now() < cooldownEndTime) return;
+    if (serverNow() < cooldownEndTime) return;
     socket.emit('emergency');
   });
 
@@ -402,7 +403,7 @@
     updateButton(true, "OVERHEAT");
     
     const tick = () => {
-      const remaining = Math.max(0, Math.round((cooldownEndTime - Date.now()) / 1000));
+      const remaining = Math.max(0, Math.round((cooldownEndTime - serverNow()) / 1000));
       if (remaining <= 0) {
         setStatus('Ready', false);
         clearInterval(countdownTick);

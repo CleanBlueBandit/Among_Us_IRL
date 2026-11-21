@@ -2070,6 +2070,8 @@ function parseSocketCookies(cookieHeader) {
 }
 
 io.on("connection", async (socket) => {
+    // Clock sync for clients (public/servertime.js): reply with the server's time.
+    socket.on('time_sync', (cb) => { if (typeof cb === 'function') cb(Date.now()); });
     const rawCookieHeader = socket.request.headers.cookie;
     const cookies = parseSocketCookies(rawCookieHeader);
     const data = await loadGame();

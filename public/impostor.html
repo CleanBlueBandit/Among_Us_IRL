@@ -378,6 +378,7 @@
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/servertime.js"></script>
     <script src="common.js"></script>
     <script>
         let clientAnimationId = null;
@@ -432,7 +433,7 @@
             if (clientAnimationId) cancelAnimationFrame(clientAnimationId);
 
             function updateFrame() {
-                const now = Date.now();
+                const now = serverNow();
                 const genericTimeRemaining = targetEndTime - now;
                 const secondsLeft = Math.max(0, (genericTimeRemaining / 1000)).toFixed(1);
 
@@ -471,7 +472,7 @@
         function animateCooldown(endTime) {
             if (cooldownAnimationId) cancelAnimationFrame(cooldownAnimationId);
 
-            const startTime = Date.now();
+            const startTime = serverNow();
             // Track the longest span we've seen for this cooldown so the bar fills proportionally
             cooldownDuration = Math.max(endTime - startTime, cooldownDuration, 1);
 
@@ -481,7 +482,7 @@
             if (!sabotageActive) setSabotageButtonsDisabled(true);
 
             function updateFrame() {
-                const now = Date.now();
+                const now = serverNow();
                 const remaining = endTime - now;
 
                 if (remaining <= 0) {
@@ -546,7 +547,7 @@
 
         // Server tells us the current/updated sabotage cooldown window
         socket.on("sabotage_cooldown", (data) => {
-            if (data.endTime > Date.now()) {
+            if (data.endTime > serverNow()) {
                 animateCooldown(data.endTime);
             } else {
                 if (!sabotageActive) {

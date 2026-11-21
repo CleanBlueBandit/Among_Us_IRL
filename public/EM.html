@@ -402,6 +402,7 @@
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="/servertime.js"></script>
 <script>
   const socket = io();
 
@@ -535,7 +536,7 @@
 
     const timerEl = document.getElementById('timerDisplay');
     const tick = () => {
-      const remaining = Math.max(0, Math.round((meetingEndTime - Date.now()) / 1000));
+      const remaining = Math.max(0, Math.round((meetingEndTime - serverNow()) / 1000));
       if (remaining <= 0) {
         timerEl.textContent = 'Voting Ended';
         timerEl.classList.add('urgent');
