@@ -523,7 +523,8 @@
 
         socket.on("game_data_request", (data) => {
             if (data.emergencyMeeting) {
-                window.location.href = "/emergency-client";
+                // a meeting was called: check in on the tablet first, then vote
+                window.location.href = data.meetingGather ? "/dashboard" : "/emergency-client";
             }
         });
 
