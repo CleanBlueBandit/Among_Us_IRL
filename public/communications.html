@@ -159,7 +159,7 @@
                     <canvas id="virus"></canvas>
                 </div>
                 <div class="meter" aria-hidden="true"><i id="virusMeter"></i></div>
-                <p class="hint">Rub the infected screen clean before the malware spreads back.</p>
+                <p class="hint">Rub the infected screen clean.</p>
             </section>
 
             <section class="panel" id="retune" hidden aria-label="Retune the relay">
@@ -235,7 +235,7 @@
         const vctx = virus.getContext('2d');
         const probe = document.createElement('canvas'); probe.width = 64; probe.height = 32;
         const pctx = probe.getContext('2d', { willReadFrequently: true });
-        let left = 1, scrubbing = false, lastPt = null, regrowTimer = null, checkTimer = null;
+        let left = 1, scrubbing = false, lastPt = null, checkTimer = null;
         const HEX = '0123456789ABCDEF';
 
         $('firmware').textContent = [
@@ -244,20 +244,6 @@
             '', 'READY TO RETUNE'
         ].join('\n');
 
-        function virusCell(x, y, r) {
-            const g = vctx.createRadialGradient(x, y, r * 0.1, x, y, r);
-            g.addColorStop(0, 'rgba(255,60,120,1)'); g.addColorStop(0.55, 'rgba(150,20,80,1)'); g.addColorStop(1, 'rgba(60,0,40,0.95)');
-            vctx.fillStyle = g;
-            vctx.beginPath();
-            const spikes = 9;
-            for (let i = 0; i <= spikes * 2; i++) {
-                const a = (i / (spikes * 2)) * Math.PI * 2, rr = i % 2 ? r * 0.72 : r * 1.12;
-                vctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
-            }
-            vctx.fill();
-            vctx.fillStyle = 'rgba(30,255,140,0.9)';
-            vctx.beginPath(); vctx.arc(x - r * 0.2, y - r * 0.15, r * 0.16, 0, 7); vctx.arc(x + r * 0.25, y + r * 0.1, r * 0.11, 0, 7); vctx.fill();
-        }
         function infect() {
             fit(virus);
             const W = virus.width, H = virus.height, s = W / 640;
@@ -275,7 +261,6 @@
                 vctx.fillStyle = Math.random() < 0.3 ? 'rgba(255,80,140,0.75)' : 'rgba(160,40,90,0.55)';
                 vctx.fillText(line, 6 * s, y);
             }
-            for (let i = 0; i < 26; i++) virusCell(Math.random() * W, Math.random() * H, (16 + Math.random() * 26) * s);
             vctx.fillStyle = 'rgba(255,230,240,0.92)';
             vctx.font = `800 ${Math.round(26 * s)}px monospace`;
             vctx.textAlign = 'center';
@@ -309,13 +294,6 @@
             $('purgePct').textContent = Math.round(left * 100) + '% INFECTED';
             $('virusMeter').style.width = (left * 100) + '%';
         }
-        function regrow() {   // the malware creeps back where it isn't being scrubbed
-            if (step !== 1 || scrubbing) return;
-            const W = virus.width, H = virus.height, s = W / 640;
-            vctx.globalCompositeOperation = 'source-over';
-            virusCell(Math.random() * W, Math.random() * H, (12 + Math.random() * 14) * s);
-            measure();
-        }
         virus.addEventListener('pointerdown', e => {
             if (step !== 1) return;
             e.preventDefault();
@@ -335,13 +313,12 @@
             $('st1').className = 'on'; $('st2').className = '';
             requestAnimationFrame(() => {
                 infect();
-                clearInterval(regrowTimer); clearInterval(checkTimer);
-                regrowTimer = setInterval(regrow, 1100);
+                clearInterval(checkTimer);
                 checkTimer = setInterval(() => { if (scrubbing) measure(); }, 200);
             });
         }
         function purged() {
-            clearInterval(regrowTimer); clearInterval(checkTimer);
+            clearInterval(checkTimer);
             vctx.clearRect(0, 0, virus.width, virus.height);
             left = 0; renderLeft();
             [700, 940].forEach((f, i) => setTimeout(() => tone(f, 140, 'sine', 0.1), i * 120));
@@ -469,7 +446,7 @@
             $('steps').hidden = next !== 'down';
             if (next !== 'down') {
                 step = 0; $('purge').hidden = true; $('retune').hidden = true;
-                clearInterval(regrowTimer); clearInterval(checkTimer); cancelAnimationFrame(raf);
+                clearInterval(checkTimer); cancelAnimationFrame(raf);
                 staticOff();
             }
             if (next === 'down') {
