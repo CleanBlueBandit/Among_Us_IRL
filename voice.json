@@ -18,6 +18,7 @@
         "voiceVolume": 1,
         "duckTo": 0.35,
         "winVolume": 1,
+        "announceVolume": 1,
         "reverb": {
             "mix": 0.3,
             "seconds": 2.4,

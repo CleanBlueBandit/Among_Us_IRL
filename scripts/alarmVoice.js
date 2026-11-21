@@ -44,6 +44,7 @@ export const DEFAULTS = {
         voiceVolume: 1,
         duckTo: 0.35,
         winVolume: 1,   // the end-of-game sound (no reverb)
+        announceVolume: 1,   // announcements such as the communications error (no reverb)
         reverb: { mix: 0.3, seconds: 2.4, decay: 2.6 }
     },
     // Filled into the lines below: {section} is picked once per alarm from these patterns (so the "stable"

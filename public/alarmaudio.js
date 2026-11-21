@@ -102,7 +102,7 @@
 
         return {
             get busy() { return wantAlarm || speaking > 0 || queue.length > 0; },
-            winVolume: () => A().winVolume,
+            audio: A,
             start() { if (wantAlarm) return; wantAlarm = true; ready.then(startSource); },
             stop(fade) { wantAlarm = false; stopSource(fade); },
             say(url) {
@@ -125,17 +125,18 @@
 
         function wake() { if (ctx.state === 'suspended') ctx.resume().catch(() => {}); }
 
-        // The end-of-game sound: stops the alarms and anything still queued.
-        async function playWin(url) {
-            for (const c of Object.values(chains)) { c.stop(0.05); c.hush(); }
+        // A sound played once, dry: the end-of-game sound (which first stops the alarms and anything still
+        // queued) or an announcement such as the communications error. `volume` is its key in voice.json's audio.
+        async function playOnce(url, volume, stopAlarms) {
+            if (stopAlarms) for (const c of Object.values(chains)) { c.stop(0.05); c.hush(); }
             try {
                 if (ctx.state === 'suspended') await ctx.resume();
                 const buf = await ctx.decodeAudioData(await (await fetch(url)).arrayBuffer());
                 try { if (winSrc) winSrc.stop(); } catch (e) {}
                 const src = ctx.createBufferSource(), g = ctx.createGain();
-                let vol = Object.values(chains).map(c => c.winVolume()).find(v => v != null);
+                let vol = Object.values(chains).map(c => c.audio()[volume]).find(v => v != null);
                 if (vol == null) {   // no alarm on this device: read the volume from voice.json anyway
-                    try { vol = ((await (await fetch('/alarm/settings?type=reactor', { cache: 'no-store' })).json()).audio || {}).winVolume; } catch (e) {}
+                    try { vol = ((await (await fetch('/alarm/settings?type=reactor', { cache: 'no-store' })).json()).audio || {})[volume]; } catch (e) {}
                 }
                 src.buffer = buf;
                 g.gain.value = vol ?? 1;
@@ -144,7 +145,7 @@
                 src.onended = () => { if (winSrc === src) winSrc = null; };
                 src.start();
             } catch (e) {
-                console.warn('Could not play the win sound:', e);
+                console.warn('Could not play ' + url + ':', e);
             }
         }
 
@@ -175,7 +176,8 @@
                 wake();
                 chain(d.type).say(d.url);
             });
-            socket.on('win_sound', d => { if (d && d.url) playWin(d.url); });
+            socket.on('win_sound', d => { if (d && d.url) playOnce(d.url, 'winVolume', true); });
+            socket.on('play_sound', d => { if (d && d.url) { wake(); playOnce(d.url, 'announceVolume', false); } });
             // the server's station_sounds says so too; this is a second word that the alarm is over
             socket.on('sabotage_fixed', d => { if (d && chains[d.type]) chains[d.type].stop(); });
         }
