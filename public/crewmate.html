@@ -1099,7 +1099,7 @@
                 if (d.type === 'o2') { sab.o2 = false; sab.code = null; sab.accepted = false; }
                 if (d.type === 'reactor') sab.reactor = false;
                 sabRender();
-                showToast(d.type === 'o2' ? 'O2 restored' : 'Reactor stabilised', 'success');
+                showToast(d.type === 'o2' ? 'O2 restored' : d.type === 'comms' ? 'Communications restored' : 'Reactor stabilised', 'success');
             });
 
             // ---- comms sabotaged: the server goes quiet; only reporting and "I'm dead" are left ----
