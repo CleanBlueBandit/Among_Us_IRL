@@ -1292,6 +1292,7 @@
             socket.on('comms_state', function(d) {
                 var down = !!(d && d.down);
                 document.body.classList.toggle('comms-down', down);
+                if ('impostor' in d) isImpostor = !!d.impostor;   // player data doesn't come through while comms are down
                 if (down && 'alive' in d) {
                     isAlive = !!d.alive;
                     reportBtn.hidden = !isAlive;
