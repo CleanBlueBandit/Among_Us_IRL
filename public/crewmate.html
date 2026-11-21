@@ -1287,17 +1287,11 @@
                 showToast(d.type === 'o2' ? 'O2 restored' : d.type === 'comms' ? 'Communications restored' : 'Reactor stabilised', 'success');
             });
 
-            // ---- comms sabotaged: the server goes quiet; only reporting and "I'm dead" are left ----
+            // ---- comms sabotaged: the screen goes dark; only reporting and "I'm dead" are left ----
             var commsWasDown = false;
             socket.on('comms_state', function(d) {
                 var down = !!(d && d.down);
                 document.body.classList.toggle('comms-down', down);
-                if ('impostor' in d) isImpostor = !!d.impostor;   // player data doesn't come through while comms are down
-                if (down && 'alive' in d) {
-                    isAlive = !!d.alive;
-                    reportBtn.hidden = !isAlive;
-                    document.getElementById('shatterOverlay').classList.toggle('active', !isAlive);
-                }
                 if (down) {
                     if (window.TabletMap && window.TabletMap.close) { try { window.TabletMap.close(); } catch (e) {} }
                 } else if (commsWasDown) {

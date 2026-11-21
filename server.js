@@ -156,12 +156,8 @@ const httpServer = createServer(app);
 const io = new Server(httpServer);
 
 // ---- Comms sabotage: the tablets go dark ----
-// While comms are sabotaged the server sends player tablets nothing but what "I'm dead" and
-// "Report body" need (and the game ending / restarting). Every player socket joins TABLETS; broadcasts
-// skip that room and each tablet socket drops anything else it is asked to send.
-const TABLETS = 'tablets';
-const COMMS_THROUGH = new Set(['comms_state', 'game_over', 'restart_game', 'report_candidates', 'report_ack',
-    'imdead_ack', 'sabotage_ack', 'Err']);
+// While comms are sabotaged the tablets show nothing but "Report body" and "I'm dead" (comms_state tells
+// them). They still get all their data as usual; they just don't display it.
 let commsDown = false;
 function commsSabotaged(data) {
     return !!(data && data.gameState && data.gameState.started && data.activeSabotages &&
@@ -170,9 +166,7 @@ function commsSabotaged(data) {
 const ioEmitAll = io.emit.bind(io);
 io.emit = (ev, ...args) => {
     if (ev === 'game_over') playWinSound(args[0]);
-    return (commsDown && !COMMS_THROUGH.has(ev))
-        ? io.except(TABLETS).emit(ev, ...args)
-        : ioEmitAll(ev, ...args);
+    return ioEmitAll(ev, ...args);
 };
 
 // ---- End of game: the win sound ----
@@ -585,7 +579,7 @@ async function saveGame(data) {
     // I know this is insecure, but i dont want to write multiple step handshakes and authentication
     io.emit('sabotage_data_request', { sData: data.activeSabotages, endTime: sabEndTime });
     // Each player has a private socket room named after their session id.
-    if (!commsDown) for (const [playerId, player] of Object.entries(data.players)) {
+    for (const [playerId, player] of Object.entries(data.players)) {
         io.to(playerId).emit('player_data_request', selfView(playerId, player));
     }
     logDebug("data saved and brodcasted");
@@ -2082,17 +2076,7 @@ io.on("connection", async (socket) => {
     
     logDebug(`Client connected via socket (session: ${cookies.session || 'unknown'})`);
     if (cookies.session) socket.join(cookies.session);
-    if (cookies.session && data.players[cookies.session]) {
-        socket.join(TABLETS);
-        const emitToTablet = socket.emit.bind(socket);
-        socket.emit = (ev, ...args) => (commsDown && !COMMS_THROUGH.has(ev)) ? true : emitToTablet(ev, ...args);
-        // Enough for the dark tablet: whether comms are down, whether this player can still report, and
-        // whether "I'm dead" is really the impostor's way to the sabotage remote (only ever sent to themselves).
-        const me = data.players[cookies.session];
-        socket.emit('comms_state', { down: commsDown, alive: me.alive !== false, impostor: !!me.impostor });
-    } else {
-        socket.emit('comms_state', { down: commsDown });
-    }
+    socket.emit('comms_state', { down: commsDown });
 
     try {
         if (data.players[cookies.session]) {
@@ -2412,7 +2396,6 @@ io.on("connection", async (socket) => {
                 logDebug(`${cookies.session} death confirmed`);
 
                 socket.emit("imdead_ack", { ok: true });
-                if (commsDown) socket.emit('comms_state', { down: true, alive: false, impostor: false });
                 socket.emit("player_data_request", selfView(cookies.session, player));
                 syncOverride(d);
                 io.emit("game_data_request", d.gameState);
