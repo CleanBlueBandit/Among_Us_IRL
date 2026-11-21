@@ -266,7 +266,7 @@ When the O2 or reactor alarm goes off, its station plays the alarm sound (`publi
 
 ### Station sounds
 
-In the host lobby, **Station sounds** lists the four stations (O2, reactor, emergency, communications) and whether a device is connected to each. Tick what each one plays: the O2 alarm, the reactor alarm, the crewmate win, the impostor win and the communications error (*"Attention, critical error in communications..."*, played once when communications go down). More than one station can play the same sound, and one station can play several, so the alarm can sound in more than one room. An alarm's spoken lines play wherever that alarm plays.
+In the host lobby, **Station sounds** lists the four stations (O2, reactor, emergency, communications) and whether a device is connected to each. Tick what each one plays: the O2 alarm, the reactor alarm, the crewmate win, the impostor win and the communications error (*"Attention, critical error in communications..."*, repeated every couple of seconds while communications are down; once they're back, the same stations say *"Attention! Communications restored."*, `public/sounds/communications_restored.mp3`). More than one station can play the same sound, and one station can play several, so the alarm can sound in more than one room. An alarm's spoken lines play wherever that alarm plays.
 
 - Out of the box, the O2 station plays the O2 alarm, the reactor station plays the reactor alarm and both win sounds, and the communications station plays the communications error.
 - The choice is saved in `sounds.json` next to `server.js`, by station, so it stays through a reset, a server restart and a device swap. Changes apply straight away, even during an alarm.
@@ -285,7 +285,7 @@ Everything is set in `voice.json` next to `server.js`. It is read each time an a
 | `audio.alarmVolume`, `audio.voiceVolume` | 0 to 1. |
 | `audio.duckTo` | How loud the alarm stays while the voice speaks (0.35 = 35%). |
 | `audio.winVolume` | How loud the end-of-game sound is, 0 to 1. |
-| `audio.announceVolume` | How loud the communications error announcement is, 0 to 1. |
+| `audio.announceVolume` | How loud the communications announcements are, 0 to 1. |
 | `audio.reverb.mix`, `.seconds`, `.decay` | How much reverb, how long it rings, and how fast it fades (higher decay = smaller room). `o2.audio` and `reactor.audio` override these per station; O2 gets less by default because its sound already has reverb. |
 | `sections` | Patterns for the section an alarm names: `#` becomes a random digit, `@` a random letter (never I or O). `"#@"` gives sections like 4B. `o2.sections` or `reactor.sections` override it for one station. |
 | `start`, `countdown`, `final`, `fixed`, `failed` | The lines (under `o2` and `reactor`). One is picked at random each time. They can use `{section}`, `{time}` (time left in words), `{seconds}` and `{status}` (the status line below). |

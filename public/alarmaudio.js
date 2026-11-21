@@ -128,7 +128,7 @@
         // A sound played once, dry: the end-of-game sound (which first stops the alarms and anything still
         // queued) or an announcement such as the communications error. `volume` is its key in voice.json's audio.
         async function playOnce(url, volume, stopAlarms) {
-            if (stopAlarms) for (const c of Object.values(chains)) { c.stop(0.05); c.hush(); }
+            if (stopAlarms) { for (const c of Object.values(chains)) { c.stop(0.05); c.hush(); } Object.keys(loops).forEach(stopLoop); }
             try {
                 if (ctx.state === 'suspended') await ctx.resume();
                 const buf = await ctx.decodeAudioData(await (await fetch(url)).arrayBuffer());
@@ -149,9 +149,43 @@
             }
         }
 
+        // Sounds that repeat while the server says so (the communications error), with a gap between plays.
+        const loops = {};   // id -> { src, gain } once playing, or { loading: true }
+        async function startLoop(l) {
+            if (loops[l.id]) return;
+            const entry = loops[l.id] = { loading: true };
+            try {
+                const buf = await ctx.decodeAudioData(await (await fetch(l.url)).arrayBuffer());
+                if (loops[l.id] !== entry) return;   // stopped while loading
+                // the sound plus `gap` seconds of silence, looped
+                const padded = ctx.createBuffer(buf.numberOfChannels, buf.length + Math.round(ctx.sampleRate * Math.max(0, l.gap || 0)), buf.sampleRate);
+                for (let c = 0; c < buf.numberOfChannels; c++) padded.getChannelData(c).set(buf.getChannelData(c));
+                let vol = Object.values(chains).map(ch => ch.audio().announceVolume).find(v => v != null);
+                if (vol == null) { try { vol = ((await (await fetch('/alarm/settings?type=reactor', { cache: 'no-store' })).json()).audio || {}).announceVolume; } catch (e) {} }
+                if (loops[l.id] !== entry) return;
+                const src = ctx.createBufferSource(), g = ctx.createGain();
+                src.buffer = padded; src.loop = true;
+                g.gain.value = vol ?? 1;
+                src.connect(g); g.connect(ctx.destination);
+                src.start();
+                entry.loading = false; entry.src = src; entry.gain = g;
+            } catch (e) {
+                if (loops[l.id] === entry) delete loops[l.id];
+                console.warn('Could not play ' + l.url + ':', e);
+            }
+        }
+        function stopLoop(id) {
+            const e = loops[id];
+            delete loops[id];
+            if (!e || !e.src) return;
+            const t = ctx.currentTime;
+            e.gain.gain.setTargetAtTime(0, t, 0.08);
+            e.src.stop(t + 0.5);
+        }
+
         // Phones and tablets pause web audio when the screen dims or another app takes the sound. Wake it
         // straight back up while something should be playing, instead of waiting for the next voice line.
-        const playing = () => !!winSrc || Object.values(chains).some(c => c.busy);
+        const playing = () => !!winSrc || Object.keys(loops).length > 0 || Object.values(chains).some(c => c.busy);
         function keepAlive() { if (playing() && ctx.state !== 'running' && ctx.state !== 'closed') ctx.resume().catch(() => {}); }
         ctx.addEventListener('statechange', () => setTimeout(keepAlive, 200));
         document.addEventListener('visibilitychange', keepAlive);
@@ -169,6 +203,9 @@
                     if (alarmsOn.includes(type)) { wake(); chain(type).start(); }
                     else if (chains[type]) chains[type].stop();
                 });
+                const want = d.loops || [];
+                Object.keys(loops).forEach(id => { if (!want.some(l => l.id === id)) stopLoop(id); });
+                want.forEach(l => { wake(); startLoop(l); });
                 listeners.forEach(fn => { try { fn(sounds); } catch (e) { console.error(e); } });
             });
             socket.on('alarm_voice', d => {
