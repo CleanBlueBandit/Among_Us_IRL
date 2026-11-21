@@ -262,8 +262,9 @@ When the emergency button is pressed, or someone reports a body, every player's 
 - The alert shows who has checked in so far, and the emergency station shows the same count and who it's still waiting for.
 - Tapping **I'm present** in the first 10 seconds after the call asks first: it explains that the button means you are standing in the emergency room, and asks whether you really are.
 - Ghosts (dead players) don't check in and aren't counted. If a player logs out while everyone is gathering, the meeting stops waiting for them.
-- No tasks or sabotage while players are gathering, and sabotage countdowns stay paused, as during the meeting.
-- The stations set to play them (the emergency station, out of the box) play an alarm with a voice over it: *"Emergency meeting. All personnel: remain calm. Gather in the emergency room."* (`public/sounds/emergency_meeting.mp3`), or for a body, *"Dead body was found. Emergency meeting. ..."* (`public/sounds/body_reported.mp3`). It fades out once everyone is present.
+- No one can die once a meeting is called: "I'm dead" is refused until the meeting is over. No tasks or sabotage either, and sabotage countdowns stay paused.
+- The host's alert also has **Host: start the meeting now**, which starts the meeting without waiting for the rest (it asks first).
+- The station set to play the meeting call (the emergency station, out of the box) plays the alarm (`public/sounds/meeting.mp3`, once) and the voice says *"Emergency meeting. All personnel: remain calm. Gather in the emergency room."*, or for a body, *"Dead body was found. Emergency meeting. ..."*. Every 20 seconds until everyone is there it says how many are present and how many it's still waiting for. The lines are made on the fly by the same voice as the O2 and reactor alarms, and are set in `voice.json` under `meeting` (see below). The alarm fades out once everyone is present.
 
 ## Alarm voice
 
@@ -276,9 +277,9 @@ When the O2 or reactor alarm goes off, its station plays the alarm sound (`publi
 
 ### Station sounds
 
-In the host lobby, **Station sounds** lists the four stations (O2, reactor, emergency, communications) and whether a device is connected to each. Tick what each one plays: the O2 alarm, the reactor alarm, the crewmate win, the impostor win, the two meeting calls (see [Meetings](#meetings)) and the communications error (*"Attention, critical error in communications..."*, played once when communications go down; once they're back, the same stations say *"Attention! Communications restored."*, `public/sounds/communications_restored.mp3`). More than one station can play the same sound, and one station can play several, so the alarm can sound in more than one room. An alarm's spoken lines play wherever that alarm plays.
+In the host lobby, **Station sounds** lists the four stations (O2, reactor, emergency, communications) and whether a device is connected to each. Tick what each one plays: the O2 alarm, the reactor alarm, the crewmate win, the impostor win, the meeting call (see [Meetings](#meetings)) and the communications error (*"Attention, critical error in communications..."*, played once when communications go down; once they're back, the same stations say *"Attention! Communications restored."*, `public/sounds/communications_restored.mp3`). More than one station can play the same sound, and one station can play several, so the alarm can sound in more than one room. An alarm's spoken lines play wherever that alarm plays.
 
-- Out of the box, the O2 station plays the O2 alarm, the reactor station plays the reactor alarm and both win sounds, and the communications station plays the communications error. The emergency station plays the meeting calls.
+- Out of the box, the O2 station plays the O2 alarm, the reactor station plays the reactor alarm and both win sounds, and the communications station plays the communications error. The emergency station plays the meeting call.
 - The choice is saved in `sounds.json` next to `server.js`, by station, so it stays through a reset, a server restart and a device swap. Changes apply straight away, even during an alarm.
 - The emergency station has no Connect button, so if its browser holds the sound back it shows **Tap to enable sound** until someone taps the screen (only while it has sounds to play).
 
@@ -293,7 +294,10 @@ Everything is set in `voice.json` next to `server.js`. It is read each time an a
 | `schedule.finalFrom`, `schedule.finalEvery` | From this many seconds left, speak a short line every `finalEvery` seconds. A line is skipped while the previous one is still playing. |
 | `schedule.statusDelay` | Seconds to wait after the repair changes before reading out the status, so a lever pushed and let go quickly is read out once. It also waits for the voice to be free. |
 | `audio.alarmVolume`, `audio.voiceVolume` | 0 to 1. |
-| `audio.duckTo` | How loud the alarm stays while the voice speaks (0.35 = 35%). |
+| `meeting.button`, `meeting.report` | What the meeting call says when the button is pressed, or a body is reported. |
+| `meeting.attendance`, `meeting.every` | The line saying who's in the emergency room ({present}, {waiting} still to come, {total} expected), and how many seconds apart. |
+| `meeting.loop` | `false` plays the meeting alarm once; `true` repeats it until everyone is there. |
+| `audio.duckTo` | How loud the alarm stays while the voice speaks (0.35 = 35%). The meeting call only drops to 0.7. |
 | `audio.winVolume` | How loud the end-of-game sound is, 0 to 1. |
 | `audio.announceVolume` | How loud the communications announcements are, 0 to 1. |
 | `audio.reverb.mix`, `.seconds`, `.decay` | How much reverb, how long it rings, and how fast it fades (higher decay = smaller room). `o2.audio` and `reactor.audio` override these per station; O2 gets less by default because its sound already has reverb. |

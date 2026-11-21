@@ -1,5 +1,5 @@
-// What a server device plays: the O2 / reactor alarms with their spoken lines, the win sounds and the
-// one-off announcements (communications error, meeting calls).
+// What a server device plays: the O2 / reactor alarms and the meeting call with their spoken lines, the
+// win sounds and the one-off announcements (the communications error).
 // The host picks which station plays which sound (host lobby, "Station sounds"); the server tells
 // each device what it plays and when an alarm is on, so the page itself doesn't decide.
 //
@@ -20,7 +20,8 @@
         return buf;
     }
 
-    // One alarm (o2 or reactor): its loop and its spoken lines.
+    // One alarm (o2, reactor or the meeting call): its sound, looped unless voice.json says otherwise, and its
+    // spoken lines.
     function createChain(ctx, type) {
         let settings = null, alarmBuf = null, alarmSrc = null, wantAlarm = false;
         let speaking = 0, voiceSrc = null;
@@ -66,11 +67,13 @@
             if (!wantAlarm || !alarmBuf || alarmSrc) return;
             alarmSrc = ctx.createBufferSource();
             alarmSrc.buffer = alarmBuf;
-            alarmSrc.loop = true;
+            const loop = !settings || settings.loop !== false;
+            alarmSrc.loop = loop;
             alarmSrc.connect(alarmGain);
-            // a looping source never ends by itself; if the browser stops it anyway, start it again
+            // a looping source never ends by itself; if the browser stops it anyway, start it again.
+            // One that plays once just ends, and stays ended until the alarm is started again.
             const src = alarmSrc;
-            src.onended = () => { if (alarmSrc === src) { alarmSrc = null; if (wantAlarm) startSource(); } };
+            src.onended = () => { if (alarmSrc === src) { alarmSrc = null; if (wantAlarm && loop) startSource(); } };
             alarmGain.gain.setValueAtTime(0, ctx.currentTime);
             alarmSrc.start();
             setAlarmLevel(0.05);
@@ -223,9 +226,12 @@
                 if (!d) return;
                 sounds = d.sounds || [];
                 alarmsOn = d.alarms || [];
-                ['o2', 'reactor'].forEach(type => {
+                ['o2', 'reactor', 'meeting'].forEach(type => {
                     if (alarmsOn.includes(type)) { wake(); chain(type).start(); }
-                    else if (chains[type]) chains[type].stop();
+                    else if (chains[type]) {
+                        chains[type].stop(type === 'meeting' ? 0.4 : undefined);
+                        if (type === 'meeting') chains[type].hush();   // everyone's here: nothing more to say
+                    }
                 });
                 const want = d.loops || [];
                 Object.keys(loops).forEach(id => { if (!want.some(l => l.id === id)) stopLoop(id); });
@@ -239,7 +245,6 @@
             });
             socket.on('win_sound', d => { if (d && d.url) playOnce(d.url, 'winVolume', true, 'win'); });
             socket.on('play_sound', d => { if (d && d.url) { wake(); playOnce(d.url, 'announceVolume', false, d.id); } });
-            socket.on('stop_sound', d => { if (d && d.id) stopOnce(d.id, 0.4); });
             // the server's station_sounds says so too; this is a second word that the alarm is over
             socket.on('sabotage_fixed', d => { if (d && chains[d.type]) chains[d.type].stop(); });
         }
