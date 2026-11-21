@@ -308,6 +308,15 @@
                 animation: none !important;
             }
         }
+        .fail-msg{
+            margin: 12px 0 0;
+            font-size: 12.5px;
+            line-height: 1.4;
+            color: var(--signal);
+        }
+        .fail-msg:empty{
+            display: none;
+        }
     </style>
     <link rel="stylesheet" href="common.css">
 </head>
@@ -335,7 +344,7 @@
 
             <div class="field">
                 <label for="user">Username</label>
-                <input type="text" placeholder="username" id="user" autocomplete="off">
+                <input type="text" placeholder="username" id="user" autocomplete="off" maxlength="24">
             </div>
 
             <div class="field">
@@ -349,6 +358,7 @@
             </div>
 
             <button id="button-id">Enter</button>
+            <p class="fail-msg" id="fail" role="alert"></p>
         </div>
     </div>
 
@@ -371,9 +381,14 @@
                 server: serv
             })
         })
-        .then(f => {window.location.href = '/waiting'})
+        .then(async res => {
+            if (res.ok) { window.location.href = '/waiting'; return; }
+            const body = await res.json().catch(() => ({}));
+            document.getElementById("fail").textContent = body.error || "Could not log in.";
+        })
         .catch(error => {
             console.error(error);
+            document.getElementById("fail").textContent = "Could not reach the server.";
         });
         })
 

@@ -10,6 +10,7 @@ function escapeHtml(str) {
 
 
 function getImpostorNames(data) {
+  if (data.gameState && data.gameState.started) return [];   // never while a game is running
   return Object.values(data.players)
     .filter(p => p.impostor)
     .map(p => p.username);
