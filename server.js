@@ -2368,6 +2368,10 @@ app.get('/reveal', async (req, res) => {
     const session = req.cookies.session;
     const player = data.players[session];
 
+    if(btoActive){
+        return res.redirect(`/dashboard${player.impostor ? "?impostor=true" : ""}`);
+    }
+
     if (!player) {
         return res.status(401).json({ error: "401 unauthorized" });
     }
@@ -3095,4 +3099,4 @@ app.use((req, res, next) => {
     }
 
     next();
-});
+});

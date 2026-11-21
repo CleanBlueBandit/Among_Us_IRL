@@ -10,3 +10,7 @@
     at Socket.emitUntyped (C:\Users\George\Documents\Among_Us_IRL\node_modules\socket.io\dist\typed-events.js:69:22)
     at C:\Users\George\Documents\Among_Us_IRL\node_modules\socket.io\dist\socket.js:697:39
     at process.processTicksAndRejections (node:internal/process/task_queues:85:11)
+[ERROR] [2026-11-21T06:54:19.203Z] Failed to load game.json, returning defaults. SyntaxError: Unexpected end of JSON input
+    at JSON.parse (<anonymous>)
+    at loadGame (file:///C:/Users/user/Documents/Amogus%20irl/server.js:499:27)
+    at async pushStationSounds (file:///C:/Users/user/Documents/Amogus%20irl/server.js:198:24)
