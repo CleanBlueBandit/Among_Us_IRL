@@ -72,18 +72,23 @@ const SOUNDS = [
     { id: 'o2_alarm', label: 'O2 alarm', alarm: 'o2' },
     { id: 'reactor_alarm', label: 'Reactor alarm', alarm: 'reactor' },
     { id: 'crew_win', label: 'Crewmate win', win: 'crewmates' },
-    { id: 'imp_win', label: 'Impostor win', win: 'impostors' }
+    { id: 'imp_win', label: 'Impostor win', win: 'impostors' },
+    { id: 'comms_alarm', label: 'Communications error', url: '/sounds/critical_error_communications.mp3' }
 ];
 const SOUND_IDS = new Set(SOUNDS.map(s => s.id));
 const SOUND_ROLES = ['o2', 'reactor', 'emergency', 'comms'];
-const DEFAULT_SOUND_ROUTES = { o2: ['o2_alarm'], reactor: ['reactor_alarm', 'crew_win', 'imp_win'], emergency: [], comms: [] };
+const DEFAULT_SOUND_ROUTES = { o2: ['o2_alarm'], reactor: ['reactor_alarm', 'crew_win', 'imp_win'], emergency: [], comms: ['comms_alarm'] };
 const SOUNDS_FILE = path.join(ROOT, 'sounds.json');
+// `known` lists the sounds the saved file already has a choice for; a sound added later starts on its
+// default stations instead of on none.
 function cleanRoutes(r) {
     const out = {};
+    const known = r ? (Array.isArray(r.known) ? r.known : ['o2_alarm', 'reactor_alarm', 'crew_win', 'imp_win']) : [];
     for (const role of SOUND_ROLES) {
         const list = r && Array.isArray(r[role]) ? r[role] : (r && r[role] !== undefined ? [] : DEFAULT_SOUND_ROUTES[role]);
-        out[role] = SOUNDS.map(s => s.id).filter(id => list.includes(id));
+        out[role] = SOUNDS.map(s => s.id).filter(id => known.includes(id) ? list.includes(id) : DEFAULT_SOUND_ROUTES[role].includes(id));
     }
+    out.known = SOUNDS.map(s => s.id);
     return out;
 }
 let soundRoutes = cleanRoutes(null);
@@ -1421,6 +1426,8 @@ async function startCommsSabotage(data) {
     await saveGame(data);   // the blackout starts here
     io.emit('comms_state', { down: true });
     sendCommsTask(data);
+    const sound = SOUNDS.find(s => s.id === 'comms_alarm');
+    for (const s of soundSessions(data, sound.id)) io.to(s).emit('play_sound', { id: sound.id, url: sound.url });
 }
 // A body report brings comms back before the meeting starts (the meeting needs them).
 function clearCommsFor(data) {
