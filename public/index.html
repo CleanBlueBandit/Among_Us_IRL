@@ -317,6 +317,15 @@
     </div>
 
     <script>
+        // Sent here after being taken out of the game: say why.
+        (function () {
+            const why = new URLSearchParams(location.search).get('removed');
+            const text = { kicked: 'The host removed you from the game. You can join again in the lobby.',
+                           offline: 'Your device was not connected when the game restarted, so you were taken out of the lobby. Join again below.' }[why];
+            if (text) document.getElementById("fail").textContent = text;
+            if (why) history.replaceState(null, '', '/');
+        })();
+
         document.querySelector("#button-id").addEventListener('click', f => {
         const usr = document.getElementById("user").value;
         fetch(`/enter`, {
@@ -337,7 +346,7 @@
             console.error(error);
             document.getElementById("fail").textContent = "Could not reach the server.";
         });
-        })
+        });
 
         // --- ambient starfield ---
         (function(){

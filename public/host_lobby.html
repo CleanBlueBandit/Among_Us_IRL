@@ -370,6 +370,19 @@
             height: 100%;
         }
 
+        .pruned{
+            margin: 0 0 12px;
+            padding: 10px 14px;
+            font-size: 12.5px;
+            line-height: 1.45;
+            color: var(--text-dim);
+            border: 1px dashed rgba(255,255,255,0.18);
+            border-radius: 10px;
+        }
+        .pruned:empty{
+            display: none;
+        }
+
         .fail-msg{
             margin: 14px 0 0;
             font-size: 12.5px;
@@ -559,6 +572,7 @@
             </div>
 
             <div class="section">
+                <p class="pruned" id="pruned" role="status"></p>
                 <div class="readout">
                     <p id="usr"></p>
                     <p id="id"></p>
@@ -648,6 +662,7 @@
             <div class="section">
                 <div class="actions">
                     <button class="primary" onclick="post_start()">Start game</button>
+                    <a href="/players"><button>Players</button></a>
                     <button type="button" onclick="openSounds()">Station sounds</button>
                     <a href="/floorplan"><button>Floor plan</button></a>
                     <a href="/minigames"><button>Test minigames</button></a>
@@ -676,6 +691,14 @@
     <script src="/socket.io/socket.io.js"></script>
     <script src="common.js"></script>
     <script>
+
+        // After a restart: say who was taken out because their device didn't answer.
+        (function () {
+            const names = new URLSearchParams(location.search).get('pruned');
+            if (!names) return;
+            get('pruned').textContent = 'Removed after the restart because their device did not answer: ' + names + '. They can join again.';
+            history.replaceState(null, '', '/waiting');
+        })();
 
         socket.on("player_data_request", (data) => {
             document.getElementById("usr").innerText = "username: " + data.username;
