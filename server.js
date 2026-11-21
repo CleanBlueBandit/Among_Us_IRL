@@ -73,9 +73,10 @@ const SOUNDS = [
     { id: 'reactor_alarm', label: 'Reactor alarm', alarm: 'reactor' },
     { id: 'crew_win', label: 'Crewmate win', win: 'crewmates' },
     { id: 'imp_win', label: 'Impostor win', win: 'impostors' },
-    // repeats while communications are down; `restored` plays once on the same stations when they're back
+    // plays once when communications go down (the recording glitches out by itself); `restored` plays
+    // once on the same stations when they're back
     { id: 'comms_alarm', label: 'Communications error', url: '/sounds/critical_error_communications.mp3',
-        restored: '/sounds/communications_restored.mp3', gap: 2 }
+        restored: '/sounds/communications_restored.mp3' }
 ];
 const SOUND_IDS = new Set(SOUNDS.map(s => s.id));
 const SOUND_ROLES = ['o2', 'reactor', 'emergency', 'comms'];
@@ -195,13 +196,15 @@ async function playWinSound(info) {
 
 // What each server device should be playing right now: its sounds, and which of its alarms are on
 // (an alarm is on while its manual override runs). Sent on connect and whenever either changes.
-// The communications error repeats while comms are down (commsDown follows every load and save).
 const COMMS_SOUND = SOUNDS.find(s => s.id === 'comms_alarm');
 function stationSoundsFor(role) {
     const sounds = soundRoutes[role] || [];
     const on = { o2: !!o2Fix, reactor: !!reactorFix };
-    const loops = commsDown && sounds.includes(COMMS_SOUND.id) ? [{ id: COMMS_SOUND.id, url: COMMS_SOUND.url, gap: COMMS_SOUND.gap }] : [];
-    return { sounds, alarms: SOUNDS.filter(s => s.alarm && on[s.alarm] && sounds.includes(s.id)).map(s => s.alarm), loops };
+    return { sounds, alarms: SOUNDS.filter(s => s.alarm && on[s.alarm] && sounds.includes(s.id)).map(s => s.alarm) };
+}
+// Communications went down: the error announcement, once.
+function commsErrorSound(data) {
+    for (const s of soundSessions(data, COMMS_SOUND.id)) io.to(s).emit('play_sound', { id: COMMS_SOUND.id, url: COMMS_SOUND.url });
 }
 // Communications are back: the stations that played the error say so.
 function commsRestoredSound(data) {
@@ -567,7 +570,7 @@ async function writeGameFile(json) {
 async function saveGame(data) {
     commsDown = commsSabotaged(data);
     await writeGameFile(JSON.stringify(data, null, 2));
-    pushStationSounds(data);   // the communications loop (and any alarm) follows the saved state
+    pushStationSounds(data);   // the alarms follow the saved state
     io.emit('game_data_request', data.gameState);
     io.emit('servers_data_request', serversView(data.servers));
 
@@ -1436,6 +1439,7 @@ async function startCommsSabotage(data) {
     await saveGame(data);   // the blackout starts here
     io.emit('comms_state', { down: true });
     sendCommsTask(data);
+    commsErrorSound(data);
 }
 // A body report brings comms back before the meeting starts (the meeting needs them).
 function clearCommsFor(data) {
