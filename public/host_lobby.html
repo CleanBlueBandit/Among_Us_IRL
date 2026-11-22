@@ -692,14 +692,6 @@
     <script src="common.js"></script>
     <script>
 
-        // After a restart: say who was taken out because their device didn't answer.
-        (function () {
-            const names = new URLSearchParams(location.search).get('pruned');
-            if (!names) return;
-            get('pruned').textContent = 'Removed after the restart because their device did not answer: ' + names + '. They can join again.';
-            history.replaceState(null, '', '/waiting');
-        })();
-
         socket.on("player_data_request", (data) => {
             document.getElementById("usr").innerText = "username: " + data.username;
             document.getElementById("id").innerText = "id: " + data.id;
@@ -707,6 +699,11 @@
 
         socket.on("game_data_request", (data) => {
             document.getElementById("players").innerText = "players: " + data.playerCount;
+            // After a restart: who hasn't opened the lobby again yet.
+            const back = Array.isArray(data.returning) ? data.returning : [];
+            get('pruned').textContent = back.length
+                ? 'Not back in the lobby yet: ' + back.join(', ') + '. They are taken out when you start the game, unless they open the lobby first.'
+                : '';
             latestPlayerCount = data.playerCount || 0;
             clampImpostors();
             if (data.started) {

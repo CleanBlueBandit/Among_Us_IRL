@@ -321,7 +321,8 @@
         (function () {
             const why = new URLSearchParams(location.search).get('removed');
             const text = { kicked: 'The host removed you from the game. You can join again in the lobby.',
-                           offline: 'Your device was not connected when the game restarted, so you were taken out of the lobby. Join again below.' }[why];
+                           offline: 'You weren\'t back in the lobby when the next game started, so you were taken out. Join again below.',
+                           replaced: 'Someone joined with your name on another device, so this one was signed out. Join again below.' }[why];
             if (text) document.getElementById("fail").textContent = text;
             if (why) history.replaceState(null, '', '/');
         })();
