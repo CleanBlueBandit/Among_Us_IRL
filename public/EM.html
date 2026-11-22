@@ -405,7 +405,6 @@
 <script src="/servertime.js"></script>
 <script>
   const socket = io();
-  socket.on('presence_check', ack => { if (typeof ack === 'function') ack(true); });
   socket.on('kicked', d => { window.location.href = '/?removed=' + encodeURIComponent((d && d.reason) || 'kicked'); });
 
   // ── STATE ────────────────────────────────────────────────────

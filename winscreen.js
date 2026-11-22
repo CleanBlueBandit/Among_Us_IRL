@@ -67,34 +67,28 @@ function buildRestartControls(isHost, glowColor, embedded = false) {
     <script>
       (function(){
         const socket = io();
-        let restarting = false;   // the host's own restart: wait for its answer (it says who was removed)
         socket.on('restart_game', () => {
-          if (!restarting) window.location.href = '/waiting';
+          window.location.href = '/waiting';
         });
-        // answer the presence ping a restart sends (no answer = left the game)
-        socket.on('presence_check', (ack) => { if (typeof ack === 'function') ack(true); });
         socket.on('kicked', (d) => { window.location.href = '/?removed=' + encodeURIComponent((d && d.reason) || 'kicked'); });
         ${isHost ? `
         const btn = document.getElementById('restartBtn');
         btn.addEventListener('click', async () => {
           btn.disabled = true;
-          restarting = true;
           btn.textContent = 'Restarting...';
           try {
             const res = await fetch('/restart', { method: 'POST' });
             const json = await res.json();
             if (json.failed) {
               alert(json.message);
-              restarting = false;
               btn.disabled = false;
               btn.textContent = 'Restart';
               return;
             }
-            // host redirects itself the same way everyone else will (saying who was cleared out)
-            window.location.href = '/waiting' + (json.removed && json.removed.length ? '?pruned=' + encodeURIComponent(json.removed.join(', ')) : '');
+            // host redirects itself the same way everyone else will
+            window.location.href = '/waiting';
           } catch (e) {
             alert('Restart failed: ' + e.message);
-            restarting = false;
             btn.disabled = false;
             btn.textContent = 'Restart';
           }

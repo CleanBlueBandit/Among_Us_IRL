@@ -105,16 +105,16 @@
     <script>
         const $ = id => document.getElementById(id);
         const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-        let players = [], started = false, asking = null, busy = false;
+        let players = [], started = false, over = false, asking = null, busy = false;
 
         function render() {
             const n = players.filter(p => !p.dummy).length, d = players.length - n;
             $('count').textContent = `${n} player${n === 1 ? '' : 's'}${d ? ` + ${d} dummy` : ''}`;
-            $('back').href = started ? '/dashboard' : '/waiting';
-            $('back').firstElementChild.textContent = started ? 'Back to the game' : 'Back to the lobby';
+            $('back').href = started ? '/dashboard' : over ? '/win' : '/waiting';
+            $('back').firstElementChild.textContent = started ? 'Back to the game' : over ? 'Back to the results' : 'Back to the lobby';
             if (!players.length) { $('list').innerHTML = '<li class="empty">No players yet.</li>'; return; }
             $('list').innerHTML = players.map(p => {
-                const state = p.host ? 'You' : p.dummy ? 'Test player' : p.online ? 'Connected' : 'Not connected';
+                const state = p.host ? 'You' : p.dummy ? 'Test player' : (p.returning ? 'Not back in the lobby yet · ' : '') + (p.online ? 'Connected' : 'Not connected');
                 const dot = p.dummy ? 'none' : (p.online || p.host) ? 'on' : '';
                 let acts = '';
                 if (!p.host) acts = asking === p.id
@@ -131,7 +131,7 @@
                 const res = await fetch('/players/list', { cache: 'no-store' });
                 if (res.status === 401) { window.location.href = '/host'; return; }
                 const j = await res.json();
-                players = j.players || []; started = !!j.started;
+                players = j.players || []; started = !!j.started; over = !!j.over;
                 if (asking && !players.some(p => p.id === asking)) asking = null;
                 render();
             } catch (e) { /* keep what is shown; the next refresh tries again */ }
@@ -158,7 +158,6 @@
         // Joins and leaves come in as game updates; who is connected is refreshed every few seconds.
         const socket = io();
         socket.on('game_data_request', load);
-        socket.on('presence_check', ack => { if (typeof ack === 'function') ack(true); });
         load();
         setInterval(load, 4000);
     </script>
