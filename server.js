@@ -467,6 +467,7 @@ function evaluateTaskWin(data) {
     gs.winCondition = "THE CREW COMPLETED EVERY TASK";
     clearAllSabotageTimers();
     clearEmergencyMeetingTimer();
+    closeMeeting(gs);
     return true;
 }
 
@@ -1634,7 +1635,16 @@ function evaluateWinConditions(data, messages = {}) {
 
     clearAllSabotageTimers();
     clearEmergencyMeetingTimer();
+    closeMeeting(data.gameState);
     return true;
+}
+// The game ended: a meeting that was gathering or voting is over too.
+function closeMeeting(gs) {
+    gs.emergencyMeeting = false;
+    gs.emergencyMeetingEndTime = 0;
+    gs.meetingReport = null;
+    gs.meetingGather = null;
+    emergencyVotes = Object.create(null);
 }
 
 let emergencyMeetingTimer = null;
