@@ -294,6 +294,14 @@ function baseUrl() {
     return `${process.env.PROTOCOL || 'http'}://${process.env.IP || 'localhost'}:${process.env.PORT || 8080}`;
 }
 
+// The link printed on a task's QR code. With TASK_LINK_BASE set (a redirect service such as
+// https://redirect-api-psi.vercel.app), codes point there as <base>/tasks/<token> and the service
+// forwards to this server's /task/<token>, so printed codes survive a new IP or port.
+function taskLink(token) {
+    const base = (process.env.TASK_LINK_BASE || '').trim().replace(/\/+$/, '');
+    return base ? `${base}/tasks/${token}` : `${baseUrl()}/task/${token}`;
+}
+
 // tasks.txt, every QR code of every enabled task:
 //   swipe_card:
 //   http://192.168.1.20:8812/task/9f1c...
@@ -303,7 +311,7 @@ export function formatLinks(tasks) {
     const blocks = [];
     for (const t of tasks) {
         if (!t.enabled) continue;
-        for (const s of t.steps) if (s.token) blocks.push(`${s.label}:\n${baseUrl()}/task/${s.token}`);
+        for (const s of t.steps) if (s.token) blocks.push(`${s.label}:\n${taskLink(s.token)}`);
     }
     return blocks.join('\n') + (blocks.length ? '\n' : '');
 }
@@ -365,4 +373,4 @@ export function updateTaskConfig(updates) {
     return result;
 }
 
-export { baseUrl };
+export { baseUrl, taskLink };
