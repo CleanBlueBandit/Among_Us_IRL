@@ -643,9 +643,30 @@ async function saveGame(data) {
     logDebug("data saved and brodcasted");
 }
 
+// With TASK_LINK_BASE and REDIRECT_API_TOKEN set, tell the redirect service where this server is,
+// so the printed task QR codes follow it to a new IP or port without editing anything on Vercel.
+async function announceToRedirect() {
+    const base = (process.env.TASK_LINK_BASE || '').trim().replace(/\/+$/, '');
+    const token = process.env.REDIRECT_API_TOKEN;
+    if (!base || !token) return;
+    try {
+        const res = await fetch(`${base}/api/url`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ API_TOKEN: token, url: baseUrl() }),
+            signal: AbortSignal.timeout(10000)
+        });
+        if (res.ok) logDebug(`Redirect service now sends task QR scans to ${baseUrl()}`);
+        else logWarn(`Redirect service refused the address update (HTTP ${res.status}${res.status === 401 ? ', check REDIRECT_API_TOKEN' : ''}). Task QR codes may point at an old address.`);
+    } catch (e) {
+        logWarn(`Could not reach the redirect service at ${base} (${e.message}). Task QR codes may point at an old address.`);
+    }
+}
+
 httpServer.listen(PORT, () => {
     logDebug(`Server connected. Express server running on ${protocol}://${IP}:${PORT}`);
     alarmVoice.warmUp().catch(e => logError('Alarm voice:', e));
+    announceToRedirect();
     loadTaskLibrary().then(lib => {
         const label = u => u.steps.length === 1 ? u.id
             : u.tasks.map(id => { const t = lib.byId.get(id); return t.repeat > 1 ? `${id} x${t.repeat}` : id; }).join(' > ');

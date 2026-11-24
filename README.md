@@ -227,7 +227,9 @@ npm run task-links -- --new  # issue new tokens for every task (old QR codes sto
 
 #### Task QR codes through a redirect
 
-A printed code normally holds the server's own address, so a new IP or port means reprinting. With `TASK_LINK_BASE` set in `.env`, the links in `tasks.txt` become `<TASK_LINK_BASE>/tasks/<token>` instead. The redirect service (deployed at `https://redirect-api-psi.vercel.app`) forwards each scan to `http://<REDIRECT_URL>/task/<token>`, so when the server moves you only change `REDIRECT_URL` on Vercel (e.g. `192.168.1.20:8812`) and redeploy. Phones need internet access for the redirect, then reach the server as usual. The reactor's override code is shown on screen and always points at the server directly.
+A printed code normally holds the server's own address, so a new IP or port means reprinting. With `TASK_LINK_BASE` set in `.env`, the links in `tasks.txt` become `<TASK_LINK_BASE>/tasks/<token>` instead. The redirect service (deployed at `https://redirect-api-psi.vercel.app`) forwards each scan to `http://<REDIRECT_URL>/task/<token>`, so when the server moves only the redirect's stored address has to change, not the printed codes. Phones need internet access for the redirect, then reach the server as usual. The reactor's override code is shown on screen and always points at the server directly.
+
+To skip editing Vercel, also set `REDIRECT_API_TOKEN` in `.env` to the same value as `API_TOKEN` on Vercel. On every start the server then sends its own address (`PROTOCOL://IP:PORT`) to `<TASK_LINK_BASE>/api/url`, and the log says whether the update went through.
 
 At game start every player gets `tasks` random tasks (set in the host lobby) and sees them on a sticky note next to their tablet. Impostors get tasks too, but those don't count towards the crew total. More details: `/help?topic=tasks`.
 
