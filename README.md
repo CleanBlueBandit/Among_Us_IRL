@@ -319,9 +319,136 @@ The redirect stores the server's address, and the game server updates it by itse
 | --- | --- |
 | `GET /tasks/:token` | Reads the stored address and redirects (302, with `Cache-Control: no-store`) to `<address>/task/<token>`. |
 | `PATCH /api/url` | Body `{ "API_TOKEN": "...", "url": "http://192.168.1.20:8812" }`. Saves `url` if `API_TOKEN` matches the secret set on the redirect, and answers with any 2xx status; otherwise 401. |
-| `GET /api/url` | Optional: shows the stored address, handy for checking. |
+| `GET /api/url` | Optional: shows the stored address, handy for checking. Needs the header `Authorization: Bearer <API_TOKEN>`. |
 
 The address has to be stored somewhere that survives between requests: on Vercel and similar hosts each request can run on a fresh instance, so a variable in memory is forgotten. Mine keeps it in a file in a Vercel Blob store. Pick a long random value for `API_TOKEN`, since anyone who has it can send your players' scans anywhere.
+
+##### The code (Node.js, for Vercel)
+
+This is the redirect I use. It's two files in their own folder (or their own GitHub repository), separate from the game.
+
+`package.json`:
+
+```json
+{
+  "name": "among-us-irl-redirect",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "scripts": { "start": "node index.js" },
+  "dependencies": {
+    "@vercel/blob": "^2.9.0",
+    "express": "^5.2.1"
+  }
+}
+```
+
+`index.js`:
+
+```js
+// Redirect API for Among Us IRL task QR codes.
+// GET   /tasks/:token  -> 302 to <stored game server address>/task/<token>
+// PATCH /api/url       -> { API_TOKEN, url } saves the game server's address (the game server does this on start)
+// GET   /api/url       -> shows the stored address (needs "Authorization: Bearer <API_TOKEN>")
+import express from 'express';
+import crypto from 'node:crypto';
+import { put, get } from '@vercel/blob';
+
+const app = express();
+app.use(express.json());
+
+const CONFIG_PATH = 'config.txt';   // no leading slash: get('/config.txt') would look up "//config.txt"
+
+// Compares the given token with API_TOKEN without leaking how much of it matched.
+function tokenOk(given) {
+    const want = process.env.API_TOKEN;
+    if (!want || typeof given !== 'string') return false;
+    const a = Buffer.from(given), b = Buffer.from(want);
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+// "192.168.1.20:8812", "http://192.168.1.20:8812/" -> "http://192.168.1.20:8812"; anything else -> null
+function cleanAddress(input) {
+    if (typeof input !== 'string' || !input.trim()) return null;
+    const raw = input.trim();
+    try {
+        const u = new URL(/^https?:\/\//i.test(raw) ? raw : `http://${raw}`);
+        return u.protocol === 'http:' || u.protocol === 'https:' ? u.origin : null;
+    } catch {
+        return null;
+    }
+}
+
+async function readAddress() {
+    const result = await get(CONFIG_PATH, { access: 'private', useCache: false });
+    if (!result || result.statusCode !== 200) return null;
+    const text = (await new Response(result.stream).text()).trim();
+    return text || null;
+}
+
+app.get('/tasks/:token', async (req, res) => {
+    res.set('Cache-Control', 'no-store');   // phones must never remember an old address
+    try {
+        const address = await readAddress();
+        if (!address) return res.status(503).type('text/plain').send('No game server address stored yet. Start the game server first.');
+        return res.redirect(302, `${address}/task/${encodeURIComponent(req.params.token)}`);
+    } catch (err) {
+        console.error('Reading the address failed:', err);
+        return res.sendStatus(500);
+    }
+});
+
+app.patch('/api/url', async (req, res) => {
+    const { API_TOKEN, url } = req.body || {};
+    if (!tokenOk(API_TOKEN)) return res.sendStatus(401);
+    const address = cleanAddress(url);
+    if (!address) return res.status(400).type('text/plain').send('Invalid URL');
+    try {
+        await put(CONFIG_PATH, address, {
+            access: 'private',
+            allowOverwrite: true,
+            addRandomSuffix: false,
+            contentType: 'text/plain'
+        });
+        console.log('Stored address:', address);
+        return res.json({ url: address });
+    } catch (err) {
+        console.error('Saving the address failed:', err);
+        return res.sendStatus(500);
+    }
+});
+
+app.get('/api/url', async (req, res) => {
+    const auth = req.get('authorization') || '';
+    if (!tokenOk(auth.replace(/^Bearer\s+/i, ''))) return res.sendStatus(401);
+    try {
+        const address = await readAddress();
+        if (!address) return res.sendStatus(404);
+        return res.type('text/plain').send(address);
+    } catch (err) {
+        console.error('Reading the address failed:', err);
+        return res.sendStatus(500);
+    }
+});
+
+// Vercel runs the exported app; anywhere else, start a normal server.
+if (!process.env.VERCEL) {
+    const port = process.env.PORT || 3000;
+    app.listen(port, () => console.log(`Redirect API listening on port ${port}`));
+}
+
+export default app;
+```
+
+To put it online on Vercel (the free plan is enough):
+1. Push the folder to a GitHub repository and import it as a new project on [vercel.com](https://vercel.com). No build settings needed: Vercel runs the exported Express app.
+2. In the project, open **Storage**, create a **Blob** store and connect it to the project. If Vercel asks for an access level, choose **Private**. Connecting it adds `BLOB_READ_WRITE_TOKEN` to the project for you.
+3. In **Settings > Environment Variables**, add `API_TOKEN` with a long random value. One way to make one: `node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"`.
+4. Redeploy, so the new variables are used.
+
+The address is saved without a leading slash (`config.txt`, not `/config.txt`): Blob turns `get('/config.txt')` into a lookup of `//config.txt`, which finds nothing and makes every scan answer 503.
+
+Run elsewhere, it starts a normal server on `PORT` (default 3000) but still keeps the address in Vercel Blob, so it needs `BLOB_READ_WRITE_TOKEN` set. On your own server you could store the address in a file instead, by changing `readAddress()` and the `put(...)` call.
 
 Then add to the game server's `.env`:
 
