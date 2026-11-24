@@ -322,4 +322,6 @@ In the host lobby, **Test minigames** opens a test bench (host only): every mini
 ## Important security note
 This server is meant to be hosted on **localhost only**. Several serious vulnerabilities are present intentionally, because I didnt bother to fix them. (It aint like im building this for a megacorporation or something)
 
-The client is **completely trusted** (well, mostly), so if you play this game, keep in mind that anyone with decent cybersecurity skills can cheat. (though they'd need external tools that aren't easily obtainable on mobile) This risk is much higher if you use one of the remote-access methods above, since the server is no longer confined to your local network.
+The client is **completely trusted** (well, mostly), so if you play this game, keep in mind that anyone with decent cybersecurity skills can cheat. (though they'd need external tools that aren't easily obtainable on mobile) This risk is much higher if you use one of the remote-access methods above, since the server is no longer confined to your local network.
+
+**Update:** Nevermind, I fixed what I could find, but don't place your trust on me completely, I'm not a cybersecurity expert.
