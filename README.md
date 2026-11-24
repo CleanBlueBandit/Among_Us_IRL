@@ -2,7 +2,7 @@
 An in-real-life simulation of the game "Among Us," built on a Node.js server-client relationship.
 
 ## How it's done
-You'll need **3 devices** acting as servers on the local network:
+You'll need **3-4 devices** acting as servers on the local network:
 - 1 for reactor sabotage handling
 - 1 for oxygen
 - 1 for the actual server logic (You can run this on both the oxygen and reactor devices tho)
